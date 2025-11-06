@@ -22,7 +22,7 @@
 
     <nav>
       <a href="{{ url_for('import_round', tid=tid) }}">Import this round from EventLink PDF</a> |
-      <a href="{{ url_for('new_tournament_from_pdf') }}">Start new tournament from PDF</a>
+      <a href="{{ url_for('new_tournament') }}">Create a new tournament</a>
     </nav>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -134,11 +134,7 @@
             }, this);
           });
 
-          $('.player-select').select2({
-            placeholder: "-Select Player-",
-            allowClear: true,
-            width: '100%'
-          });
+          $('.player-select').trigger('change.select2');
         }
 
         $('.player-select').on('change', updateOptions);
