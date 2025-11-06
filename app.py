@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os, io
 from datetime import datetime
 import logging
+import pdftotext
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -119,12 +120,10 @@ def parse_eventlink_pdf(file_stream: io.BytesIO):
 
 
 def extract_event_date(file_stream: io.BytesIO):
-    if not PDF_AVAILABLE:
-        return datetime.today().date()
-    with pdfplumber.open(file_stream) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            for line in text.splitlines():
+    try:
+        pages = pdf_to_text(file_stream)
+        for page in pages:
+            for line in page.splitlines():
                 if "Event Date:" in line:
                     date_str = line.split("Event Date:", 1)[1].strip()
                     for fmt in ("%m/%d/%Y", "%d/%m/%Y"):
@@ -132,7 +131,10 @@ def extract_event_date(file_stream: io.BytesIO):
                             return datetime.strptime(date_str, fmt).date()
                         except ValueError:
                             continue
+    except Exception as e:
+        app.logger.error(f"Date extraction error: {e}")
     return datetime.today().date()
+
 
 def normalize_pdf_row(player: str, opponent: str, points_raw: str):
     if (opponent or "").strip().lower() in {"*** bye ***", "bye"}:
@@ -253,6 +255,11 @@ def new_tournament():
     all_players = Player.query.order_by(Player.name).all()
     return render_template('new_tournament.html', players=all_players)
 
+def pdf_to_text(file_stream: io.BytesIO):
+    """Convert entire PDF to plain text using pdftotext."""
+    file_stream.seek(0)
+    pdf = pdftotext.PDF(file_stream)
+    return [page for page in pdf]  # list of page strings
 
 @app.route('/tournament/debug_pdf', methods=['POST'])
 def debug_pdf():
@@ -261,20 +268,16 @@ def debug_pdf():
         flash("Please upload a PDF.", "error")
         return redirect(url_for('new_tournament'))
 
-    data = file.read()
-
+    data = io.BytesIO(file.read())
     raw_pages = []
-    if PDF_AVAILABLE:
-        try:
-            with pdfplumber.open(io.BytesIO(data)) as pdf:
-                for p_idx, page in enumerate(pdf.pages):
-                    txt = page.extract_text() or ""
-                    raw_pages.append({"index": p_idx, "text": txt})
-        except Exception as e:
-            app.logger.error(f"Error extracting raw text: {e}")
+    try:
+        pages = pdf_to_text(data)   # <-- use the helper here
+        for idx, page_text in enumerate(pages):
+            raw_pages.append({"index": idx, "text": page_text})
+    except Exception as e:
+        app.logger.error(f"pdftotext error: {e}")
 
-    return render_template('debug_pdf.html',
-                           raw_pages=raw_pages)
+    return render_template('debug_pdf.html', raw_pages=raw_pages)
 
 
 @app.route('/tournament/<int:tid>/round/<int:round_num>', methods=['GET', 'POST'])
