@@ -156,13 +156,9 @@ def debug_txt():
 
     return render_template('debug_txt.html', raw_rounds=raw_rounds)
 # --- Database initialization ---
-@app.before_first_request
-def create_tables():
-    """Ensure database tables exist before handling the first request."""
+with app.app_context():
     db.create_all()
-
 
 # --- Run the app ---
 if __name__ == "__main__":
-    # For local development; Render will use gunicorn
     app.run(debug=True, host="0.0.0.0", port=5000)
