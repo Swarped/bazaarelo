@@ -93,6 +93,7 @@ def parse_eventlink_pdf(file_stream: io.BytesIO):
     with pdfplumber.open(file_stream) as pdf:
         for page_idx, page in enumerate(pdf.pages):
             table = page.extract_table()
+            app.logger.debug(f"Raw table from page {page_idx}: {table}")
             if not table or len(table) < 2:
                 for tbl in page.extract_tables():
                     if tbl and len(tbl) > 1:
@@ -106,8 +107,14 @@ def parse_eventlink_pdf(file_stream: io.BytesIO):
                     continue
                 player = (row[1] or "").strip()
                 opponent = (row[2] or "").strip()
-                points_raw = (row[3] or "").strip()
-                app.logger.debug(f"Row {row_idx} -> player={player}, opponent={opponent}, points={points_raw}")
+                points_raw = ""
+if len(row) >= 4:
+    points_raw = (row[3] or "").strip()
+if len(row) >= 5 and not points_raw:
+    points_raw = (row[4] or "").strip()
+
+app.logger.debug(f"Row {row_idx} full data: {row}")
+app.logger.debug(f"Row {row_idx} parsed -> player={player}, opponent={opponent}, points={points_raw}")
                 if player:
                     rows.append((player, opponent, points_raw))
     return rows
