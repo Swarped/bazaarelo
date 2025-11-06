@@ -7,12 +7,27 @@
       body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
-      select { padding: .3rem; }
+      select { width: 100%; padding: .3rem; }
       button { margin-top: 1rem; padding: .5rem 1rem; }
+      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
     </style>
+    <!-- ✅ Include Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   </head>
   <body>
     <h1>Tournament Round {{ round_num }}</h1>
+
+    <!-- ✅ Flash error messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% if category == 'error' %}
+            <div class="flash-error">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <form method="POST">
       <table>
         <tr>
@@ -20,35 +35,4 @@
           <th>Player 2</th>
           <th>Result</th>
         </tr>
-        {% for i in range(1, (players|length)//2 + 1) %}
-        <tr>
-          <td>
-            <select name="player1_{{ i }}">
-              {% for p in players %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td>
-            <select name="player2_{{ i }}">
-              {% for p in players %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td>
-            <select name="result_{{ i }}">
-              <option value="1-0">1-0</option>
-              <option value="0-1">0-1</option>
-              <option value="1-1">1-1</option>
-              <option value="2-1">2-1</option>
-              <option value="1-2">1-2</option>
-            </select>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      <button type="submit">Submit Round {{ round_num }}</button>
-    </form>
-  </body>
-</html>
+        {% for i in range(1, (players|length + 1)//

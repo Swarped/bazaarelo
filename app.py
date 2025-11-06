@@ -1,9 +1,10 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 import os
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = "supersecret"  # Needed for flash messages
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -28,8 +29,8 @@ class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
     round_num = db.Column(db.Integer, nullable=False)
-    player1_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
-    player2_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+    player1_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
+    player2_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
     result = db.Column(db.String(10))  # e.g. "1-0", "2-1", "1-1"
 
 # --- Elo update ---
@@ -117,12 +118,21 @@ def tournament_round(tid, round_num):
                           .filter(TournamentPlayer.tournament_id == tid).all()
 
     if request.method == 'POST':
-        matches = []
-        for i in range(1, len(players)//2 + 1):
-            p1_id = int(request.form.get(f'player1_{i}'))
-            p2_id = int(request.form.get(f'player2_{i}'))
+        for i in range(1, (len(players) + 1)//2 + 1):  # handle odd count
+            p1_val = request.form.get(f'player1_{i}')
+            p2_val = request.form.get(f'player2_{i}')
             result = request.form.get(f'result_{i}')
 
+            # Validation: must select players
+            if not p1_val or not p2_val or p1_val == "" or p2_val == "":
+                flash("Error: You must select a player for every match.", "error")
+                return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
+
+            # Handle Bye
+            if p1_val == "bye" or p2_val == "bye":
+                continue
+
+            p1_id, p2_id = int(p1_val), int(p2_val)
             match = Match(tournament_id=tid, round_num=round_num,
                           player1_id=p1_id, player2_id=p2_id, result=result)
             db.session.add(match)
