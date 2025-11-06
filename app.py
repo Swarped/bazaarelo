@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os, io
 from datetime import datetime
 import logging
-import pdftotext
+import fitz  # PyMuPDF
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -256,10 +256,10 @@ def new_tournament():
     return render_template('new_tournament.html', players=all_players)
 
 def pdf_to_text(file_stream: io.BytesIO):
-    """Convert entire PDF to plain text using pdftotext."""
+    """Convert entire PDF to plain text using PyMuPDF."""
     file_stream.seek(0)
-    pdf = pdftotext.PDF(file_stream)
-    return [page for page in pdf]  # list of page strings
+    doc = fitz.open(stream=file_stream.read(), filetype="pdf")
+    return [page.get_text() for page in doc]  # list of page strings
 
 @app.route('/tournament/debug_pdf', methods=['POST'])
 def debug_pdf():
@@ -271,11 +271,11 @@ def debug_pdf():
     data = io.BytesIO(file.read())
     raw_pages = []
     try:
-        pages = pdf_to_text(data)   # <-- use the helper here
+        pages = pdf_to_text(data)
         for idx, page_text in enumerate(pages):
             raw_pages.append({"index": idx, "text": page_text})
     except Exception as e:
-        app.logger.error(f"pdftotext error: {e}")
+        app.logger.error(f"PyMuPDF error: {e}")
 
     return render_template('debug_pdf.html', raw_pages=raw_pages)
 
