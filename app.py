@@ -86,6 +86,71 @@ def result_to_scores(result: str):
     }
     return mapping.get(result)
 
+def parse_eventlink_pdf(file_stream: io.BytesIO):
+    if not PDF_AVAILABLE:
+        raise RuntimeError("PDF parsing library not available. Please install pdfplumber.")
+    rows = []
+    with pdfplumber.open(file_stream) as pdf:
+        for page_idx, page in enumerate(pdf.pages):
+            table = page.extract_table()
+            if not table or len(table) < 2:
+                for tbl in page.extract_tables():
+                    if tbl and len(tbl) > 1:
+                        table = tbl
+                        break
+            app.logger.debug(f"PDF page {page_idx}: table found={bool(table)} rows={len(table) if table else 0}")
+            if not table or len(table) < 2:
+                continue
+            for row_idx, row in enumerate(table[1:], start=1):
+                if not row or len(row) < 4:
+                    continue
+                player = (row[1] or "").strip()
+                opponent = (row[2] or "").strip()
+                points_raw = (row[3] or "").strip()
+                app.logger.debug(f"Row {row_idx} -> player={player}, opponent={opponent}, points={points_raw}")
+                if player:
+                    rows.append((player, opponent, points_raw))
+    return rows
+
+def extract_event_date(file_stream: io.BytesIO):
+    if not PDF_AVAILABLE:
+        return datetime.today().date()
+    try:
+        with pdfplumber.open(file_stream) as pdf:
+            text = pdf.pages[0].extract_text() or ""
+            app.logger.debug(f"Header text (first 200 chars): {text[:200]}")
+            for line in text.splitlines():
+                if "Event Date:" in line:
+                    date_str = line.split("Event Date:", 1)[1].strip()
+                    for fmt in ("%m/%d/%Y", "%d/%m/%Y"):
+                        try:
+                            return datetime.strptime(date_str, fmt).date()
+                        except ValueError:
+                            continue
+    except Exception as e:
+        app.logger.error(f"Date extraction error: {e}")
+    return datetime.today().date()
+
+def normalize_pdf_row(player: str, opponent: str, points_raw: str):
+    if (opponent or "").strip().lower() in {"*** bye ***", "bye"}:
+        return "bye"
+    if "-" in points_raw:
+        left, right = points_raw.split("-", 1)
+        left, right = left.strip(), right.strip()
+        known = {("3", "0"): "2-0", ("0", "3"): "0-2", ("1", "1"): "1-1"}
+        if (left, right) in known:
+            return known[(left, right)]
+        try:
+            lnum, rnum = int(left), int(right)
+            if lnum > rnum: return "2-0"
+            elif lnum < rnum: return "0-2"
+            else: return "1-1"
+        except ValueError:
+            return "1-1"
+    if points_raw.isdigit():
+        return "2-0"
+    return "1-1"
+
 # --- Routes ---
 @app.route('/')
 def home():
