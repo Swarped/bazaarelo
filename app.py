@@ -24,6 +24,29 @@ class TournamentPlayer(db.Model):
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
 
+class Match(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
+    round_num = db.Column(db.Integer, nullable=False)
+    player1_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+    player2_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+    result = db.Column(db.String(10))  # e.g. "1-0", "2-1", "1-1"
+
+# --- Elo update ---
+def update_elo(player_a, player_b, score_a, score_b, k=32):
+    if score_a > score_b:
+        result_a, result_b = 1, 0
+    elif score_a < score_b:
+        result_a, result_b = 0, 1
+    else:
+        result_a = result_b = 0.5
+
+    expected_a = 1 / (1 + 10 ** ((player_b.elo - player_a.elo) / 400))
+    expected_b = 1 / (1 + 10 ** ((player_a.elo - player_b.elo) / 400))
+
+    player_a.elo += int(k * (result_a - expected_a))
+    player_b.elo += int(k * (result_b - expected_b))
+
 # --- Routes ---
 @app.route('/')
 def home():
@@ -70,7 +93,7 @@ def new_tournament():
         elif num_players <= 64:
             rounds = 6
         else:
-            rounds = 7  # expand later
+            rounds = 7
 
         # Save tournament
         tournament = Tournament(date=datetime.strptime(date_str, "%Y-%m-%d"), rounds=rounds)
@@ -83,9 +106,51 @@ def new_tournament():
             db.session.add(tp)
         db.session.commit()
 
-        return f"Tournament created with {num_players} players and {rounds} rounds!"
+        return redirect(url_for('tournament_round', tid=tournament.id, round_num=1))
 
     return render_template('new_tournament.html')
+
+@app.route('/tournament/<int:tid>/round/<int:round_num>', methods=['GET', 'POST'])
+def tournament_round(tid, round_num):
+    tournament = Tournament.query.get_or_404(tid)
+    players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id)\
+                          .filter(TournamentPlayer.tournament_id == tid).all()
+
+    if request.method == 'POST':
+        matches = []
+        for i in range(1, len(players)//2 + 1):
+            p1_id = int(request.form.get(f'player1_{i}'))
+            p2_id = int(request.form.get(f'player2_{i}'))
+            result = request.form.get(f'result_{i}')
+
+            match = Match(tournament_id=tid, round_num=round_num,
+                          player1_id=p1_id, player2_id=p2_id, result=result)
+            db.session.add(match)
+
+            # Update Elo
+            player1 = Player.query.get(p1_id)
+            player2 = Player.query.get(p2_id)
+
+            if result == "1-0":
+                update_elo(player1, player2, 1, 0)
+            elif result == "0-1":
+                update_elo(player1, player2, 0, 1)
+            elif result == "1-1":
+                update_elo(player1, player2, 1, 1)
+            elif result == "2-1":
+                update_elo(player1, player2, 2, 1)
+            elif result == "1-2":
+                update_elo(player1, player2, 1, 2)
+
+        db.session.commit()
+
+        # Move to next round or finish
+        if round_num < tournament.rounds:
+            return redirect(url_for('tournament_round', tid=tid, round_num=round_num+1))
+        else:
+            return redirect(url_for('players'))
+
+    return render_template('round.html', players=players, round_num=round_num, tid=tid)
 
 # --- Ensure DB tables exist ---
 with app.app_context():
