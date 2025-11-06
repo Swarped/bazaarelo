@@ -42,13 +42,19 @@
       <button type="submit">Create Tournament (Manual)</button>
     </form>
 
-    <h2>Option B: Import Round 1 from PDF</h2>
-    <form method="POST" enctype="multipart/form-data">
-      <label for="pdf">Upload Round 1 PDF:</label>
-      <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
-      <br><br>
-      <button type="submit">Create Tournament from PDF</button>
-    </form>
+ <h2>Option B: Import Round 1 from PDF</h2>
+<form method="POST" enctype="multipart/form-data" action="{{ url_for('new_tournament') }}">
+  <label for="pdf">Upload Round 1 PDF:</label>
+  <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
+  <br><br>
+  <button type="submit">Create Tournament from PDF</button>
+</form>
+
+<form method="POST" enctype="multipart/form-data" action="{{ url_for('debug_pdf') }}">
+  <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
+  <br><br>
+  <button type="submit">Debug PDF Parsing</button>
+</form>
 
     <script>
       function addPlayerField() {

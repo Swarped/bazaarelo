@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Debug PDF</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <h1>Debug PDF Parsing</h1>
+    <p><strong>Extracted Event Date:</strong> {{ event_date }}</p>
+
+    {% if rows and rows|length > 0 %}
+      <table>
+        <tr><th>Player</th><th>Opponent</th><th>Points Raw</th></tr>
+        {% for p, o, pts in rows %}
+        <tr>
+          <td>{{ p }}</td>
+          <td>{{ o }}</td>
+          <td>{{ pts }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p>No rows parsed from PDF.</p>
+    {% endif %}
+
+    <p><a href="{{ url_for('new_tournament') }}">Back to Create Tournament</a></p>
+  </body>
+</html>
