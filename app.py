@@ -63,4 +63,34 @@ def new_tournament():
         num_players = len(player_objs)
         if num_players <= 8:
             rounds = 3
-        elif
+        elif num_players <= 16:
+            rounds = 4
+        elif num_players <= 32:
+            rounds = 5
+        elif num_players <= 64:
+            rounds = 6
+        else:
+            rounds = 7  # expand later
+
+        # Save tournament
+        tournament = Tournament(date=datetime.strptime(date_str, "%Y-%m-%d"), rounds=rounds)
+        db.session.add(tournament)
+        db.session.commit()
+
+        # Link players
+        for p in player_objs:
+            tp = TournamentPlayer(tournament_id=tournament.id, player_id=p.id)
+            db.session.add(tp)
+        db.session.commit()
+
+        return f"Tournament created with {num_players} players and {rounds} rounds!"
+
+    return render_template('new_tournament.html')
+
+# --- Ensure DB tables exist ---
+with app.app_context():
+    db.create_all()
+
+# --- Run locally ---
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
