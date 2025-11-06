@@ -8,12 +8,23 @@
       form { display: flex; flex-direction: column; gap: 1rem; }
       .player-field { margin-bottom: .5rem; }
       button { padding: .5rem 1rem; }
+      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
     </style>
-    <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   </head>
   <body>
     <h1>Create New Tournament</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% if category == 'error' %}
+            <div class="flash-error">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <form method="POST">
       <label>Date:
         <input type="date" name="date" required>
@@ -33,7 +44,6 @@
       <button type="submit">Create Tournament</button>
     </form>
 
-    <!-- jQuery + Select2 JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
