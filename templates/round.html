@@ -4,20 +4,22 @@
     <meta charset="utf-8">
     <title>Tournament Round {{ round_num }}</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; table-layout: fixed; }
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
+      th:nth-child(3), td:nth-child(3) { text-align: center; } /* Center result column */
+      th, td { width: 33.333%; } /* Equal column widths */
       select { width: 100%; padding: .3rem; }
       button { margin-top: 1rem; padding: .5rem 1rem; }
       .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
     </style>
-    <!-- ✅ Include Select2 CSS -->
+    <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   </head>
   <body>
     <h1>Tournament Round {{ round_num }}</h1>
 
-    <!-- ✅ Flash error messages -->
+    <!-- Flash error messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -61,11 +63,13 @@
           </td>
           <td>
             <select name="result_{{ i }}">
-              <option value="1-0">1-0</option>
-              <option value="0-1">0-1</option>
-              <option value="1-1">1-1</option>
+              <option value="2-0">2-0</option>
               <option value="2-1">2-1</option>
               <option value="1-2">1-2</option>
+              <option value="0-2">0-2</option>
+              <option value="1-1">1-1</option>
+              <option value="1-0">1-0</option>
+              <option value="0-1">0-1</option>
             </select>
           </td>
         </tr>
@@ -74,15 +78,51 @@
       <button type="submit">Submit Round {{ round_num }}</button>
     </form>
 
-    <!-- ✅ Include jQuery + Select2 JS -->
+    <!-- jQuery + Select2 JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
       $(document).ready(function() {
+        // Initialize Select2
         $('.player-select').select2({
           placeholder: "-Select Player-",
-          allowClear: true
+          allowClear: true,
+          width: '100%'
         });
+
+        // Track selected players
+        function updateOptions() {
+          let selected = [];
+          $('.player-select').each(function() {
+            let val = $(this).val();
+            if (val && val !== "" && val !== "bye") {
+              selected.push(val);
+            }
+          });
+
+          // Reset all options
+          $('.player-select option').prop('disabled', false);
+
+          // Disable already selected players in other dropdowns
+          $('.player-select').each(function() {
+            let currentVal = $(this).val();
+            selected.forEach(function(val) {
+              if (currentVal !== val) {
+                $(this).find('option[value="' + val + '"]').prop('disabled', true);
+              }
+            }, this);
+          });
+
+          // Refresh Select2 UI
+          $('.player-select').select2({
+            placeholder: "-Select Player-",
+            allowClear: true,
+            width: '100%'
+          });
+        }
+
+        // Update whenever a selection changes
+        $('.player-select').on('change', updateOptions);
       });
     </script>
   </body>

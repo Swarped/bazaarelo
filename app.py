@@ -31,7 +31,7 @@ class Match(db.Model):
     round_num = db.Column(db.Integer, nullable=False)
     player1_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
     player2_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
-    result = db.Column(db.String(10))  # e.g. "1-0", "2-1", "1-1"
+    result = db.Column(db.String(10))  # e.g. "2-0", "1-2", "1-1"
 
 # --- Elo update ---
 def update_elo(player_a, player_b, score_a, score_b, k=32):
@@ -70,10 +70,9 @@ def players():
 def new_tournament():
     if request.method == 'POST':
         date_str = request.form.get('date')
-        player_names = request.form.get('players').splitlines()
+        player_names = request.form.getlist('players')  # collect all dynamic fields
         player_names = [name.strip() for name in player_names if name.strip()]
 
-        # Ensure players exist
         player_objs = []
         for name in player_names:
             player = Player.query.filter_by(name=name).first()
@@ -96,12 +95,10 @@ def new_tournament():
         else:
             rounds = 7
 
-        # Save tournament
         tournament = Tournament(date=datetime.strptime(date_str, "%Y-%m-%d"), rounds=rounds)
         db.session.add(tournament)
         db.session.commit()
 
-        # Link players
         for p in player_objs:
             tp = TournamentPlayer(tournament_id=tournament.id, player_id=p.id)
             db.session.add(tp)
@@ -109,7 +106,8 @@ def new_tournament():
 
         return redirect(url_for('tournament_round', tid=tournament.id, round_num=1))
 
-    return render_template('new_tournament.html')
+    all_players = Player.query.order_by(Player.name).all()
+    return render_template('new_tournament.html', players=all_players)
 
 @app.route('/tournament/<int:tid>/round/<int:round_num>', methods=['GET', 'POST'])
 def tournament_round(tid, round_num):
@@ -123,38 +121,47 @@ def tournament_round(tid, round_num):
             p2_val = request.form.get(f'player2_{i}')
             result = request.form.get(f'result_{i}')
 
-            # Validation: must select players
             if not p1_val or not p2_val or p1_val == "" or p2_val == "":
                 flash("Error: You must select a player for every match.", "error")
                 return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
 
-            # Handle Bye
+            if p1_val == p2_val and p1_val not in ("bye", ""):
+                flash("Error: A player cannot face themselves.", "error")
+                return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
+
             if p1_val == "bye" or p2_val == "bye":
+                match = Match(tournament_id=tid, round_num=round_num,
+                              player1_id=None if p1_val == "bye" else int(p1_val),
+                              player2_id=None if p2_val == "bye" else int(p2_val),
+                              result="bye")
+                db.session.add(match)
                 continue
+
+            score_map = {
+                "2-0": (2, 0),
+                "2-1": (2, 1),
+                "1-2": (1, 2),
+                "0-2": (0, 2),
+                "1-1": (1, 1),
+                "1-0": (1, 0),
+                "0-1": (0, 1),
+            }
+            if result not in score_map:
+                flash("Error: Invalid result selected.", "error")
+                return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
+            score_a, score_b = score_map[result]
 
             p1_id, p2_id = int(p1_val), int(p2_val)
             match = Match(tournament_id=tid, round_num=round_num,
                           player1_id=p1_id, player2_id=p2_id, result=result)
             db.session.add(match)
 
-            # Update Elo
             player1 = Player.query.get(p1_id)
             player2 = Player.query.get(p2_id)
-
-            if result == "1-0":
-                update_elo(player1, player2, 1, 0)
-            elif result == "0-1":
-                update_elo(player1, player2, 0, 1)
-            elif result == "1-1":
-                update_elo(player1, player2, 1, 1)
-            elif result == "2-1":
-                update_elo(player1, player2, 2, 1)
-            elif result == "1-2":
-                update_elo(player1, player2, 1, 2)
+            update_elo(player1, player2, score_a, score_b)
 
         db.session.commit()
 
-        # Move to next round or finish
         if round_num < tournament.rounds:
             return redirect(url_for('tournament_round', tid=tid, round_num=round_num+1))
         else:
@@ -162,10 +169,8 @@ def tournament_round(tid, round_num):
 
     return render_template('round.html', players=players, round_num=round_num, tid=tid)
 
-# --- Ensure DB tables exist ---
 with app.app_context():
     db.create_all()
 
-# --- Run locally ---
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

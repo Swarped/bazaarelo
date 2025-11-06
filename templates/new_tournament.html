@@ -6,9 +6,11 @@
     <style>
       body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; }
       form { display: flex; flex-direction: column; gap: 1rem; }
-      textarea { height: 150px; }
+      .player-field { margin-bottom: .5rem; }
       button { padding: .5rem 1rem; }
     </style>
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   </head>
   <body>
     <h1>Create New Tournament</h1>
@@ -16,10 +18,57 @@
       <label>Date:
         <input type="date" name="date" required>
       </label>
-      <label>Players (one per line):
-        <textarea name="players" placeholder="Enter player names here"></textarea>
-      </label>
+
+      <div id="player-fields">
+        <div class="player-field">
+          <select class="player-select" name="players">
+            <option value="">-Select or Type Player-</option>
+            {% for p in players %}
+              <option value="{{ p.name }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
       <button type="submit">Create Tournament</button>
     </form>
+
+    <!-- jQuery + Select2 JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+      $(document).ready(function() {
+        function initSelect2(el) {
+          $(el).select2({
+            tags: true, // allows typing new names
+            placeholder: "-Select or Type Player-",
+            allowClear: true,
+            width: '100%'
+          });
+        }
+
+        // Initialize first field
+        initSelect2('.player-select');
+
+        // Add new field dynamically when one is filled
+        $('#player-fields').on('change', '.player-select', function() {
+          let lastSelect = $('#player-fields .player-select').last();
+          if (lastSelect.val() && lastSelect.val() !== "") {
+            // Append new blank field
+            $('#player-fields').append(`
+              <div class="player-field">
+                <select class="player-select" name="players">
+                  <option value="">-Select or Type Player-</option>
+                  {% for p in players %}
+                    <option value="{{ p.name }}">{{ p.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            `);
+            initSelect2('#player-fields .player-select:last');
+          }
+        });
+      });
+    </script>
   </body>
 </html>
