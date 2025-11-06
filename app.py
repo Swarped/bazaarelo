@@ -102,22 +102,29 @@ def parse_eventlink_pdf(file_stream: io.BytesIO):
             app.logger.debug(f"PDF page {page_idx}: table found={bool(table)} rows={len(table) if table else 0}")
             if not table or len(table) < 2:
                 continue
+
+            # Now iterate rows inside the page loop
             for row_idx, row in enumerate(table[1:], start=1):
                 if not row or len(row) < 4:
                     continue
                 player = (row[1] or "").strip()
                 opponent = (row[2] or "").strip()
-                points_raw = ""
-if len(row) >= 4:
-    points_raw = (row[3] or "").strip()
-if len(row) >= 5 and not points_raw:
-    points_raw = (row[4] or "").strip()
 
-app.logger.debug(f"Row {row_idx} full data: {row}")
-app.logger.debug(f"Row {row_idx} parsed -> player={player}, opponent={opponent}, points={points_raw}")
+                # Flexible points column
+                points_raw = ""
+                if len(row) >= 4:
+                    points_raw = (row[3] or "").strip()
+                if len(row) >= 5 and not points_raw:
+                    points_raw = (row[4] or "").strip()
+
+                app.logger.debug(f"Row {row_idx} full data: {row}")
+                app.logger.debug(f"Row {row_idx} parsed -> player={player}, opponent={opponent}, points={points_raw}")
+
                 if player:
                     rows.append((player, opponent, points_raw))
+
     return rows
+
 
 def extract_event_date(file_stream: io.BytesIO):
     if not PDF_AVAILABLE:
