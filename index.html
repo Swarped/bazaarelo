@@ -1,26 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
+    <meta charset="utf-8">
     <title>Tournaments</title>
-</head>
-<body>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
+      h1 { margin-bottom: 1rem; }
+      ul { list-style: none; padding: 0; }
+      li { margin: .5rem 0; }
+      a { text-decoration: none; color: #0077cc; }
+      a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
     <h1>All Tournaments</h1>
 
-    <!-- Add this link or button -->
-    <p>
-        <a href="{{ url_for('new_tournament') }}">➕ Create New Tournament</a>
-    </p>
+    <p><a href="{{ url_for('new_tournament') }}">➕ Add New Tournament</a></p>
 
     <ul>
-        {% for t in tournaments %}
-            <li>
-                <a href="{{ url_for('view_tournament', tournament_id=t.id) }}">
-                    {{ t.name }} ({{ t.event_date }})
-                </a>
-            </li>
-        {% else %}
-            <li>No tournaments yet.</li>
-        {% endfor %}
+      {% for t in tournaments %}
+        <li>
+          <a href="{{ url_for('view_tournament', tournament_id=t.id) }}">
+            {{ t.name }}{% if t.event_date %} ({{ t.event_date }}){% endif %}
+          </a>
+        </li>
+      {% else %}
+        <li>No tournaments yet.</li>
+      {% endfor %}
     </ul>
-</body>
+  </body>
 </html>

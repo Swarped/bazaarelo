@@ -8,7 +8,8 @@
       h1 { margin-bottom: 1rem; }
       form { border: 1px solid #ccc; padding: 1rem; margin-bottom: 2rem; }
       label { display: block; margin-top: .5rem; }
-      input, button { padding: .4rem; margin-top: .3rem; }
+      input, textarea, button { padding: .4rem; margin-top: .3rem; width: 100%; }
+      textarea { height: 200px; }
       .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
       .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
     </style>
@@ -16,7 +17,6 @@
   <body>
     <h1>Create New Tournament</h1>
 
-    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -29,25 +29,29 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Upload TXT to create tournament -->
-    <form method="POST" enctype="multipart/form-data" action="{{ url_for('new_tournament') }}">
+    <!-- Option A: Manual entry -->
+    <form method="POST">
       <label for="name">Tournament Name:</label>
       <input type="text" id="name" name="name" required>
 
-      <label for="txt">Upload Event TXT:</label>
-      <input type="file" id="txt" name="txt" accept=".txt" required>
+      <label for="date">Tournament Date:</label>
+      <input type="date" id="date" name="date">
 
-      <br><br>
-      <button type="submit">Create Tournament from TXT</button>
+      <button type="submit">Create Tournament (Manual)</button>
     </form>
 
-    <!-- Debug TXT parsing -->
-    <form method="POST" enctype="multipart/form-data" action="{{ url_for('debug_txt') }}">
-      <label for="txt">Debug TXT Parsing:</label>
-      <input type="file" id="txt" name="txt" accept=".txt" required>
+    <!-- Option B: Paste rounds text -->
+    <form method="POST">
+      <label for="name">Tournament Name:</label>
+      <input type="text" id="name" name="name" required>
 
-      <br><br>
-      <button type="submit">Debug TXT</button>
+      <label for="date">Tournament Date:</label>
+      <input type="date" id="date" name="date">
+
+      <label for="rounds_text">Paste All Rounds Text:</label>
+      <textarea id="rounds_text" name="rounds_text" placeholder="Paste rounds here..."></textarea>
+
+      <button type="submit">Create Tournament from Pasted Text</button>
     </form>
   </body>
 </html>
