@@ -5,10 +5,10 @@
     <title>Create New Tournament</title>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
-      h2 { margin-top: 2rem; }
+      h1 { margin-bottom: 1rem; }
       form { border: 1px solid #ccc; padding: 1rem; margin-bottom: 2rem; }
       label { display: block; margin-top: .5rem; }
-      input, select, button { padding: .4rem; margin-top: .3rem; }
+      input, button { padding: .4rem; margin-top: .3rem; }
       .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
       .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
     </style>
@@ -16,6 +16,7 @@
   <body>
     <h1>Create New Tournament</h1>
 
+    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -28,44 +29,25 @@
       {% endif %}
     {% endwith %}
 
-    <h2>Option A: Manual Entry</h2>
-    <form method="POST">
-      <label for="date">Tournament Date:</label>
-      <input type="date" id="date" name="date" required>
+    <!-- Upload TXT to create tournament -->
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('new_tournament') }}">
+      <label for="name">Tournament Name:</label>
+      <input type="text" id="name" name="name" required>
 
-      <h3>Players</h3>
-      <div id="player-fields">
-        <input type="text" name="players" placeholder="Player name">
-      </div>
-      <button type="button" onclick="addPlayerField()">Add Another Player</button>
+      <label for="txt">Upload Event TXT:</label>
+      <input type="file" id="txt" name="txt" accept=".txt" required>
+
       <br><br>
-      <button type="submit">Create Tournament (Manual)</button>
+      <button type="submit">Create Tournament from TXT</button>
     </form>
 
- <h2>Option B: Import Round 1 from PDF</h2>
-<form method="POST" enctype="multipart/form-data" action="{{ url_for('new_tournament') }}">
-  <label for="pdf">Upload Round 1 PDF:</label>
-  <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
-  <br><br>
-  <button type="submit">Create Tournament from PDF</button>
-</form>
+    <!-- Debug TXT parsing -->
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('debug_txt') }}">
+      <label for="txt">Debug TXT Parsing:</label>
+      <input type="file" id="txt" name="txt" accept=".txt" required>
 
-<form method="POST" enctype="multipart/form-data" action="{{ url_for('debug_pdf') }}">
-  <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
-  <br><br>
-  <button type="submit">Debug PDF Parsing</button>
-</form>
-
-    <script>
-      function addPlayerField() {
-        const div = document.getElementById('player-fields');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.name = 'players';
-        input.placeholder = 'Player name';
-        div.appendChild(document.createElement('br'));
-        div.appendChild(input);
-      }
-    </script>
+      <br><br>
+      <button type="submit">Debug TXT</button>
+    </form>
   </body>
 </html>
