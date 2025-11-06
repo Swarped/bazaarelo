@@ -86,53 +86,44 @@ def result_to_scores(result: str):
     }
     return mapping.get(result)
 
+import re
+
 def parse_eventlink_pdf(file_stream: io.BytesIO):
     if not PDF_AVAILABLE:
         raise RuntimeError("PDF parsing library not available. Please install pdfplumber.")
     rows = []
     with pdfplumber.open(file_stream) as pdf:
         for page_idx, page in enumerate(pdf.pages):
+            text = page.extract_text() or ""
+            app.logger.debug(f"[text dump page {page_idx}] {text[:500]}")
+
+            # Example: look for lines with "vs" or "Opponent"
+            for line in text.splitlines():
+                if "vs" in line.lower() or "opponent" in line.lower():
+                    parts = re.split(r"\s{2,}", line.strip())  # split on multiple spaces
+                    if len(parts) >= 3:
+                        player, opponent, points_raw = parts[0], parts[1], parts[-1]
+                        rows.append((player.strip(), opponent.strip(), points_raw.strip()))
+
+            # Fallback: try table extraction
             table = page.extract_table()
-            app.logger.debug(f"Raw table from page {page_idx}: {table}")
-            if not table or len(table) < 2:
-                for tbl in page.extract_tables():
-                    if tbl and len(tbl) > 1:
-                        table = tbl
-                        break
-            app.logger.debug(f"PDF page {page_idx}: table found={bool(table)} rows={len(table) if table else 0}")
-            if not table or len(table) < 2:
-                continue
-
-            # Now iterate rows inside the page loop
-            for row_idx, row in enumerate(table[1:], start=1):
-                if not row or len(row) < 4:
-                    continue
-                player = (row[1] or "").strip()
-                opponent = (row[2] or "").strip()
-
-                # Flexible points column
-                points_raw = ""
-                if len(row) >= 4:
+            if table and len(table) > 1:
+                for row in table[1:]:
+                    if not row or len(row) < 4:
+                        continue
+                    player = (row[1] or "").strip()
+                    opponent = (row[2] or "").strip()
                     points_raw = (row[3] or "").strip()
-                if len(row) >= 5 and not points_raw:
-                    points_raw = (row[4] or "").strip()
-
-                app.logger.debug(f"Row {row_idx} full data: {row}")
-                app.logger.debug(f"Row {row_idx} parsed -> player={player}, opponent={opponent}, points={points_raw}")
-
-                if player:
                     rows.append((player, opponent, points_raw))
-
     return rows
 
 
 def extract_event_date(file_stream: io.BytesIO):
     if not PDF_AVAILABLE:
         return datetime.today().date()
-    try:
-        with pdfplumber.open(file_stream) as pdf:
-            text = pdf.pages[0].extract_text() or ""
-            app.logger.debug(f"Header text (first 200 chars): {text[:200]}")
+    with pdfplumber.open(file_stream) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
             for line in text.splitlines():
                 if "Event Date:" in line:
                     date_str = line.split("Event Date:", 1)[1].strip()
@@ -141,8 +132,6 @@ def extract_event_date(file_stream: io.BytesIO):
                             return datetime.strptime(date_str, fmt).date()
                         except ValueError:
                             continue
-    except Exception as e:
-        app.logger.error(f"Date extraction error: {e}")
     return datetime.today().date()
 
 def normalize_pdf_row(player: str, opponent: str, points_raw: str):
@@ -273,19 +262,20 @@ def debug_pdf():
         return redirect(url_for('new_tournament'))
 
     data = file.read()
-    try:
-        raw_rows = parse_eventlink_pdf(io.BytesIO(data))
-        app.logger.debug(f"Debug PDF parsed rows: {raw_rows}")
-    except Exception as e:
-        app.logger.error(f"PDF parse error: {e}")
-        raw_rows = []
 
-    event_date = extract_event_date(io.BytesIO(data))
-    app.logger.debug(f"Debug PDF extracted event date: {event_date}")
+    raw_pages = []
+    if PDF_AVAILABLE:
+        try:
+            with pdfplumber.open(io.BytesIO(data)) as pdf:
+                for p_idx, page in enumerate(pdf.pages):
+                    txt = page.extract_text() or ""
+                    raw_pages.append({"index": p_idx, "text": txt})
+        except Exception as e:
+            app.logger.error(f"Error extracting raw text: {e}")
 
     return render_template('debug_pdf.html',
-                           rows=raw_rows,
-                           event_date=event_date)
+                           raw_pages=raw_pages)
+
 
 @app.route('/tournament/<int:tid>/round/<int:round_num>', methods=['GET', 'POST'])
 def tournament_round(tid, round_num):
