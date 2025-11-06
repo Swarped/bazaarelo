@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
@@ -13,6 +14,16 @@ class Player(db.Model):
     name = db.Column(db.String(80), unique=True, nullable=False)
     elo = db.Column(db.Integer, default=1400)
 
+class Tournament(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    rounds = db.Column(db.Integer, nullable=False)
+
+class TournamentPlayer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+
 # --- Routes ---
 @app.route('/')
 def home():
@@ -23,7 +34,6 @@ def players():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         if name:
-            # Add new player with default Elo 1400
             new_player = Player(name=name)
             db.session.add(new_player)
             db.session.commit()
@@ -32,10 +42,25 @@ def players():
     all_players = Player.query.order_by(Player.elo.desc()).all()
     return render_template('players.html', players=all_players)
 
-# --- Ensure DB tables exist ---
-with app.app_context():
-    db.create_all()
+@app.route('/tournament/new', methods=['GET', 'POST'])
+def new_tournament():
+    if request.method == 'POST':
+        date_str = request.form.get('date')
+        player_names = request.form.get('players').splitlines()
+        player_names = [name.strip() for name in player_names if name.strip()]
 
-# --- Run locally ---
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+        # Ensure players exist
+        player_objs = []
+        for name in player_names:
+            player = Player.query.filter_by(name=name).first()
+            if not player:
+                player = Player(name=name, elo=1400)
+                db.session.add(player)
+                db.session.commit()
+            player_objs.append(player)
+
+        # Calculate rounds
+        num_players = len(player_objs)
+        if num_players <= 8:
+            rounds = 3
+        elif
