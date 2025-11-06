@@ -8,8 +8,8 @@
       nav { margin-bottom: 1rem; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; table-layout: fixed; }
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
-      th:nth-child(3), td:nth-child(3) { text-align: center; } /* Center result column */
-      th, td { width: 33.333%; } /* Equal column widths */
+      th:nth-child(3), td:nth-child(3) { text-align: center; }
+      th, td { width: 33.333%; }
       select { width: 100%; padding: .3rem; }
       button { margin-top: 1rem; padding: .5rem 1rem; }
       .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
@@ -21,7 +21,8 @@
     <h1>Tournament Round {{ round_num }}</h1>
 
     <nav>
-      <a href="{{ url_for('import_round', tid=tid) }}">Import round from EventLink PDF</a>
+      <a href="{{ url_for('import_round', tid=tid) }}">Import this round from EventLink PDF</a> |
+      <a href="{{ url_for('new_tournament_from_pdf') }}">Start new tournament from PDF</a>
     </nav>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -36,6 +37,25 @@
       {% endif %}
     {% endwith %}
 
+    {% if matches and matches|length > 0 %}
+      <h2>Existing Matches</h2>
+      <table>
+        <tr>
+          <th>Player 1</th>
+          <th>Player 2</th>
+          <th>Result</th>
+        </tr>
+        {% for m in matches %}
+        <tr>
+          <td>{{ m.player1_id and players|selectattr("id","equalto",m.player1_id)|map(attribute="name")|first or "Bye" }}</td>
+          <td>{{ m.player2_id and players|selectattr("id","equalto",m.player2_id)|map(attribute="name")|first or "Bye" }}</td>
+          <td>{{ m.result }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+
+    <h2>Enter Matches for Round {{ round_num }}</h2>
     <form method="POST">
       <table>
         <tr>
