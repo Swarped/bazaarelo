@@ -35,4 +35,55 @@
           <th>Player 2</th>
           <th>Result</th>
         </tr>
-        {% for i in range(1, (players|length + 1)//
+        {% for i in range(1, (players|length + 1)//2 + 1) %}
+        <tr>
+          <td>
+            <select class="player-select" name="player1_{{ i }}">
+              <option value="">-Select Player-</option>
+              {% for p in players %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+              {% if (players|length) % 2 == 1 %}
+                <option value="bye">Bye</option>
+              {% endif %}
+            </select>
+          </td>
+          <td>
+            <select class="player-select" name="player2_{{ i }}">
+              <option value="">-Select Player-</option>
+              {% for p in players %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+              {% if (players|length) % 2 == 1 %}
+                <option value="bye">Bye</option>
+              {% endif %}
+            </select>
+          </td>
+          <td>
+            <select name="result_{{ i }}">
+              <option value="1-0">1-0</option>
+              <option value="0-1">0-1</option>
+              <option value="1-1">1-1</option>
+              <option value="2-1">2-1</option>
+              <option value="1-2">1-2</option>
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      <button type="submit">Submit Round {{ round_num }}</button>
+    </form>
+
+    <!-- ✅ Include jQuery + Select2 JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+      $(document).ready(function() {
+        $('.player-select').select2({
+          placeholder: "-Select Player-",
+          allowClear: true
+        });
+      });
+    </script>
+  </body>
+</html>
