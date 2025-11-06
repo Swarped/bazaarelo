@@ -1,8 +1,11 @@
 from flask import Flask, request, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-import os
-import io
+import os, io
 from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Optional: pdfplumber for PDF parsing
 try:
@@ -79,83 +82,82 @@ def result_to_scores(result: str):
         "1-1": (1, 1),
         "1-0": (1, 0),
         "0-1": (0, 1),
-        "bye": (2, 0),  # treat bye as 2-0 for Elo weighting (opponent may be None)
+        "bye": (2, 0),
     }
     return mapping.get(result)
 
 def parse_eventlink_pdf(file_stream: io.BytesIO):
     """
     Parse EventLink 'Pairings by Table' PDF and yield rows: (player, opponent, points_raw)
-    The parser is forgiving and uses positional columns (Player=1, Opponent=2, Points=3).
+    Uses positional columns: Player=1, Opponent=2, Points=3. Logs table presence.
     """
     if not PDF_AVAILABLE:
         raise RuntimeError("PDF parsing library not available. Please install pdfplumber.")
 
     rows = []
     with pdfplumber.open(file_stream) as pdf:
-        for page in pdf.pages:
+        for page_idx, page in enumerate(pdf.pages):
             table = page.extract_table()
             if not table or len(table) < 2:
-                # Try alternative extractor for PDFs that don't build a single table
                 for tbl in page.extract_tables():
                     if tbl and len(tbl) > 1:
                         table = tbl
                         break
+            app.logger.debug(f"PDF page {page_idx}: table found={bool(table)} rows={len(table) if table else 0}")
             if not table or len(table) < 2:
                 continue
-            # Skip header row; read columns [1,2,3]
-            for row in table[1:]:
+
+            # Skip header; read columns [1,2,3]
+            for row_idx, row in enumerate(table[1:], start=1):
                 if not row or len(row) < 4:
+                    app.logger.debug(f"Row {row_idx} skipped (len<{4}): {row}")
                     continue
                 player = (row[1] or "").strip()
                 opponent = (row[2] or "").strip()
                 points_raw = (row[3] or "").strip()
+                app.logger.debug(f"Row {row_idx} -> player={player}, opponent={opponent}, points={points_raw}")
                 if player:
                     rows.append((player, opponent, points_raw))
     return rows
 
 def extract_event_date(file_stream: io.BytesIO):
     """
-    Extract 'Event Date: mm/dd/yyyy' (or dd/mm/yyyy) from first page text.
-    Falls back to today's date if not found or unparsable.
+    Extract 'Event Date: mm/dd/yyyy' or 'dd/mm/yyyy' from first page text; fallback to today.
     """
     if not PDF_AVAILABLE:
         return datetime.today().date()
     try:
         with pdfplumber.open(file_stream) as pdf:
             text = pdf.pages[0].extract_text() or ""
+            app.logger.debug(f"Header text (first 200 chars): {text[:200]}")
             for line in text.splitlines():
                 if "Event Date:" in line:
                     date_str = line.split("Event Date:", 1)[1].strip()
                     for fmt in ("%m/%d/%Y", "%d/%m/%Y"):
                         try:
-                            return datetime.strptime(date_str, fmt).date()
+                            parsed = datetime.strptime(date_str, fmt).date()
+                            app.logger.debug(f"Parsed event date '{date_str}' with fmt '{fmt}' -> {parsed}")
+                            return parsed
                         except ValueError:
                             continue
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.error(f"Date extraction error: {e}")
     return datetime.today().date()
 
 def normalize_pdf_row(player: str, opponent: str, points_raw: str):
     """
-    Convert EventLink 'Points' into our result token:
-    - Bye: opponent='*** Bye ***' -> 'bye'
-    - Hyphen values (e.g., '3-0', '0-3', '1-1', '6-9') → compare left/right:
-        left>right → '2-0', left<right → '0-2', equal → '1-1'
-    - Single number (rare) → '2-0' fallback
+    Convert EventLink 'Points' into our result token.
+    Bye -> 'bye'. Hyphen values compare left/right; single number -> '2-0' fallback.
     """
     if opponent == "*** Bye ***":
         return "bye"
 
     if "-" in points_raw:
         left, right = points_raw.split("-", 1)
-        left = left.strip()
-        right = right.strip()
-        # Known direct mappings first
+        left, right = left.strip(), right.strip()
         known = {("3", "0"): "2-0", ("0", "3"): "0-2", ("1", "1"): "1-1"}
         if (left, right) in known:
             return known[(left, right)]
-        # Infer outcome from cumulative points or anomalies
         try:
             lnum, rnum = int(left), int(right)
             if lnum > rnum:
@@ -204,6 +206,7 @@ def new_tournament():
             data = file.read()
             try:
                 raw_rows = parse_eventlink_pdf(io.BytesIO(data))
+                app.logger.debug(f"Parsed rows from PDF: {raw_rows}")
             except Exception as e:
                 app.logger.error(f"PDF parse error: {e}")
                 flash(f"Failed to parse PDF: {e}", "error")
@@ -214,8 +217,9 @@ def new_tournament():
                 return redirect(url_for('new_tournament'))
 
             event_date = extract_event_date(io.BytesIO(data))
+            app.logger.debug(f"Extracted event date: {event_date}")
 
-            # Collect players from Round 1 rows
+            # Collect players from Round 1
             player_names = set()
             for p, o, _ in raw_rows:
                 player_names.add(p)
@@ -249,23 +253,25 @@ def new_tournament():
 
             # Insert Round 1 matches
             for p, o, pts in raw_rows:
+                result_token = normalize_pdf_row(p, o, pts)
+                app.logger.debug(f"Row parsed -> Player: {p}, Opponent: {o}, Points: {pts}, Normalized: {result_token}")
                 p1 = ensure_player(p)
                 if o == "*** Bye ***":
                     db.session.add(Match(tournament_id=tournament.id, round_num=1,
                                          player1_id=p1.id, player2_id=None, result="bye"))
                 else:
                     p2 = ensure_player(o)
-                    result_token = normalize_pdf_row(p, o, pts)
                     db.session.add(Match(tournament_id=tournament.id, round_num=1,
                                          player1_id=p1.id, player2_id=p2.id, result=result_token))
             db.session.commit()
 
             flash("Tournament created from PDF and Round 1 imported!", "success")
+            # Redirect to Round 2 (continue manually or import via PDF)
             return redirect(url_for('tournament_round', tid=tournament.id, round_num=2))
 
-        # Manual workflow
+        # Otherwise, manual workflow
         date_str = request.form.get('date')
-        player_names = request.form.getlist('players')  # dynamic text fields
+        player_names = request.form.getlist('players')  # dynamic fields
         player_names = [name.strip() for name in player_names if name.strip()]
 
         player_objs = [ensure_player(name) for name in player_names]
@@ -295,6 +301,7 @@ def new_tournament():
 
         return redirect(url_for('tournament_round', tid=tournament.id, round_num=1))
 
+    # GET: render form
     all_players = Player.query.order_by(Player.name).all()
     return render_template('new_tournament.html', players=all_players)
 
@@ -346,8 +353,9 @@ def tournament_round(tid, round_num):
 
         db.session.commit()
 
+        # Move to next round or finish
         if round_num < tournament.rounds:
-            return redirect(url_for('tournament_round', tid=tournament.id, round_num=round_num + 1))
+            return redirect(url_for('tournament_round', tid=tid, round_num=round_num + 1))
         else:
             return redirect(url_for('players'))
 
@@ -357,7 +365,7 @@ def tournament_round(tid, round_num):
                            tid=tid,
                            matches=existing_matches)
 
-# Import a specific round from PDF: Upload -> Preview -> Confirm
+# Import a specific round from EventLink PDF: Upload -> Preview -> Confirm
 @app.route('/tournament/<int:tid>/import_round', methods=['GET', 'POST'])
 def import_round(tid):
     tournament = Tournament.query.get_or_404(tid)
@@ -381,6 +389,7 @@ def import_round(tid):
         data = file.read()
         try:
             raw_rows = parse_eventlink_pdf(io.BytesIO(data))
+            app.logger.debug(f"Parsed rows for round import: {raw_rows}")
         except Exception as e:
             app.logger.error(f"PDF parse error: {e}")
             flash(f"Failed to parse PDF: {e}", "error")
@@ -391,6 +400,7 @@ def import_round(tid):
             if not player_name:
                 continue
             result_token = normalize_pdf_row(player_name, opponent_name, points_raw)
+            app.logger.debug(f"Import round row -> {player_name} vs {opponent_name} [{points_raw}] => {result_token}")
             normalized.append({
                 "player": player_name,
                 "opponent": None if opponent_name == "*** Bye ***" else opponent_name,
@@ -438,6 +448,7 @@ def confirm_import_round(tid):
 
         db.session.add(Match(tournament_id=tid, round_num=round_num,
                              player1_id=player.id, player2_id=opponent.id, result=result))
+        # Elo update for imported rounds
         update_elo(player, opponent, games_a, games_b)
 
     db.session.commit()
