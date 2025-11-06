@@ -2,18 +2,17 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Import Round from EventLink PDF</title>
+    <title>Import Round</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
-      form { margin-bottom: 1rem; }
+      body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
-      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
-      .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; border: 1px solid #c3e6cb; }
+      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
+      .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
     </style>
   </head>
   <body>
-    <h1>Import Round from EventLink PDF</h1>
+    <h1>Import Round for Tournament {{ tournament.id }}</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -27,59 +26,33 @@
       {% endif %}
     {% endwith %}
 
-    {% if not preview %}
-      <form method="POST" enctype="multipart/form-data">
-        <label>Round number:
-          <input type="number" name="round_num" required>
-        </label>
-        <br>
-        <label>Upload PDF:
-          <input type="file" name="pdf" accept="application/pdf" required>
-        </label>
-        <br>
-        <button type="submit">Parse PDF</button>
-      </form>
-      <p>After parsing, you'll get a preview to confirm before saving.</p>
-    {% else %}
+    {% if preview %}
       <h2>Preview Round {{ round_num }}</h2>
       <form method="POST" action="{{ url_for('confirm_import_round', tid=tournament.id) }}">
         <input type="hidden" name="round_num" value="{{ round_num }}">
         <input type="hidden" name="count" value="{{ matches|length }}">
-
         <table>
+          <tr><th>Player</th><th>Opponent</th><th>Result</th></tr>
+          {% for m in matches %}
           <tr>
-            <th>Player</th>
-            <th>Opponent</th>
-            <th>Result</th>
-          </tr>
-          {% for i, m in enumerate(matches) %}
-          <tr>
-            <td>
-              <input type="text" name="player_{{ i }}" value="{{ m.player }}" required>
-            </td>
-            <td>
-              <input type="text" name="opponent_{{ i }}" value="{{ m.opponent if m.opponent else '' }}">
-            </td>
-            <td>
-              <select name="result_{{ i }}" required>
-                <option value="2-0" {% if m.result == "2-0" %}selected{% endif %}>2-0</option>
-                <option value="2-1" {% if m.result == "2-1" %}selected{% endif %}>2-1</option>
-                <option value="1-2" {% if m.result == "1-2" %}selected{% endif %}>1-2</option>
-                <option value="0-2" {% if m.result == "0-2" %}selected{% endif %}>0-2</option>
-                <option value="1-1" {% if m.result == "1-1" %}selected{% endif %}>1-1</option>
-                <option value="1-0" {% if m.result == "1-0" %}selected{% endif %}>1-0</option>
-                <option value="0-1" {% if m.result == "0-1" %}selected{% endif %}>0-1</option>
-                <option value="bye" {% if m.result == "bye" %}selected{% endif %}>Bye</option>
-              </select>
-            </td>
+            <td>{{ m.player }}<input type="hidden" name="player_{{ loop.index0 }}" value="{{ m.player }}"></td>
+            <td>{{ m.opponent or "Bye" }}<input type="hidden" name="opponent_{{ loop.index0 }}" value="{{ m.opponent or "" }}"></td>
+            <td>{{ m.result }}<input type="hidden" name="result_{{ loop.index0 }}" value="{{ m.result }}"></td>
           </tr>
           {% endfor %}
         </table>
-
-        <button type="submit">Confirm import</button>
+        <button type="submit">Confirm Import</button>
+      </form>
+    {% else %}
+      <form method="POST" enctype="multipart/form-data">
+        <label for="round_num">Round Number:</label>
+        <input type="number" id="round_num" name="round_num" min="1" required>
+        <br><br>
+        <label for="pdf">Upload Round PDF:</label>
+        <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
+        <br><br>
+        <button type="submit">Parse PDF</button>
       </form>
     {% endif %}
-
-    <p><a href="{{ url_for('tournament_round', tid=tournament.id, round_num=1) }}">Back to tournament</a></p>
   </body>
 </html>
