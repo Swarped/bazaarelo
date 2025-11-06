@@ -7,24 +7,35 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-class User(db.Model):
+# --- Models ---
+class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    elo = db.Column(db.Integer, default=1400)
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
+# --- Routes ---
+@app.route('/')
+def home():
+    return redirect(url_for('players'))
+
+@app.route('/players', methods=['GET', 'POST'])
+def players():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         if name:
-            db.session.add(User(name=name))
+            # Add new player with default Elo 1400
+            new_player = Player(name=name)
+            db.session.add(new_player)
             db.session.commit()
-        return redirect(url_for('index'))
-    users = User.query.order_by(User.id.desc()).all()
-    return render_template('index.html', users=users)
+        return redirect(url_for('players'))
 
+    all_players = Player.query.order_by(Player.elo.desc()).all()
+    return render_template('players.html', players=all_players)
+
+# --- Ensure DB tables exist ---
 with app.app_context():
     db.create_all()
 
-
+# --- Run locally ---
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
