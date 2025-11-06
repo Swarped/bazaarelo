@@ -1,22 +1,19 @@
 from flask import Flask, request, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
-import io
-
-# Optional: pdfplumber for PDF parsing
-try:
-    import pdfplumber
-    PDF_AVAILABLE = True
-except Exception:
-    PDF_AVAILABLE = False
 
 app = Flask(__name__)
-app.secret_key = "supersecret"  # Needed for flash messages
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+app.secret_key = "supersecret"
+
+# --- Persistent SQLite path ---
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASEDIR, "data", "tournament.db")
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DB_PATH}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB uploads
+
 db = SQLAlchemy(app)
 
 # --- Models ---
