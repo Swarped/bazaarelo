@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tournaments</title>
+</head>
+<body>
+    <h1>All Tournaments</h1>
+
+    <!-- Add this link or button -->
+    <p>
+        <a href="{{ url_for('new_tournament') }}">➕ Create New Tournament</a>
+    </p>
+
+    <ul>
+        {% for t in tournaments %}
+            <li>
+                <a href="{{ url_for('view_tournament', tournament_id=t.id) }}">
+                    {{ t.name }} ({{ t.event_date }})
+                </a>
+            </li>
+        {% else %}
+            <li>No tournaments yet.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
