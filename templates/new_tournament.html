@@ -8,7 +8,8 @@
       h2 { margin-top: 2rem; }
       form { border: 1px solid #ccc; padding: 1rem; margin-bottom: 2rem; }
       label { display: block; margin-top: .5rem; }
-      input, select, button { padding: .4rem; margin-top: .3rem; }
+      input, select, button, textarea { padding: .4rem; margin-top: .3rem; }
+      textarea { width: 100%; height: 200px; }
       .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
       .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
     </style>
@@ -42,12 +43,12 @@
       <button type="submit">Create Tournament (Manual)</button>
     </form>
 
-    <h2>Option B: Import Round 1 from PDF</h2>
-    <form method="POST" enctype="multipart/form-data">
-      <label for="pdf">Upload Round 1 PDF:</label>
-      <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
+    <h2>Option B: Import Rounds from EventLink Text</h2>
+    <form method="POST" action="{{ url_for('import_text', tid=0) }}">
+      <label for="eventlink_text">Paste EventLink Export:</label>
+      <textarea id="eventlink_text" name="eventlink_text"></textarea>
       <br><br>
-      <button type="submit">Create Tournament from PDF</button>
+      <button type="submit">Create Tournament from Text</button>
     </form>
 
     <script>
