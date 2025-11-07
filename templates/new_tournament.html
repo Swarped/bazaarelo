@@ -4,63 +4,115 @@
     <meta charset="utf-8">
     <title>Create New Tournament</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
+      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+      h1 { margin-bottom: 1rem; }
       h2 { margin-top: 2rem; }
-      form { border: 1px solid #ccc; padding: 1rem; margin-bottom: 2rem; }
-      label { display: block; margin-top: .5rem; }
-      input, select, button, textarea { padding: .4rem; margin-top: .3rem; }
-      textarea { width: 100%; height: 200px; }
-      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
-      .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
+      form { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; }
+      textarea { width: 100%; font-family: monospace; padding: .5rem; }
+      .btn-submit {
+        margin-top: 1rem;
+        padding: .75rem 1.5rem;
+        font-size: 1rem;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-submit:hover { background: #45a049; }
+      .format-switch { margin-bottom: 1rem; }
     </style>
+    <!-- jQuery + jQuery UI for autocomplete -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
   </head>
   <body>
-    <h1>Create New Tournament</h1>
+    <h1>Create a New Tournament</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          {% if category == 'error' %}
-            <div class="flash-error">{{ message }}</div>
-          {% elif category == 'success' %}
-            <div class="flash-success">{{ message }}</div>
-          {% endif %}
+          <div class="flash-{{ category }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
     {% endwith %}
 
-    <h2>Option A: Manual Entry</h2>
+    <!-- Manual Tournament Form -->
+    <h2>Manual Tournament</h2>
     <form method="POST">
-      <label for="date">Tournament Date:</label>
-      <input type="date" id="date" name="date" required>
+      <input type="hidden" name="workflow" value="manual">
 
-      <h3>Players</h3>
-      <div id="player-fields">
-        <input type="text" name="players" placeholder="Player name">
+      <label>Tournament Name:<br>
+        <input type="text" name="tournament_name" required>
+      </label><br><br>
+
+      <label>Date:<br>
+        <input type="date" name="date" required>
+      </label><br><br>
+
+      <div id="players-container">
+        <input type="text" name="players" class="player-input" placeholder="Type player name and press Enter">
       </div>
-      <button type="button" onclick="addPlayerField()">Add Another Player</button>
-      <br><br>
-      <button type="submit">Create Tournament (Manual)</button>
+
+      <button type="submit" class="btn-submit">Create Tournament</button>
     </form>
 
-    <h2>Option B: Import Rounds from EventLink Text</h2>
-    <form method="POST" action="{{ url_for('import_text', tid=0) }}">
-      <label for="eventlink_text">Paste EventLink Export:</label>
-      <textarea id="eventlink_text" name="eventlink_text"></textarea>
-      <br><br>
-      <button type="submit">Create Tournament from Text</button>
+    <!-- Import Tournament Form -->
+    <h2>Import Tournament</h2>
+    <form method="POST">
+      <input type="hidden" name="workflow" value="import">
+
+      <div class="format-switch">
+        <label>
+          <input type="radio" name="import_format" value="eventlink" checked>
+          EventLink Format
+        </label>
+        <label style="margin-left:1rem;">
+          <input type="radio" name="import_format" value="arena">
+          Arena Format
+        </label>
+      </div>
+
+      <textarea name="import_text" rows="20" placeholder="Paste your tournament data here..."></textarea><br>
+
+      <button type="submit" class="btn-submit">Import Tournament</button>
     </form>
 
+    <!-- Autocomplete + dynamic player input script -->
     <script>
-      function addPlayerField() {
-        const div = document.getElementById('player-fields');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.name = 'players';
-        input.placeholder = 'Player name';
-        div.appendChild(document.createElement('br'));
-        div.appendChild(input);
+      function attachAutocomplete(input) {
+        $(input).autocomplete({
+          source: function(request, response) {
+            $.getJSON("/players/search", { q: request.term }, function(data) {
+              response(data);
+            });
+          },
+          minLength: 2
+        });
       }
+
+      // attach to the first input
+      attachAutocomplete(".player-input");
+
+      // add new input on Enter
+      const container = document.getElementById('players-container');
+      container.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (e.target.value.trim() !== '') {
+            const newInput = document.createElement('input');
+            newInput.type = 'text';
+            newInput.name = 'players';
+            newInput.className = 'player-input';
+            newInput.placeholder = 'Type player name and press Enter';
+            container.appendChild(document.createElement('br'));
+            container.appendChild(newInput);
+            attachAutocomplete(newInput); // enable autocomplete on new field
+            newInput.focus();
+          }
+        }
+      });
     </script>
   </body>
 </html>

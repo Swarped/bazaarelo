@@ -6,22 +6,30 @@
     <style>
       body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
       nav { margin-bottom: 1rem; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; table-layout: fixed; }
-      th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
-      th:nth-child(3), td:nth-child(3) { text-align: center; }
-      th, td { width: 33.333%; }
-      select { width: 100%; padding: .3rem; }
-      button { margin-top: 1rem; padding: .5rem 1rem; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
+      th { background: #f0f0f0; }
       .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
       .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; border: 1px solid #c3e6cb; }
+      .elo-pos { color: green; font-weight: bold; }
+      .elo-neg { color: red; font-weight: bold; }
+      .btn-confirm {
+        margin-top: 2rem;
+        padding: .75rem 1.5rem;
+        font-size: 1rem;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-confirm:hover { background: #45a049; }
     </style>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   </head>
   <body>
     <h1>Tournament Round {{ round_num }}</h1>
 
     <nav>
-      <a href="{{ url_for('import_text', tid=tid) }}">Import this round from EventLink Text</a> |
       <a href="{{ url_for('new_tournament') }}">Create a new tournament</a>
     </nav>
 
@@ -37,108 +45,91 @@
       {% endif %}
     {% endwith %}
 
-    {% if matches and matches|length > 0 %}
-      <h2>Existing Matches</h2>
+    {% if tournament.imported_from_text %}
+      <h2>This tournament was imported from EventLink text.</h2>
+      <p>All rounds have already been recorded. Please review the final standings before Elo is applied.</p>
+
+      <h2>Final Standings (Preview)</h2>
       <table>
         <tr>
-          <th>Player 1</th>
-          <th>Player 2</th>
-          <th>Result</th>
+          <th>Rank</th>
+          <th>Player</th>
+          <th>Wins</th>
+          <th>Draws</th>
+          <th>Losses</th>
+          <th>Points</th>
+          <th>Elo Δ</th>
         </tr>
-        {% for m in matches %}
+        {% for s in standings %}
         <tr>
-          <td>{{ m.player1_id and players|selectattr("id","equalto",m.player1_id)|map(attribute="name")|first or "Bye" }}</td>
-          <td>{{ m.player2_id and players|selectattr("id","equalto",m.player2_id)|map(attribute="name")|first or "Bye" }}</td>
-          <td>{{ m.result }}</td>
+          <td>{{ loop.index }}</td>
+          <td>{{ s.player.name }}</td>
+          <td>{{ s.wins }}</td>
+          <td>{{ s.draws }}</td>
+          <td>{{ s.losses }}</td>
+          <td>{{ s.points }}</td>
+          <td>
+            <span class="{{ 'elo-pos' if s.elo_delta > 0 else 'elo-neg' if s.elo_delta < 0 else '' }}">
+              {{ s.elo_delta }}
+            </span>
+          </td>
         </tr>
         {% endfor %}
       </table>
+
+      <form method="POST" action="{{ url_for('confirm_import', tid=tid) }}">
+        <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
+      </form>
+
+    {% else %}
+      <h2>Enter Matches for Round {{ round_num }}</h2>
+      <form method="POST">
+        <table>
+          <tr>
+            <th>Player 1</th>
+            <th>Player 2</th>
+            <th>Result</th>
+          </tr>
+          {% for i in range(1, (players|length + 1)//2 + 1) %}
+          <tr>
+            <td>
+              <select name="player1_{{ i }}">
+                <option value="">-Select Player-</option>
+                {% for p in players %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+                {% if (players|length) % 2 == 1 %}
+                  <option value="bye">Bye</option>
+                {% endif %}
+              </select>
+            </td>
+            <td>
+              <select name="player2_{{ i }}">
+                <option value="">-Select Player-</option>
+                {% for p in players %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+                {% if (players|length) % 2 == 1 %}
+                  <option value="bye">Bye</option>
+                {% endif %}
+              </select>
+            </td>
+            <td>
+              <select name="result_{{ i }}">
+                <option value="2-0">2-0</option>
+                <option value="2-1">2-1</option>
+                <option value="1-2">1-2</option>
+                <option value="0-2">0-2</option>
+                <option value="1-1">1-1</option>
+                <option value="1-0">1-0</option>
+                <option value="0-1">0-1</option>
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+        <button type="submit">Submit Round {{ round_num }}</button>
+      </form>
     {% endif %}
-
-    <h2>Enter Matches for Round {{ round_num }}</h2>
-    <form method="POST">
-      <table>
-        <tr>
-          <th>Player 1</th>
-          <th>Player 2</th>
-          <th>Result</th>
-        </tr>
-        {% for i in range(1, (players|length + 1)//2 + 1) %}
-        <tr>
-          <td>
-            <select class="player-select" name="player1_{{ i }}">
-              <option value="">-Select Player-</option>
-              {% for p in players %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
-              {% endfor %}
-              {% if (players|length) % 2 == 1 %}
-                <option value="bye">Bye</option>
-              {% endif %}
-            </select>
-          </td>
-          <td>
-            <select class="player-select" name="player2_{{ i }}">
-              <option value="">-Select Player-</option>
-              {% for p in players %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
-              {% endfor %}
-              {% if (players|length) % 2 == 1 %}
-                <option value="bye">Bye</option>
-              {% endif %}
-            </select>
-          </td>
-          <td>
-            <select name="result_{{ i }}">
-              <option value="2-0">2-0</option>
-              <option value="2-1">2-1</option>
-              <option value="1-2">1-2</option>
-              <option value="0-2">0-2</option>
-              <option value="1-1">1-1</option>
-              <option value="1-0">1-0</option>
-              <option value="0-1">0-1</option>
-            </select>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      <button type="submit">Submit Round {{ round_num }}</button>
-    </form>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-      $(document).ready(function() {
-        $('.player-select').select2({
-          placeholder: "-Select Player-",
-          allowClear: true,
-          width: '100%'
-        });
-
-        function updateOptions() {
-          let selected = [];
-          $('.player-select').each(function() {
-            let val = $(this).val();
-            if (val && val !== "" && val !== "bye") {
-              selected.push(val);
-            }
-          });
-
-          $('.player-select option').prop('disabled', false);
-
-          $('.player-select').each(function() {
-            let currentVal = $(this).val();
-            selected.forEach(function(val) {
-              if (currentVal !== val) {
-                $(this).find('option[value="' + val + '"]').prop('disabled', true);
-              }
-            }, this);
-          });
-
-          $('.player-select').trigger('change.select2');
-        }
-
-        $('.player-select').on('change', updateOptions);
-      });
-    </script>
   </body>
 </html>

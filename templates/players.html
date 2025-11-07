@@ -4,25 +4,179 @@
     <meta charset="utf-8">
     <title>Players</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 700px; margin: 2rem auto; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        max-width: 900px;
+        margin: 2rem auto;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #2c3e50;
+      }
+
+      .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        text-decoration: none;
+      }
+
+      .btn-primary {
+        background-color: #4CAF50;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #45a049;
+      }
+
+      .btn-danger {
+        background-color: #d9534f;
+        color: white;
+      }
+      .btn-danger:hover {
+        background-color: #c9302c;
+      }
+
+      #searchBar {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      }
+
+      th, td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f2f2f2;
+        color: #2c3e50;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      tr:hover {
+        background-color: #eef;
+      }
+
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 6px;
+        width: 300px;
+        text-align: center;
+      }
+      .modal-content input {
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .close {
+        float: right;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
-    <h1>Players</h1>
-    <form method="POST">
-      <input type="text" name="name" placeholder="New player name" required>
-      <button type="submit">Add Player</button>
-    </form>
+    <header>
+      <h1>Players</h1>
+      <div>
+        <a href="{{ url_for('new_tournament') }}" class="btn btn-primary">➕ Add Tournament</a>
+        <button id="openModal" class="btn btn-primary">➕ Add Player</button>
+      </div>
+    </header>
 
-    <table>
+    <!-- Search bar -->
+    <input type="text" id="searchBar" placeholder="Search players...">
+
+    <!-- Player table -->
+    <table id="playersTable">
       <tr><th>Name</th><th>Elo</th></tr>
       {% for p in players %}
-      <tr><td>{{ p.name }}</td><td>{{ p.elo }}</td></tr>
+      <tr>
+        <td>{{ p.name }}</td>
+        <td>{{ p.elo }}</td>
+      </tr>
       {% endfor %}
     </table>
 
-    <p><a href="{{ url_for('new_tournament') }}">Create New Tournament</a></p>
+    <!-- Danger zone -->
+    <form method="POST" action="{{ url_for('reset_db') }}" onsubmit="return confirm('Are you sure you want to delete ALL data?');">
+      <button type="submit" class="btn btn-danger" style="margin-top:1rem;">
+        🗑 Delete Database
+      </button>
+    </form>
+
+    <!-- Add Player Modal -->
+    <div id="playerModal" class="modal">
+      <div class="modal-content">
+        <span class="close" id="closeModal">&times;</span>
+        <h3>Add New Player</h3>
+        <form method="POST">
+          <input type="text" name="name" placeholder="Player name" required>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Modal logic
+      const modal = document.getElementById("playerModal");
+      const openBtn = document.getElementById("openModal");
+      const closeBtn = document.getElementById("closeModal");
+
+      openBtn.onclick = () => modal.style.display = "block";
+      closeBtn.onclick = () => modal.style.display = "none";
+      window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
+
+      // Search filter
+      const searchBar = document.getElementById("searchBar");
+      searchBar.addEventListener("keyup", function() {
+        const filter = searchBar.value.toLowerCase();
+        const rows = document.querySelectorAll("#playersTable tr:not(:first-child)");
+        rows.forEach(row => {
+          const nameCell = row.cells[0].textContent.toLowerCase();
+          row.style.display = nameCell.includes(filter) ? "" : "none";
+        });
+      });
+    </script>
   </body>
 </html>
