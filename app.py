@@ -99,13 +99,30 @@ def admin_panel():
         return redirect(url_for("players"))
 
     if request.method == "POST":
-        user_id = request.form.get("user_id")
-        make_admin = request.form.get("make_admin") == "true"
-        user = User.query.get(user_id)
-        if user:
-            user.is_admin = make_admin
+        action = request.form.get("action")
+
+        if action == "add_by_email":
+            email = request.form.get("email")
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.is_admin = True
+                flash(f"{email} promoted to admin.", "success")
+            else:
+                # Create a placeholder user with just email
+                user = User(id=email, name=email.split("@")[0], email=email, is_admin=True)
+                db.session.add(user)
+                flash(f"New admin created for {email}.", "success")
             db.session.commit()
-            flash(f"Updated admin status for {user.name}", "success")
+
+        else:
+            user_id = request.form.get("user_id")
+            make_admin = request.form.get("make_admin") == "true"
+            user = User.query.get(user_id)
+            if user:
+                user.is_admin = make_admin
+                db.session.commit()
+                flash(f"Updated admin status for {user.email}", "success")
+
         return redirect(url_for("admin_panel"))
 
     users = User.query.all()
