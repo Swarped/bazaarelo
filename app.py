@@ -638,14 +638,6 @@ def new_tournament():
 
     return render_template('new_tournament.html')
 
-@app.route("/make_me_admin")
-@login_required
-def make_me_admin():
-    current_user.is_admin = True
-    db.session.commit()
-    flash(f"{current_user.name} is now an admin!", "success")
-    return redirect(url_for("players"))
-
 @app.route('/confirm_players', methods=['POST'])
 def confirm_players():
     raw_text = request.form.get("raw_text")
