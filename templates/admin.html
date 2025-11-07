@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
+    th { background: #f2f2f2; }
+    .btn { padding: .3rem .6rem; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background: #4CAF50; color: white; }
+    .btn-danger { background: #d9534f; color: white; }
+  </style>
+</head>
+<body>
+  <h1>Admin Panel</h1>
+  <table>
+    <tr><th>Name</th><th>Email</th><th>Admin?</th><th>Actions</th></tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.name }}</td>
+      <td>{{ u.email }}</td>
+      <td>{{ "Yes" if u.is_admin else "No" }}</td>
+      <td>
+        <form method="POST" style="display:inline;">
+          <input type="hidden" name="user_id" value="{{ u.id }}">
+          <input type="hidden" name="make_admin" value="{{ 'false' if u.is_admin else 'true' }}">
+          {% if u.is_admin %}
+            <button type="submit" class="btn btn-danger">Remove Admin</button>
+          {% else %}
+            <button type="submit" class="btn btn-primary">Make Admin</button>
+          {% endif %}
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Past Tournaments</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        max-width: 900px;
+        margin: 2rem auto;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #2c3e50;
+      }
+
+      .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        text-decoration: none;
+      }
+
+      .btn-primary {
+        background-color: #4CAF50;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #45a049;
+      }
+
+      .btn-danger {
+        background-color: #d9534f;
+        color: white;
+      }
+      .btn-danger:hover {
+        background-color: #c9302c;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      }
+
+      th, td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f2f2f2;
+        color: #2c3e50;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      /* Aggressive hover + smooth transition */
+      tr.clickable-row {
+        transition: background-color 140ms ease, color 140ms ease;
+      }
+      tr.clickable-row:hover {
+        background-color: #4CAF50;
+        color: white;
+        cursor: pointer;
+      }
+
+      /* Preserve link color if any anchor appears inside cells */
+      tr.clickable-row:hover a {
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Past Tournaments</h1>
+      <div>
+        <a href="{{ url_for('players') }}" class="btn btn-primary">🏠 Back to Players</a>
+      </div>
+    </header>
+
+    <table>
+      <tr>
+        <th>Tournament</th>
+        <th>Date</th>
+        <th>Rounds</th>
+        <th>Player Count</th>
+      </tr>
+      {% for t in tournaments %}
+      <tr class="clickable-row"
+          tabindex="0"
+          role="link"
+          aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
+          data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+        <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
+        <td>{{ t.date }}</td>
+        <td>{{ t.rounds }}</td>
+        <td>{{ t.count }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <!-- Danger zone -->
+    <form method="POST" action="{{ url_for('reset_db') }}"
+          onsubmit="return confirm('Are you sure you want to delete ALL tournament data?');">
+      <button type="submit" class="btn btn-danger" style="margin-top:1rem;">
+        🗑 Delete Tournament Database
+      </button>
+    </form>
+
+    <script>
+      // Make table rows clickable (mouse + keyboard)
+      document.querySelectorAll('tr.clickable-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const href = row.getAttribute('data-href');
+          if (href) window.location.href = href;
+        });
+        row.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const href = row.getAttribute('data-href');
+            if (href) window.location.href = href;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

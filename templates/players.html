@@ -1,0 +1,291 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Players</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        max-width: 900px;
+        margin: 2rem auto;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #2c3e50;
+      }
+
+      .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        text-decoration: none;
+      }
+
+      .btn-primary {
+        background-color: #4CAF50;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #45a049;
+      }
+
+      .btn-danger {
+        background-color: #d9534f;
+        color: white;
+      }
+      .btn-danger:hover {
+        background-color: #c9302c;
+      }
+
+      #searchBar {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      }
+
+      th, td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      th {
+        background-color: #f2f2f2;
+        color: #2c3e50;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      tr:hover {
+        background-color: #eef;
+      }
+
+      /* Flash messages */
+      .flash-error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: .5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #f5c6cb;
+      }
+      .flash-success {
+        background: #d4edda;
+        color: #155724;
+        padding: .5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #c3e6cb;
+      }
+
+      /* Actions column */
+      td.actions {
+        width: 180px;
+      }
+
+      /* Hover action buttons */
+      .player-actions {
+        display: none;
+        gap: 0.5rem;
+      }
+      tr:hover .player-actions {
+        display: inline-flex;
+      }
+      .action-btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.85rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-delete {
+        background-color: #d9534f;
+        color: white;
+      }
+      .btn-delete:hover { background-color: #c9302c; }
+      .btn-merge {
+        background-color: #007bff;
+        color: white;
+      }
+      .btn-merge:hover { background-color: #0069d9; }
+
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 6px;
+        width: 320px;
+        text-align: left;
+      }
+      .modal-content h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+      }
+      .modal-content input, .modal-content select {
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .close {
+        float: right;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Players</h1>
+      <div>
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('new_tournament') }}" class="btn btn-primary">➕ Add Tournament</a>
+          <button id="openModal" class="btn btn-primary">➕ Add Player</button>
+          <a href="{{ url_for('logout') }}" class="btn btn-danger">🚪 Logout ({{ current_user.name }})</a>
+        {% else %}
+          <a href="{{ url_for('google.login') }}" class="btn btn-primary">🔑 Login with Google</a>
+        {% endif %}
+        <a href="{{ url_for('tournaments_list') }}" class="btn btn-primary">📜 See Past Tournaments</a>
+      </div>
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% if category == 'error' %}
+            <div class="flash-error">{{ message }}</div>
+          {% elif category == 'success' %}
+            <div class="flash-success">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Search bar -->
+    <input type="text" id="searchBar" placeholder="Search players...">
+
+    <!-- Player table -->
+    <table id="playersTable">
+      <tr><th>Name</th><th>Elo</th>{% if current_user.is_authenticated %}<th>Actions</th>{% endif %}</tr>
+      {% for p in players %}
+      <tr>
+        <td>{{ p.name }}</td>
+        <td>{{ p.elo }}</td>
+        {% if current_user.is_authenticated %}
+        <td class="actions">
+          <div class="player-actions">
+            <form method="POST" action="{{ url_for('delete_player', pid=p.id) }}"
+                  onsubmit="return confirm('Delete {{ p.name }}?');">
+              <button type="submit" class="action-btn btn-delete">Delete</button>
+            </form>
+            <button class="action-btn btn-merge"
+                    data-source-id="{{ p.id }}"
+                    data-source-name="{{ p.name|e }}">
+              Merge
+            </button>
+          </div>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </table>
+    <!-- Merge Player Modal -->
+    {% if current_user.is_authenticated %}
+    <div id="mergeModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeMergeModal()">&times;</span>
+        <h3 id="mergeTitle">Merge Player</h3>
+        <form method="POST" action="{{ url_for('merge_player') }}">
+          <input type="hidden" name="source_id" id="mergeSourceId">
+          <label>Merge <span id="mergeSourceName"></span> into:</label>
+          <select name="target_id" required>
+            <option value="">-- Select Player --</option>
+            {% for p in players %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-primary">Merge</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <script>
+      // Merge Modal logic
+      const mergeModal = document.getElementById("mergeModal");
+      const mergeSourceId = document.getElementById("mergeSourceId");
+      const mergeSourceName = document.getElementById("mergeSourceName");
+
+      function openMergeModal(id, name) {
+        mergeSourceId.value = id;
+        mergeSourceName.textContent = name;
+        mergeModal.style.display = "block";
+      }
+      function closeMergeModal() {
+        mergeModal.style.display = "none";
+      }
+
+      // Delegated click handler for merge buttons
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-merge');
+        if (!btn) return;
+        const id = btn.getAttribute('data-source-id');
+        const name = btn.getAttribute('data-source-name');
+        openMergeModal(id, name);
+      });
+
+      // Search filter
+      const searchBar = document.getElementById("searchBar");
+      searchBar.addEventListener("keyup", () => {
+        const filter = searchBar.value.toLowerCase();
+        const rows = document.querySelectorAll("#playersTable tr:not(:first-child)");
+        rows.forEach(row => {
+          const nameCell = row.cells[0].textContent.toLowerCase();
+          row.style.display = nameCell.includes(filter) ? "" : "none";
+        });
+      });
+    </script>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+  <form method="POST" action="{{ url_for('reset_db') }}" 
+        onsubmit="return confirm('⚠️ This will delete ALL data. Are you sure?');">
+    <button type="submit" class="btn btn-danger" style="margin-top:2rem;">
+      🗑️ Delete Database
+    </button>
+  </form>
+{% endif %}
+  </body>
+</html>

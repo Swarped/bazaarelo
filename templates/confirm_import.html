@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Confirm Tournament Import</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
+      th { background: #f0f0f0; }
+      .elo-pos { color: green; font-weight: bold; }
+      .elo-neg { color: red; font-weight: bold; }
+      .btn-confirm {
+        margin-top: 2rem;
+        padding: .75rem 1.5rem;
+        font-size: 1rem;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-confirm:hover { background: #45a049; }
+    </style>
+  </head>
+  <body>
+    <h1>Confirm Tournament Import</h1>
+
+    <h2>Final Standings (Preview)</h2>
+    <table>
+      <tr>
+        <th>Rank</th>
+        <th>Player</th>
+        <th>Wins</th>
+        <th>Draws</th>
+        <th>Losses</th>
+        <th>Points</th>
+        <th>Elo Δ</th>
+      </tr>
+      {% for s in standings %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ s.player.name }}</td>
+        <td>{{ s.wins }}</td>
+        <td>{{ s.draws }}</td>
+        <td>{{ s.losses }}</td>
+        <td>{{ s.points }}</td>
+        <td>
+          <span class="{{ 'elo-pos' if s.elo_delta > 0 else 'elo-neg' if s.elo_delta < 0 else '' }}">
+            {{ s.elo_delta }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <form method="POST">
+      <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
+    </form>
+  </body>
+</html>

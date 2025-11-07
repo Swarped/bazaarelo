@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Tournament Round {{ round_num }}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+      nav { margin-bottom: 1rem; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
+      th { background: #f0f0f0; }
+      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
+      .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; border: 1px solid #c3e6cb; }
+      .elo-pos { color: green; font-weight: bold; }
+      .elo-neg { color: red; font-weight: bold; }
+      .btn-confirm {
+        margin-top: 2rem;
+        padding: .75rem 1.5rem;
+        font-size: 1rem;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-confirm:hover { background: #45a049; }
+
+      .btn-deck {
+        padding: .3rem .6rem;
+        font-size: 0.9rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-deck:hover { background: #0069d9; }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 6px;
+        width: 400px;
+      }
+      .modal-content h3 { margin-top: 0; }
+      .modal-content input, .modal-content textarea {
+        width: 100%;
+        margin-bottom: 1rem;
+        padding: .5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .close {
+        float: right;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tournament Round {{ round_num }}</h1>
+
+    <nav>
+      <a href="{{ url_for('new_tournament') }}">Create a new tournament</a>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% if category == 'error' %}
+            <div class="flash-error">{{ message }}</div>
+          {% elif category == 'success' %}
+            <div class="flash-success">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if tournament.imported_from_text %}
+      <h2>This tournament was imported from EventLink text.</h2>
+      <p>All rounds have already been recorded. Please review the final standings before Elo is applied.</p>
+
+      <h2>Final Standings (Preview)</h2>
+      <table>
+        <tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th>Wins</th>
+          <th>Draws</th>
+          <th>Losses</th>
+          <th>Points</th>
+          <th>Elo Δ</th>
+          <th>Deck</th>
+        </tr>
+        {% for s in standings %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ s.player.name }}</td>
+          <td>{{ s.wins }}</td>
+          <td>{{ s.draws }}</td>
+          <td>{{ s.losses }}</td>
+          <td>{{ s.points }}</td>
+          <td>
+            <span class="{{ 'elo-pos' if s.elo_delta > 0 else 'elo-neg' if s.elo_delta < 0 else '' }}">
+              {{ s.elo_delta }}
+            </span>
+          </td>
+          <td>
+            <button class="btn-deck"
+                    data-player-id="{{ s.player.id }}"
+                    data-player-name="{{ s.player.name|e }}"
+                    data-deck-name="{{ s.deck.name if s.deck else ''|e }}"
+                    data-deck-list="{{ s.deck.list_text if s.deck else ''|e }}"
+                    onclick="openDeckModal(this)">
+              {{ 'Edit' if s.deck else 'Add Deck' }}
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+
+      <form method="POST" action="{{ url_for('confirm_import', tid=tid) }}">
+        <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
+      </form>
+
+      <!-- Deck Modal -->
+      <div id="deckModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeDeckModal()">&times;</span>
+          <h3 id="deckModalTitle">Add Deck</h3>
+          <form id="deckForm" method="POST" action="{{ url_for('submit_deck') }}">
+            <input type="hidden" name="player_id" id="deckPlayerId">
+            <input type="hidden" name="tournament_id" value="{{ tid }}">
+            <label>Deck Name</label>
+            <input type="text" name="deck_name" id="deckName">
+            <label>Deck List</label>
+            <textarea name="deck_list" id="deckList" rows="10"></textarea>
+            <button type="submit" class="btn-deck">Save</button>
+          </form>
+        </div>
+      </div>
+
+      <script>
+        function openDeckModal(button) {
+          const playerId = button.dataset.playerId;
+          const playerName = button.dataset.playerName;
+          const deckName = button.dataset.deckName;
+          const deckList = button.dataset.deckList;
+
+          document.getElementById('deckModal').style.display = 'block';
+          document.getElementById('deckModalTitle').textContent =
+            (deckName ? 'Edit Deck for ' : 'Add Deck for ') + playerName;
+          document.getElementById('deckPlayerId').value = playerId;
+          document.getElementById('deckName').value = deckName || '';
+          document.getElementById('deckList').value = deckList || '';
+        }
+        function closeDeckModal() {
+          document.getElementById('deckModal').style.display = 'none';
+        }
+        window.onclick = function(event) {
+          if (event.target == document.getElementById('deckModal')) {
+            closeDeckModal();
+          }
+        }
+      </script>
+
+    {% else %}
+      <h2>Enter Matches for Round {{ round_num }}</h2>
+      <form method="POST">
+        <table>
+          <tr>
+            <th>Player 1</th>
+            <th>Player 2</th>
+            <th>Result</th>
+          </tr>
+          {% for i in range(1, (players|length + 1)//2 + 1) %}
+          <tr>
+            <td>
+              <select name="player1_{{ i }}">
+                <option value="">-Select Player-</option>
+                {% for p in players %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+                {% if (players|length) % 2 == 1 %}
+                  <option value="bye">Bye</option>
+                {% endif %}
+              </select>
+            </td>
+            <td>
+              <select name="player2_{{ i }}">
+                <option value="">-Select Player-</option>
+                {% for p in players %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+                {% if (players|length) % 2 == 1 %}
+                  <option value="bye">Bye</option>
+                {% endif %}
+              </select>
+            </td>
+<td>
+  <select name="result_{{ i }}">
+    <option value="2-0">2-0</option>
+    <option value="2-1">2-1</option>
+    <option value="1-2">1-2</option>
+    <option value="0-2">0-2</option>
+    <option value="1-1">1-1</option>
+    <option value="1-0">1-0</option>
+    <option value="0-1">0-1</option>
+  </select>
+</td>
+</tr>
+{% endfor %}
+</table>
+<button type="submit">Submit Round {{ round_num }}</button>
+</form>
+{% endif %}
+</body>
+</html>

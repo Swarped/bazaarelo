@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Confirm Players</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif; /* modern sans-serif font */
+      margin: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 0.5em;
+    }
+
+    .reminder {
+      color: #b33;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 1.5em;
+    }
+
+    .confirm-table {
+      border-collapse: collapse;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .confirm-table th, .confirm-table td {
+      border: 1px solid #ccc;
+      padding: 10px 14px;
+      text-align: center;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0;
+      right: 0; bottom: 0;
+      background-color: #4CAF50; /* green when ON */
+      transition: .4s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px; width: 14px;
+      left: 3px; bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #4CAF50;
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    input:not(:checked) + .slider {
+      background-color: #ccc;
+    }
+
+    .switch-label {
+      font-size: 0.9em;
+      margin-left: 8px;
+      color: #555;
+    }
+
+    button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Confirm Players</h2>
+  <p class="reminder">
+    Reminder: Some players were not found in the database.<br>
+    Please verify carefully before creating new entries to avoid duplicates.
+  </p>
+
+  <form method="POST" action="{{ url_for('confirm_players') }}">
+    <table class="confirm-table">
+      <thead>
+        <tr>
+          <th>Unknown Player</th>
+          <th>Action</th>
+          <th>Replace With</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name in unknown_names %}
+        <tr>
+          <td>{{ name }}</td>
+          <td>
+            <!-- Toggle switch defaults to "Create New" -->
+            <label class="switch">
+              <input type="checkbox" name="action_{{ name }}" value="create" checked onchange="toggleReplace(this, '{{ name }}')">
+              <span class="slider"></span>
+            </label>
+            <span id="label_{{ name }}" class="switch-label">Create New</span>
+          </td>
+          <td>
+            <select name="replace_{{ name }}" id="replace_{{ name }}" style="display:none;">
+              {% for p in existing_players %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <input type="hidden" name="raw_text" value="{{ raw_text }}">
+    <button type="submit">Confirm</button>
+  </form>
+
+  <script>
+    function toggleReplace(checkbox, name) {
+      const label = document.getElementById("label_" + name);
+      const select = document.getElementById("replace_" + name);
+
+      if (checkbox.checked) {
+        label.textContent = "Create New";
+        select.style.display = "none";
+        checkbox.value = "create";
+      } else {
+        label.textContent = "Replace";
+        select.style.display = "inline-block";
+        checkbox.value = "replace";
+      }
+    }
+  </script>
+
+<input type="hidden" name="event_name" value="{{ event_name }}">
+
+</body>
+</html>

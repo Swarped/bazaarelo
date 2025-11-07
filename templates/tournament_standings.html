@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ tournament.date }} Standings</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
+      th { background: #f0f0f0; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+      tr:hover { background-color: #eef; }
+
+      .btn-deck {
+        padding: .3rem .6rem;
+        font-size: 0.9rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-deck:hover { background: #0069d9; }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+.modal-content {
+  background-color: #fff;
+  margin: 5% auto;
+  padding: 20px;
+  border-radius: 6px;
+  width: 700px;       /* wider popup */
+  max-width: 90%;     /* responsive on smaller screens */
+  height: auto;
+}
+
+.modal-content textarea {
+  width: 100%;
+  height: 400px;      /* taller text area for deck lists */
+  margin-bottom: 1rem;
+  padding: .5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: none;   
+}
+
+      .close {
+        float: right;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Standings for Tournament on {{ tournament.date }}</h1>
+
+    <table>
+      <tr>
+        <th>Rank</th>
+        <th>Player</th>
+        <th>Wins</th>
+        <th>Draws</th>
+        <th>Losses</th>
+        <th>Points</th>
+        <th>Deck</th>
+      </tr>
+      {% for s in standings %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ s.player.name }}</td>
+        <td>{{ s.wins }}</td>
+        <td>{{ s.draws }}</td>
+        <td>{{ s.losses }}</td>
+        <td>{{ s.points }}</td>
+        <td>
+          {% if s.deck %}
+            <button class="btn-deck"
+                    data-player-name="{{ s.player.name|e }}"
+                    data-deck-name="{{ s.deck.name|e }}"
+                    data-deck-list="{{ s.deck.list_text|e }}"
+                    onclick="openDeckModal(this)">
+              {{ s.deck.name }}
+            </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <!-- Deck Modal -->
+    <div id="deckModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeDeckModal()">&times;</span>
+        <h3 id="deckModalTitle">Deck</h3>
+        <textarea id="deckList" rows="12" readonly></textarea>
+      </div>
+    </div>
+
+    <script>
+      function openDeckModal(button) {
+        const playerName = button.dataset.playerName;
+        const deckName = button.dataset.deckName;
+        const deckList = button.dataset.deckList;
+
+        document.getElementById('deckModal').style.display = 'block';
+        document.getElementById('deckModalTitle').textContent =
+          deckName + " (" + playerName + ")";
+        document.getElementById('deckList').value = deckList || '';
+      }
+      function closeDeckModal() {
+        document.getElementById('deckModal').style.display = 'none';
+      }
+      window.onclick = function(event) {
+        if (event.target == document.getElementById('deckModal')) {
+          closeDeckModal();
+        }
+      }
+    </script>
+  </body>
+</html>
