@@ -123,6 +123,7 @@ def normalize_points(points_raw: str):
     return "1-1"
 
 
+
 def parse_eventlink_text(all_text: str):
     """
     Parse EventLink 'Pairings by Table' plain text.
