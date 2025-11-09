@@ -10,6 +10,7 @@
       th { background: #f0f0f0; }
       tr:nth-child(even) { background-color: #f9f9f9; }
       tr:hover { background-color: #eef; }
+      tr.highlight { background-color: #ffeeba; font-weight: bold; }
 
       .btn-deck {
         padding: .3rem .6rem;
@@ -22,7 +23,6 @@
       }
       .btn-deck:hover { background: #0069d9; }
 
-      /* Modal */
       .modal {
         display: none;
         position: fixed;
@@ -31,26 +31,24 @@
         width: 100%; height: 100%;
         background-color: rgba(0,0,0,0.5);
       }
-.modal-content {
-  background-color: #fff;
-  margin: 5% auto;
-  padding: 20px;
-  border-radius: 6px;
-  width: 700px;       /* wider popup */
-  max-width: 90%;     /* responsive on smaller screens */
-  height: auto;
-}
-
-.modal-content textarea {
-  width: 100%;
-  height: 400px;      /* taller text area for deck lists */
-  margin-bottom: 1rem;
-  padding: .5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  resize: none;   
-}
-
+      .modal-content {
+        background-color: #fff;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 6px;
+        width: 700px;
+        max-width: 90%;
+        height: auto;
+      }
+      .modal-content textarea {
+        width: 100%;
+        height: 400px;
+        margin-bottom: 1rem;
+        padding: .5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        resize: none;
+      }
       .close {
         float: right;
         font-size: 1.2rem;
@@ -60,6 +58,9 @@
   </head>
   <body>
     <h1>Standings for Tournament on {{ tournament.date }}</h1>
+    {% if tournament.top_cut %}
+      <p><strong>Top Cut:</strong> Top {{ tournament.top_cut }} players are highlighted below.</p>
+    {% endif %}
 
     <table>
       <tr>
@@ -72,7 +73,7 @@
         <th>Deck</th>
       </tr>
       {% for s in standings %}
-      <tr>
+      <tr class="{% if tournament.top_cut and loop.index <= tournament.top_cut %}highlight{% endif %}">
         <td>{{ loop.index }}</td>
         <td>{{ s.player.name }}</td>
         <td>{{ s.wins }}</td>

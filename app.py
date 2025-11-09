@@ -147,10 +147,12 @@ class Player(db.Model):
 
 class Tournament(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)   # <-- add this
+    name = db.Column(db.String(120), nullable=False)
     date = db.Column(db.Date, nullable=False)
     rounds = db.Column(db.Integer, nullable=False)
     imported_from_text = db.Column(db.Boolean, default=False)
+    top_cut = db.Column(db.Integer, nullable=True)  # NEW
+
 
 class TournamentPlayer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -217,6 +219,29 @@ def result_to_scores(result: str):
         "bye": (2, 0),  # treat bye as 2-0 for Elo weighting
     }
     return mapping.get(result)
+
+def default_top_cut(num_players: int) -> int:
+    if 9 <= num_players <= 16:
+        return 4
+    elif 17 <= num_players <= 32:
+        return 8
+    elif 33 <= num_players <= 64:
+        return 8
+    elif 65 <= num_players <= 128:
+        return 8
+    elif 129 <= num_players <= 226:
+        return 8
+    elif 217 <= num_players <= 256:
+        return 16
+    elif 257 <= num_players <= 512:
+        return 16
+    elif 513 <= num_players <= 1024:
+        return 32
+    elif 1025 <= num_players <= 2048:
+        return 32
+    else:
+        return 0  # no playoff
+
 
 
 def normalize_points(points_raw: str) -> str:
@@ -549,11 +574,13 @@ def new_tournament():
             else:
                 rounds = 7
 
+
             tournament = Tournament(
                 name=tournament_name,
                 date=datetime.strptime(date_str, "%Y-%m-%d"),
                 rounds=rounds,
-                imported_from_text=False
+                imported_from_text=False,
+
             )
             db.session.add(tournament)
             db.session.commit()
@@ -910,31 +937,28 @@ def submit_deck():
     return redirect(request.referrer or url_for('players'))
 
 
-@app.route('/tournament/<int:tid>/confirm_import', methods=['GET','POST'])
+@app.route('/tournament/<int:tid>/confirm_import', methods=['GET', 'POST'])
 def confirm_import(tid):
     tournament = Tournament.query.get_or_404(tid)
     matches = Match.query.filter_by(tournament_id=tournament.id).all()
     players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id) \
                           .filter(TournamentPlayer.tournament_id == tid).all()
 
-    # Snapshot original Elos
-    original_elos = {p.id: p.elo for p in players}
+    # --- Preview Elo changes ---
     elo_changes = {p.id: 0 for p in players}
-
-    # Simulate Elo updates
     for m in matches:
         if m.player2_id:
             p1 = Player.query.get(m.player1_id)
             p2 = Player.query.get(m.player2_id)
-            scores = result_to_scores(m.result) or (1,1)
+            scores = result_to_scores(m.result) or (1, 1)
             old1, old2 = p1.elo, p2.elo
             update_elo(p1, p2, *scores)
             elo_changes[p1.id] += p1.elo - old1
             elo_changes[p2.id] += p2.elo - old2
-            # reset
+            # reset preview
             p1.elo, p2.elo = old1, old2
 
-    # Build standings
+    # --- Build standings preview ---
     standings = []
     for p in players:
         wins = draws = losses = points = 0
@@ -942,9 +966,9 @@ def confirm_import(tid):
             if m.player1_id == p.id or m.player2_id == p.id:
                 if m.result == "bye" and m.player1_id == p.id:
                     wins += 1; points += 3
-                elif m.result in ["2-0","2-1"] and m.player1_id == p.id:
+                elif m.result in ["2-0", "2-1"] and m.player1_id == p.id:
                     wins += 1; points += 3
-                elif m.result in ["0-2","1-2"] and m.player2_id == p.id:
+                elif m.result in ["0-2", "1-2"] and m.player2_id == p.id:
                     wins += 1; points += 3
                 elif m.result == "1-1":
                     draws += 1; points += 1
@@ -962,22 +986,32 @@ def confirm_import(tid):
 
     standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
 
+    # --- Handle confirmation ---
     if request.method == 'POST':
+        # Read Top Cut override from form
+        top_cut_val = request.form.get("top_cut")
+        if top_cut_val:
+            try:
+                tournament.top_cut = int(top_cut_val)
+            except ValueError:
+                tournament.top_cut = None
+        db.session.commit()
+
         # Apply real Elo updates
         for m in matches:
             if m.player2_id:
                 p1 = Player.query.get(m.player1_id)
                 p2 = Player.query.get(m.player2_id)
-                scores = result_to_scores(m.result) or (1,1)
+                scores = result_to_scores(m.result) or (1, 1)
                 update_elo(p1, p2, *scores)
         db.session.commit()
-        flash("Tournament confirmed and Elo updated!", "success")
+
+        flash("Tournament confirmed, Elo updated, and Top Cut set!", "success")
         return redirect(url_for('players'))
 
     return render_template('confirm_import.html',
                            tournament=tournament,
                            standings=standings)
-
 
 
 @app.route('/tournament/<int:tid>/import_text', methods=['GET', 'POST'])
