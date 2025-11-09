@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Tournament Round {{ round_num }}</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
+      body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; }
       nav { margin-bottom: 1rem; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
@@ -13,8 +13,9 @@
       .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; border: 1px solid #c3e6cb; }
       .elo-pos { color: green; font-weight: bold; }
       .elo-neg { color: red; font-weight: bold; }
+
       .btn-confirm {
-        margin-top: 2rem;
+        margin-top: 1rem;
         padding: .75rem 1.5rem;
         font-size: 1rem;
         background: #4CAF50;
@@ -22,6 +23,7 @@
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        width: 100%;
       }
       .btn-confirm:hover { background: #45a049; }
 
@@ -33,8 +35,18 @@
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        margin: 2px;
       }
       .btn-deck:hover { background: #0069d9; }
+
+      /* Grey variant for outside Top Cut */
+      .btn-deck-grey {
+        background: #6c757d;
+        color: #f8f9fa;
+      }
+      .btn-deck-grey:hover { background: #5a6268; }
+
+      .icon { margin-right: 4px; }
 
       /* Modal */
       .modal {
@@ -65,6 +77,36 @@
         font-size: 1.2rem;
         cursor: pointer;
       }
+      tr.highlight { background-color: #ffeeba; font-weight: bold; }
+
+      .side-panel {
+        flex:0 0 200px;
+        background:#f9f9f9;
+        padding:1rem;
+        border:1px solid #ccc;
+        border-radius:6px;
+      }
+      .side-panel h3 { margin-top:0; }
+
+      .option-group { display: flex; flex-direction: column; gap: .5rem; }
+      .option input[type="radio"] { display: none; }
+      .option span {
+        display: block;
+        padding: .6rem 1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #f9f9f9;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+      .option input[type="radio"]:checked + span {
+        background: #4CAF50;
+        color: white;
+        border-color: #4CAF50;
+        font-weight: bold;
+      }
+      .option span:hover { background: #e0e0e0; }
     </style>
   </head>
   <body>
@@ -85,53 +127,118 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-
     {% if tournament.imported_from_text %}
       <h2>This tournament was imported from EventLink text.</h2>
       <p>All rounds have already been recorded. Please review the final standings before Elo is applied.</p>
 
-      <h2>Final Standings (Preview)</h2>
-      <table>
-        <tr>
-          <th>Rank</th>
-          <th>Player</th>
-          <th>Wins</th>
-          <th>Draws</th>
-          <th>Losses</th>
-          <th>Points</th>
-          <th>Elo Δ</th>
-          <th>Deck</th>
-        </tr>
-        {% for s in standings %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ s.player.name }}</td>
-          <td>{{ s.wins }}</td>
-          <td>{{ s.draws }}</td>
-          <td>{{ s.losses }}</td>
-          <td>{{ s.points }}</td>
-          <td>
-            <span class="{{ 'elo-pos' if s.elo_delta > 0 else 'elo-neg' if s.elo_delta < 0 else '' }}">
-              {{ s.elo_delta }}
-            </span>
-          </td>
-          <td>
-            <button class="btn-deck"
-                    data-player-id="{{ s.player.id }}"
-                    data-player-name="{{ s.player.name|e }}"
-                    data-deck-name="{{ s.deck.name if s.deck else ''|e }}"
-                    data-deck-list="{{ s.deck.list_text if s.deck else ''|e }}"
-                    onclick="openDeckModal(this)">
-              {{ 'Edit' if s.deck else 'Add Deck' }}
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
+      <div style="display:flex; gap:2rem;">
+        <!-- Standings table -->
+        <div style="flex:1;">
+          <h2>Final Standings (Preview)</h2>
+          <div id="playersMeta" data-count="{{ players|length }}"></div>
 
-      <form method="POST" action="{{ url_for('confirm_import', tid=tid) }}">
-        <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
-      </form>
+          <table>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Wins</th>
+              <th>Draws</th>
+              <th>Losses</th>
+              <th>Points</th>
+              <th>Elo Δ</th>
+              <th>Deck</th>
+            </tr>
+            {% for s in standings %}
+            {% set in_cut = (tournament.top_cut is not none) and (loop.index <= tournament.top_cut|int) %}
+
+            <tr data-rank="{{ loop.index }}" class="{% if in_cut %}highlight{% endif %}">
+              <td>{{ loop.index }}</td>
+              <td>{{ s.player.name }}</td>
+              <td>{{ s.wins }}</td>
+              <td>{{ s.draws }}</td>
+              <td>{{ s.losses }}</td>
+              <td>{{ s.points }}</td>
+              <td>
+                <span class="{{ 'elo-pos' if s.elo_delta > 0 else 'elo-neg' if s.elo_delta < 0 else '' }}">
+                  {{ s.elo_delta }}
+                </span>
+              </td>
+<td>
+  {% if s.deck %}
+    <!-- Edit deck button (always blue) -->
+    <button class="btn-deck"
+            data-player-id="{{ s.player.id }}"
+            data-player-name="{{ s.player.name|e }}"
+            data-deck-name="{{ s.deck.name|e }}"
+            data-deck-list="{{ s.deck.list_text|e }}"
+            onclick="openDeckModal(this)">
+      <span class="icon">✏️</span>Edit
+    </button>
+    <!-- Remove deck button (always blue) -->
+    <form method="POST" action="{{ url_for('remove_deck') }}" style="display:inline;">
+      <input type="hidden" name="player_id" value="{{ s.player.id }}">
+      <input type="hidden" name="tournament_id" value="{{ tid }}">
+      <button type="submit" class="btn-deck">
+        <span class="icon">🗑️</span>Remove
+      </button>
+    </form>
+  {% else %}
+    <!-- Add deck button: blue if in cut, grey if out -->
+    <button class="btn-deck {% if not in_cut %}btn-deck-grey{% endif %}"
+            data-player-id="{{ s.player.id }}"
+            data-player-name="{{ s.player.name|e }}"
+            onclick="openDeckModal(this)">
+      <span class="icon">➕</span>Add Deck
+    </button>
+  {% endif %}
+</td>
+
+
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+        <div class="side-panel">
+          <h3>Playoff Cut</h3>
+          <form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
+            <div class="option-group">
+              <label class="option">
+                <input type="radio" name="top_cut" value="" {% if not tournament.top_cut %}checked{% endif %}>
+                <span>Auto</span>
+              </label>
+
+              {% if players|length >= 4 %}
+              <label class="option">
+                <input type="radio" name="top_cut" value="4" {% if tournament.top_cut == 4 %}checked{% endif %}>
+                <span>TOP 4</span>
+              </label>
+              {% endif %}
+
+              {% if players|length >= 8 %}
+              <label class="option">
+                <input type="radio" name="top_cut" value="8" {% if tournament.top_cut == 8 %}checked{% endif %}>
+                <span>TOP 8</span>
+              </label>
+              {% endif %}
+
+              {% if players|length >= 16 %}
+              <label class="option">
+                <input type="radio" name="top_cut" value="16" {% if tournament.top_cut == 16 %}checked{% endif %}>
+                <span>TOP 16</span>
+              </label>
+              {% endif %}
+
+              {% if players|length >= 32 %}
+              <label class="option">
+                <input type="radio" name="top_cut" value="32" {% if tournament.top_cut == 32 %}checked{% endif %}>
+                <span>TOP 32</span>
+              </label>
+              {% endif %}
+            </div>
+            <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
+          </form>
+        </div>
+      </div>
 
       <!-- Deck Modal -->
       <div id="deckModal" class="modal">
@@ -145,7 +252,7 @@
             <input type="text" name="deck_name" id="deckName">
             <label>Deck List</label>
             <textarea name="deck_list" id="deckList" rows="10"></textarea>
-            <button type="submit" class="btn-deck">Save</button>
+            <button type="submit" class="btn-deck"><span class="icon">💾</span>Save</button>
           </form>
         </div>
       </div>
@@ -171,6 +278,64 @@
           if (event.target == document.getElementById('deckModal')) {
             closeDeckModal();
           }
+        }
+
+function updateHighlight(topCut) {
+  const rows = document.querySelectorAll("tr[data-rank]");
+  rows.forEach(row => {
+    const rank = parseInt(row.dataset.rank, 10);
+
+    // Highlight row if inside cut
+    if (topCut && rank <= topCut) {
+      row.classList.add("highlight");
+    } else {
+      row.classList.remove("highlight");
+    }
+
+    // Update Add Deck button style
+    const addBtn = row.querySelector("button.btn-deck");
+    if (addBtn && addBtn.textContent.includes("Add Deck")) {
+      if (topCut && rank <= topCut) {
+        addBtn.classList.remove("btn-deck-grey"); // make blue
+      } else {
+        addBtn.classList.add("btn-deck-grey"); // make grey
+      }
+    }
+  });
+}
+
+
+        const numPlayers = parseInt(document.getElementById('playersMeta').dataset.count, 10);
+
+        function defaultTopCut(n) {
+          let cut = 0;
+          if (n >= 9 && n <= 16) cut = 4;
+          else if (n >= 17 && n <= 32) cut = 8;
+          else if (n >= 33 && n <= 64) cut = 8;
+          else if (n >= 65 && n <= 128) cut = 8;
+          else if (n >= 129 && n <= 226) cut = 8;
+          else if (n >= 217 && n <= 256) cut = 16;
+          else if (n >= 257 && n <= 512) cut = 16;
+          else if (n >= 513 && n <= 1024) cut = 32;
+          else if (n >= 1025 && n <= 2048) cut = 32;
+          return Math.min(cut, n);
+        }
+
+        document.querySelectorAll("input[name='top_cut']").forEach(input => {
+          input.addEventListener("change", () => {
+            const val = input.value;
+            let topCut = val === "" ? defaultTopCut(numPlayers) : parseInt(val, 10);
+            topCut = Math.min(topCut, numPlayers);
+            updateHighlight(topCut);
+          });
+        });
+
+        const checked = document.querySelector("input[name='top_cut']:checked");
+        if (checked) {
+          const val = checked.value;
+          let topCut = val === "" ? defaultTopCut(numPlayers) : parseInt(val, 10);
+          topCut = Math.min(topCut, numPlayers);
+          updateHighlight(topCut);
         }
       </script>
 
@@ -207,22 +372,22 @@
                 {% endif %}
               </select>
             </td>
-<td>
-  <select name="result_{{ i }}">
-    <option value="2-0">2-0</option>
-    <option value="2-1">2-1</option>
-    <option value="1-2">1-2</option>
-    <option value="0-2">0-2</option>
-    <option value="1-1">1-1</option>
-    <option value="1-0">1-0</option>
-    <option value="0-1">0-1</option>
-  </select>
-</td>
-</tr>
-{% endfor %}
-</table>
-<button type="submit">Submit Round {{ round_num }}</button>
-</form>
-{% endif %}
-</body>
+            <td>
+              <select name="result_{{ i }}">
+                <option value="2-0">2-0</option>
+                <option value="2-1">2-1</option>
+                <option value="1-2">1-2</option>
+                <option value="0-2">0-2</option>
+                <option value="1-1">1-1</option>
+                <option value="1-0">1-0</option>
+                <option value="0-1">0-1</option>
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+        <button type="submit">Submit Round {{ round_num }}</button>
+      </form>
+    {% endif %}
+  </body>
 </html>

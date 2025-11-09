@@ -9,19 +9,17 @@
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
       th { background: #f0f0f0; }
       tr:nth-child(even) { background-color: #f9f9f9; }
-      tr:hover { background-color: #eef; }
-      tr.highlight { background-color: #ffeeba; font-weight: bold; }
 
-      .btn-deck {
-        padding: .3rem .6rem;
-        font-size: 0.9rem;
-        background: #007bff;
+      tr.clickable-row {
+        transition: background-color 140ms ease, color 140ms ease;
+      }
+      tr.clickable-row:hover {
+        background-color: #007bff;
         color: white;
-        border: none;
-        border-radius: 4px;
         cursor: pointer;
       }
-      .btn-deck:hover { background: #0069d9; }
+
+      tr.highlight { background-color: #ffeeba; font-weight: bold; }
 
       .modal {
         display: none;
@@ -36,18 +34,34 @@
         margin: 5% auto;
         padding: 20px;
         border-radius: 6px;
-        width: 700px;
-        max-width: 90%;
-        height: auto;
+        width: 900px;
+        max-width: 95%;
+        display: flex;
+        gap: 2rem;
       }
-      .modal-content textarea {
-        width: 100%;
-        height: 400px;
-        margin-bottom: 1rem;
-        padding: .5rem;
+      .modal-left, .modal-right {
+        flex: 1;
+      }
+      .modal-left h4, .modal-right h4 {
+        margin-top: 0;
+      }
+      ul.card-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      ul.card-list li {
+        padding: .3rem;
+        cursor: pointer;
+      }
+      ul.card-list li:hover {
+        background-color: #e0e0e0;
+      }
+      .modal-right img {
+        max-width: 250px; /* smaller image */
         border: 1px solid #ccc;
         border-radius: 4px;
-        resize: none;
+        display: none; /* hidden until a card is hovered */
       }
       .close {
         float: right;
@@ -73,24 +87,20 @@
         <th>Deck</th>
       </tr>
       {% for s in standings %}
-      <tr class="{% if tournament.top_cut and loop.index <= tournament.top_cut %}highlight{% endif %}">
+      <tr class="clickable-row {% if tournament.top_cut and loop.index <= tournament.top_cut %}highlight{% endif %}"
+          tabindex="0"
+          role="link"
+          aria-label="Open deck for {{ s.player.name }}"
+          data-player-name="{{ s.player.name|e }}"
+          data-deck-name="{{ s.deck.name if s.deck else ''|e }}"
+          data-deck-list="{{ s.deck.list_text if s.deck else ''|e }}">
         <td>{{ loop.index }}</td>
         <td>{{ s.player.name }}</td>
         <td>{{ s.wins }}</td>
         <td>{{ s.draws }}</td>
         <td>{{ s.losses }}</td>
         <td>{{ s.points }}</td>
-        <td>
-          {% if s.deck %}
-            <button class="btn-deck"
-                    data-player-name="{{ s.player.name|e }}"
-                    data-deck-name="{{ s.deck.name|e }}"
-                    data-deck-list="{{ s.deck.list_text|e }}"
-                    onclick="openDeckModal(this)">
-              {{ s.deck.name }}
-            </button>
-          {% endif %}
-        </td>
+        <td>{{ s.deck.name if s.deck else '' }}</td>
       </tr>
       {% endfor %}
     </table>
@@ -98,31 +108,111 @@
     <!-- Deck Modal -->
     <div id="deckModal" class="modal">
       <div class="modal-content">
-        <span class="close" onclick="closeDeckModal()">&times;</span>
-        <h3 id="deckModalTitle">Deck</h3>
-        <textarea id="deckList" rows="12" readonly></textarea>
+        <div class="modal-left">
+          <span class="close" onclick="closeDeckModal()">&times;</span>
+          <h3 id="deckModalTitle">Deck</h3>
+          <h4>Main Deck</h4>
+          <ul id="mainDeck" class="card-list"></ul>
+        </div>
+        <div class="modal-right">
+          <h4>Sideboard</h4>
+          <ul id="sideboard" class="card-list"></ul>
+          <img id="cardPreview" src="" alt="Card preview">
+        </div>
       </div>
     </div>
 
     <script>
-      function openDeckModal(button) {
-        const playerName = button.dataset.playerName;
-        const deckName = button.dataset.deckName;
-        const deckList = button.dataset.deckList;
+      function openDeckModal(row) {
+        const playerName = row.dataset.playerName;
+        const deckName = row.dataset.deckName;
+        const deckList = row.dataset.deckList;
+
+        if (!deckName) return;
 
         document.getElementById('deckModal').style.display = 'block';
         document.getElementById('deckModalTitle').textContent =
           deckName + " (" + playerName + ")";
-        document.getElementById('deckList').value = deckList || '';
+
+        const mainDeck = document.getElementById('mainDeck');
+        const sideboard = document.getElementById('sideboard');
+        mainDeck.innerHTML = "";
+        sideboard.innerHTML = "";
+        document.getElementById('cardPreview').style.display = "none";
+
+        const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+        let inSideboard = false;
+        lines.forEach(line => {
+          if (/^sideboard/i.test(line.trim())) {
+            inSideboard = true;
+            return;
+          }
+          const parts = line.trim().split(/\s+/, 2);
+          let count = parts[0];
+          let name = line.trim().substring(count.length).trim();
+
+          const li = document.createElement('li');
+          li.textContent = count + " " + name;
+
+          li.addEventListener('mouseenter', () => {
+            fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`)
+              .then(res => res.json())
+              .then(card => {
+                let imgUrl = "";
+                if (card.image_uris && card.image_uris.normal) {
+                  imgUrl = card.image_uris.normal;
+                } else if (card.card_faces) {
+                  imgUrl = card.card_faces[0].image_uris.normal;
+                }
+                const preview = document.getElementById('cardPreview');
+                if (imgUrl) {
+                  preview.src = imgUrl;
+                  preview.style.display = "block";
+                } else {
+                  preview.src = "";
+                  preview.style.display = "none";
+                }
+              })
+              .catch(err => {
+                console.error("Scryfall fetch error", err);
+                const preview = document.getElementById('cardPreview');
+                preview.src = "";
+                preview.style.display = "none";
+              });
+          });
+
+          if (inSideboard) {
+            sideboard.appendChild(li);
+          } else {
+            mainDeck.appendChild(li);
+          }
+        });
       }
+
       function closeDeckModal() {
         document.getElementById('deckModal').style.display = 'none';
+        document.getElementById('mainDeck').innerHTML = "";
+        document.getElementById('sideboard').innerHTML = "";
+        const preview = document.getElementById('cardPreview');
+        preview.src = "";
+        preview.style.display = "none";
       }
+
       window.onclick = function(event) {
         if (event.target == document.getElementById('deckModal')) {
           closeDeckModal();
         }
       }
+
+      document.querySelectorAll('tr.clickable-row').forEach(row => {
+        row.addEventListener('click', () => openDeckModal(row));
+        row.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openDeckModal(row);
+          }
+        });
+      });
     </script>
   </body>
 </html>

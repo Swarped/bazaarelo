@@ -6,6 +6,13 @@
     <style>
       body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
       h1 { margin-bottom: 1rem; }
+      .flash-error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: .5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #f5c6cb;
+      }
       h2 { margin-top: 2rem; }
       form { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; }
       textarea { width: 100%; font-family: monospace; padding: .5rem; }
@@ -21,8 +28,58 @@
       }
       .btn-submit:hover { background: #45a049; }
       .format-switch { margin-bottom: 1rem; }
+
+    .toggle-container {
+  position: relative;
+  display: flex;
+  width: 300px;
+  border: 2px solid #4CAF50;
+  border-radius: 30px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.toggle-container input[type="radio"] {
+  display: none;
+}
+
+.toggle-container label {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  z-index: 2;
+  font-weight: 500;
+  color: #333;
+  transition: color 0.3s;
+}
+
+.toggle-container .toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #4CAF50;
+  border-radius: 30px;
+  transition: transform 0.3s;
+  z-index: 1;
+}
+
+.toggle-container input#arena:checked ~ .toggle-slider {
+  transform: translateX(100%);
+}
+
+.toggle-container input#eventlink:checked ~ .toggle-slider {
+  transform: translateX(0%);
+}
+
+.toggle-container input:checked + label {
+  color: white;
+}
+
+
     </style>
-    <!-- jQuery + jQuery UI for autocomplete -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
@@ -38,102 +95,94 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Manual Tournament Form -->
     <h2>Manual Tournament</h2>
     <form method="POST">
       <input type="hidden" name="workflow" value="manual">
-
       <label>Tournament Name:<br>
         <input type="text" name="tournament_name" required>
       </label><br><br>
-
       <label>Date:<br>
         <input type="date" name="date" required>
       </label><br><br>
-
       <div id="players-container">
         <input type="text" name="players" class="player-input" placeholder="Type player name and press Enter">
       </div>
-
       <button type="submit" class="btn-submit">Create Tournament</button>
     </form>
 
-    <!-- Import Tournament Form -->
     <h2>Import Tournament</h2>
     <form method="POST">
       <input type="hidden" name="workflow" value="import">
+<div class="toggle-container">
+  <input type="radio" id="eventlink" name="import_format" value="eventlink" checked>
+  <label for="eventlink">EventLink</label>
 
-      <div class="format-switch">
-        <label>
-          <input type="radio" name="import_format" value="eventlink" checked>
-          EventLink Format
-        </label>
-        <label style="margin-left:1rem;">
-          <input type="radio" name="import_format" value="arena">
-          Arena Format
-        </label>
-      </div>
+  <input type="radio" id="arena" name="import_format" value="arena">
+  <label for="arena">Arena</label>
 
-      <!-- Tournament Name (only for Arena) -->
+  <div class="toggle-slider"></div>
+</div>
       <div id="arena-name-field" style="display:none; margin-bottom:1rem;">
         <label>Tournament Name:<br>
-          <input type="text" name="arena_tournament_name" placeholder="Enter tournament name">
+          <input type="text" name="arena_tournament_name"
+                 placeholder="Enter tournament name"
+                 required
+                 style="width:100%; font-size:1.2rem; padding:.5rem; border:1px solid #ccc; border-radius:6px;">
         </label>
       </div>
-
       <textarea name="import_text" rows="20" placeholder="Paste your tournament data here..."></textarea><br>
-
       <button type="submit" class="btn-submit">Import Tournament</button>
     </form>
 
-    <!-- Autocomplete + dynamic player input script -->
-    <script>
-      function attachAutocomplete(input) {
-        $(input).autocomplete({
-          source: function(request, response) {
-            $.getJSON("/players/search", { q: request.term }, function(data) {
-              response(data);
-            });
-          },
-          minLength: 2
+<script>
+  function attachAutocomplete(input) {
+    $(input).autocomplete({
+      source: function(request, response) {
+        $.getJSON("/players/search", { q: request.term }, function(data) {
+          response(data);
         });
+      },
+      minLength: 2
+    });
+  }
+
+  attachAutocomplete(".player-input");
+
+  const container = document.getElementById('players-container');
+  container.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.target.value.trim() !== '') {
+        const newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.name = 'players';
+        newInput.className = 'player-input';
+        newInput.placeholder = 'Type player name and press Enter';
+        container.appendChild(document.createElement('br'));
+        container.appendChild(newInput);
+        attachAutocomplete(newInput);
+        newInput.focus();
       }
+    }
+  });
 
-      // attach to the first input
-      attachAutocomplete(".player-input");
+  const formatRadios = document.querySelectorAll('input[name="import_format"]');
+  const arenaNameField = document.getElementById('arena-name-field');
+  const arenaNameInput = arenaNameField.querySelector('input[name="arena_tournament_name"]');
 
-      // add new input on Enter
-      const container = document.getElementById('players-container');
-      container.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          if (e.target.value.trim() !== '') {
-            const newInput = document.createElement('input');
-            newInput.type = 'text';
-            newInput.name = 'players';
-            newInput.className = 'player-input';
-            newInput.placeholder = 'Type player name and press Enter';
-            container.appendChild(document.createElement('br'));
-            container.appendChild(newInput);
-            attachAutocomplete(newInput); // enable autocomplete on new field
-            newInput.focus();
-          }
-        }
-      });
+  formatRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (radio.value === 'arena' && radio.checked) {
+        arenaNameField.style.display = 'block';
+        arenaNameInput.required = true;
+      } else if (radio.value === 'eventlink' && radio.checked) {
+        arenaNameField.style.display = 'none';
+        arenaNameInput.required = false;
+        arenaNameInput.value = ""; // clear value when switching back
+      }
+    });
+  });
+</script>
 
-      // toggle Arena tournament name field
-      const formatRadios = document.querySelectorAll('input[name="import_format"]');
-      const arenaNameField = document.getElementById('arena-name-field');
-
-      formatRadios.forEach(radio => {
-        radio.addEventListener('change', () => {
-          if (radio.value === 'arena' && radio.checked) {
-            arenaNameField.style.display = 'block';
-          } else if (radio.value === 'eventlink' && radio.checked) {
-            arenaNameField.style.display = 'none';
-          }
-        });
-      });
-    </script>
   </body>
 </html>
