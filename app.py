@@ -219,17 +219,21 @@ def result_to_scores(result: str):
     return mapping.get(result)
 
 
-# --- Helpers update ---
-def normalize_points(points_raw: str):
+def normalize_points(points_raw: str) -> str:
     """
     Normalize EventLink and Arena result tokens into standard forms:
     "2-0", "0-2", "1-1", "bye"
+    Supports English and Spanish exports.
     """
     points_raw = points_raw.strip().lower()
 
+    # Bye / Ronda libre
     if "***bye***" in points_raw or points_raw == "bye":
         return "bye"
+    if "***ronda libre***" in points_raw or points_raw == "ronda libre":
+        return "bye"
 
+    # Score formats with dash
     if "-" in points_raw:
         left, right = points_raw.split("-", 1)
         left, right = left.strip(), right.strip()
@@ -242,7 +246,7 @@ def normalize_points(points_raw: str):
         if (left, right) in [("1", "1"), ("1", "1-1")]:
             return "1-1"
 
-        # EventLink-style scores
+        # EventLink-style scores (English 3-0, Spanish 3-0 same)
         if (left, right) == ("3", "0"):
             return "2-0"
         if (left, right) == ("0", "3"):
@@ -259,6 +263,7 @@ def normalize_points(points_raw: str):
         except ValueError:
             return "1-1"
 
+    # Numeric points (English "Points", Spanish "Puntos")
     if points_raw.isdigit():
         val = int(points_raw)
         if val >= 3:  # 3 or 6 both mean win
@@ -269,6 +274,7 @@ def normalize_points(points_raw: str):
             return "0-2"
 
     return "1-1"
+
 
 
 def clean_name(name: str) -> str:
@@ -343,39 +349,43 @@ def parse_arena_text(all_text: str):
 
 def parse_eventlink_text(all_text: str):
     """
-    Parse EventLink 'Pairings by Table' plain text.
-    Returns list of dicts: {round, player, opponent, result}
+    Parse EventLink 'Pairings by Table' plain text (English or Spanish).
+    Returns list of dicts: {round, player, opponent, result}, plus event_name.
     """
     matches = []
     current_round = None
-    event_name = None   # <-- new
+    event_name = None
 
     for raw_line in all_text.splitlines():
         line = raw_line.strip()
-
-        # Detect event name
-        if line.startswith("Event:"):
-            event_name = line.replace("Event:", "").strip()
+        if not line:
             continue
 
-        # Detect round header
-        if line.startswith("Round "):
+        # Detect event name (English or Spanish)
+        if line.lower().startswith("event:") or line.lower().startswith("evento:"):
+            event_name = line.split(":", 1)[1].strip()
+            continue
+
+        # Detect round header (English "Round", Spanish "Ronda")
+        if line.lower().startswith("round ") or line.lower().startswith("ronda "):
             try:
                 current_round = int(line.split()[1])
             except Exception:
                 current_round = None
             continue
 
-        # Skip headers/separators
-        if not line or line.startswith("Table") or set(line) == set("-"):
+        # Skip headers/separators (English or Spanish)
+        skip_prefixes = [
+            "table", "mesa", "eventlink", "report:", "reportar:",
+            "event date:", "fecha del evento:", "event information:", "información del evento:"
+        ]
+        if any(line.lower().startswith(pref) for pref in skip_prefixes):
             continue
-        if line.startswith("EventLink") or line.startswith("Report:") \
-           or line.startswith("Event:") or line.startswith("Event Date:") \
-           or line.startswith("Event Information:") or "Copyright" in line:
+        if set(line) == set("-") or "copyright" in line.lower():
             continue
 
-        # Bye row
-        if "***Bye***" in line:
+        # Bye row (English "***Bye***", Spanish "***Ronda libre***")
+        if "***bye***" in line.lower() or "***ronda libre***" in line.lower():
             parts = re.split(r"\s{2,}", line)
             if len(parts) >= 2:
                 player = parts[0].strip()
@@ -408,6 +418,7 @@ def parse_eventlink_text(all_text: str):
             })
 
     return matches, event_name
+
 # --- Routes ---
 
 def clean_name(name: str) -> str:
