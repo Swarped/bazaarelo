@@ -51,6 +51,7 @@ class User(db.Model, UserMixin):
     name = db.Column(db.String(120))
     email = db.Column(db.String(120), unique=True)
     is_admin = db.Column(db.Boolean, default=False)
+    is_scorekeeper = db.Column(db.Boolean, default=False)  # NEW
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -189,20 +190,35 @@ def google_login():
 
     user_info = resp.json()
     user_id = user_info.get("id")
+    email = user_info.get("email")
+    name = user_info.get("name")
 
-    if not user_id:
-        flash("Missing Google user id.", "error")
+    if not user_id or not email:
+        flash("Missing Google user id or email.", "error")
         return redirect(url_for("players"))
 
+    # Try to find by id first
     user = User.query.get(user_id)
+
     if not user:
-        user = User(id=user_id, name=user_info.get("name"), email=user_info.get("email"))
-        db.session.add(user)
-        db.session.commit()
+        # If no user with this id, check if someone already exists with this email
+        existing_by_email = User.query.filter_by(email=email).first()
+        if existing_by_email:
+            # Update that record to use the new Google id
+            existing_by_email.id = user_id
+            existing_by_email.name = name
+            db.session.commit()
+            user = existing_by_email
+        else:
+            # Create brand new user
+            user = User(id=user_id, name=name, email=email)
+            db.session.add(user)
+            db.session.commit()
 
     login_user(user)
     flash(f"Logged in as {user.name}", "success")
     return redirect(url_for("players"))
+
 
 @app.route("/logout")
 def logout():
@@ -222,6 +238,7 @@ def admin_panel():
         action = request.form.get("action")
 
         if action == "add_by_email":
+            # existing admin creation logic
             email = request.form.get("email", "").strip()
             if not email:
                 flash("Email required.", "error")
@@ -231,24 +248,56 @@ def admin_panel():
                 user.is_admin = True
                 flash(f"{email} promoted to admin.", "success")
             else:
-                # placeholder account (will be replaced on real Google login)
                 user = User(id=email, name=email.split("@")[0], email=email, is_admin=True)
                 db.session.add(user)
                 flash(f"New admin created for {email}.", "success")
             db.session.commit()
+
+        elif action == "add_scorekeeper_by_email":
+            # NEW: add scorekeeper by email
+            email = request.form.get("email", "").strip()
+            if not email:
+                flash("Email required.", "error")
+                return redirect(url_for("admin_panel"))
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.is_scorekeeper = True
+                flash(f"{email} promoted to scorekeeper.", "success")
+            else:
+                user = User(id=email, name=email.split("@")[0], email=email, is_scorekeeper=True)
+                db.session.add(user)
+                flash(f"New scorekeeper created for {email}.", "success")
+            db.session.commit()
+
         else:
+            # toggle roles
             user_id = request.form.get("user_id")
-            make_admin = request.form.get("make_admin") == "true"
+            make_admin = request.form.get("make_admin")
+            make_scorekeeper = request.form.get("make_scorekeeper")
             user = User.query.get(user_id)
             if user:
-                user.is_admin = make_admin
+                if make_admin is not None:
+                    user.is_admin = (make_admin == "true")
+                if make_scorekeeper is not None:
+                    user.is_scorekeeper = (make_scorekeeper == "true")
                 db.session.commit()
-                flash(f"Updated admin status for {user.email}", "success")
+                flash(f"Updated roles for {user.email}", "success")
 
         return redirect(url_for("admin_panel"))
 
     users = User.query.all()
     return render_template("admin.html", users=users)
+
+@app.route("/make_me_admin")
+@login_required
+def make_me_admin():
+    # Promote the current user to admin automatically
+    current_user.is_admin = True
+    db.session.commit()
+    flash("You are now an admin!", "success")
+    return redirect(url_for("admin_panel"))
+
+
 
 @app.route('/archetype/<name>/edit', methods=['GET','POST'])
 @login_required
@@ -551,6 +600,10 @@ def choose_tournament_type():
 @app.route('/tournament/new', methods=['GET', 'POST'])
 @login_required
 def new_tournament():
+    if not (current_user.is_admin or current_user.is_scorekeeper):
+        flash("Only admins or scorekeepers can create tournaments.", "error")
+        return redirect(url_for('players'))
+
     if request.method == 'POST':
         workflow = request.form.get('workflow')
 

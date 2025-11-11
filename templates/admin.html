@@ -7,16 +7,31 @@
   <button type="submit" class="btn btn-primary">Add Admin</button>
 </form>
 
+<h2>Add Scorekeeper by Email</h2>
+<form method="POST">
+  <input type="hidden" name="action" value="add_scorekeeper_by_email">
+  <input type="email" name="email" placeholder="Enter email" required>
+  <button type="submit" class="btn btn-primary">Add Scorekeeper</button>
+</form>
+
 <hr>
 
 <table>
-  <tr><th>Name</th><th>Email</th><th>Admin?</th><th>Actions</th></tr>
+  <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Admin?</th>
+    <th>Scorekeeper?</th>
+    <th>Actions</th>
+  </tr>
   {% for u in users %}
   <tr>
     <td>{{ u.name }}</td>
     <td>{{ u.email }}</td>
     <td>{{ "Yes" if u.is_admin else "No" }}</td>
+    <td>{{ "Yes" if u.is_scorekeeper else "No" }}</td>
     <td>
+      <!-- Toggle Admin -->
       <form method="POST" style="display:inline;">
         <input type="hidden" name="user_id" value="{{ u.id }}">
         <input type="hidden" name="make_admin" value="{{ 'false' if u.is_admin else 'true' }}">
@@ -24,6 +39,17 @@
           <button type="submit" class="btn btn-danger">Remove Admin</button>
         {% else %}
           <button type="submit" class="btn btn-primary">Make Admin</button>
+        {% endif %}
+      </form>
+
+      <!-- Toggle Scorekeeper -->
+      <form method="POST" style="display:inline;">
+        <input type="hidden" name="user_id" value="{{ u.id }}">
+        <input type="hidden" name="make_scorekeeper" value="{{ 'false' if u.is_scorekeeper else 'true' }}">
+        {% if u.is_scorekeeper %}
+          <button type="submit" class="btn btn-danger">Remove Scorekeeper</button>
+        {% else %}
+          <button type="submit" class="btn btn-primary">Make Scorekeeper</button>
         {% endif %}
       </form>
     </td>
