@@ -13,7 +13,6 @@
         margin-right: 4px;
       }
 
-
       body {
         font-family: Arial, Helvetica, sans-serif;
         max-width: 900px;
@@ -95,7 +94,6 @@
         background-color: #eef;
       }
 
-      /* Flash messages */
       .flash-error {
         background: #f8d7da;
         color: #721c24;
@@ -111,12 +109,10 @@
         border: 1px solid #c3e6cb;
       }
 
-      /* Actions column */
       td.actions {
         width: 180px;
       }
 
-      /* Hover action buttons */
       .player-actions {
         display: none;
         gap: 0.5rem;
@@ -142,7 +138,6 @@
       }
       .btn-merge:hover { background-color: #0069d9; }
 
-      /* Modal styles */
       .modal {
         display: none;
         position: fixed;
@@ -199,12 +194,9 @@
     <i class="material-icons">list</i> See Past Tournaments
   </a>
 {% endif %}
-
-
       </div>
     </header>
 
-    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -217,42 +209,80 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Search bar -->
     <input type="text" id="searchBar" placeholder="Search players...">
 
-    <!-- Player table -->
-    <table id="playersTable">
-      <tr><th>Name</th><th>Elo</th>{% if current_user.is_authenticated %}<th>Actions</th>{% endif %}</tr>
-{% for p in players %}
-<tr class="clickable-row"
-    tabindex="0"
-    role="link"
-    aria-label="Open info for {{ p.name }}"
-    data-href="{{ url_for('player_info', pid=p.id) }}">
-  <td>{{ p.name }}</td>
-  <td>{{ p.elo }}</td>
-  {% if current_user.is_authenticated %}
-  <td class="actions">
-    <div class="player-actions">
-      <form method="POST" action="{{ url_for('delete_player', pid=p.id) }}"
-            onsubmit="return confirm('Delete {{ p.name }}?');">
-        <button type="submit" class="action-btn btn-delete">
-          <i class="material-icons">delete</i> Delete
-        </button>
-      </form>
-      <button class="action-btn btn-merge"
-              data-source-id="{{ p.id }}"
-              data-source-name="{{ p.name|e }}">
-        <i class="material-icons">merge_type</i> Merge
-      </button>
-    </div>
-  </td>
-  {% endif %}
-</tr>
-{% endfor %}
+    <div style="display: flex; gap: 2rem;">
+      <div style="flex: 1;">
+        <table id="playersTable">
+          <tr><th>Name</th><th>Elo</th>{% if current_user.is_authenticated %}<th>Actions</th>{% endif %}</tr>
+          {% for p in players %}
+          <tr class="clickable-row"
+              tabindex="0"
+              role="link"
+              aria-label="Open info for {{ p.name }}"
+              data-href="{{ url_for('player_info', pid=p.id) }}">
+            <td>{{ p.name }}</td>
+            <td>{{ p.elo }}</td>
+            {% if current_user.is_authenticated %}
+            <td class="actions">
+              <div class="player-actions">
+                <form method="POST" action="{{ url_for('delete_player', pid=p.id) }}"
+                      onsubmit="return confirm('Delete {{ p.name }}?');">
+                  <button type="submit" class="action-btn btn-delete">
+                    <i class="material-icons">delete</i> Delete
+                  </button>
+                </form>
+                <button class="action-btn btn-merge"
+                        data-source-id="{{ p.id }}"
+                        data-source-name="{{ p.name|e }}">
+                  <i class="material-icons">merge_type</i> Merge
+                </button>
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+<aside style="width: 240px;">
+<a href="{{ url_for('decks_list') }}" class="btn btn-primary" 
+   style="display:block; margin-bottom:1rem; text-align:center; padding:1rem; font-size:1.1rem;">
+  <i class="material-icons" style="vertical-align:middle; font-size:22px;">style</i> 
+  See All Decks
+</a>
 
-    </table>
-    <!-- Merge Player Modal -->
+
+  <h3 style="margin-bottom: 1rem;">Top Decks</h3>
+  {% for deck in top_decks %}
+  <a href="{{ url_for('deck_detail', deck_name=deck.name) }}"
+     style="display: block; position: relative; margin-bottom: 1rem; border-radius: 6px; overflow: hidden; text-decoration: none;">
+    <div style="
+      background-image: url('{{ url_for('static', filename=deck.image_url) if deck.image_url else '' }}');
+      background-size: cover;
+      background-position: center;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;">
+      <span style="
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+        text-shadow: 2px 2px 4px black;
+        text-align: center;
+        padding: 0.5rem;
+        background: rgba(0,0,0,0.3);
+        width: 100%;">
+        {{ deck.name }}
+      </span>
+    </div>
+  </a>
+  {% endfor %}
+</aside>
+
+
+    </div>
+
     {% if current_user.is_authenticated %}
     <div id="mergeModal" class="modal">
       <div class="modal-content">
@@ -273,9 +303,7 @@
     </div>
     {% endif %}
 
-    
 <script>
-  // Merge Modal logic
   const mergeModal = document.getElementById("mergeModal");
   const mergeSourceId = document.getElementById("mergeSourceId");
   const mergeSourceName = document.getElementById("mergeSourceName");
@@ -297,7 +325,6 @@
     openMergeModal(id, name);
   });
 
-  // Search filter
   const searchBar = document.getElementById("searchBar");
   searchBar.addEventListener("keyup", () => {
     const filter = searchBar.value.toLowerCase();
@@ -308,7 +335,6 @@
     });
   });
 
-  // Make player rows clickable
   document.querySelectorAll('tr.clickable-row').forEach(row => {
     row.addEventListener('click', () => {
       const href = row.getAttribute('data-href');
@@ -324,14 +350,12 @@
   });
 </script>
 
-    </script>
-    {% if current_user.is_authenticated and current_user.is_admin %}
+{% if current_user.is_authenticated and current_user.is_admin %}
   <form method="POST" action="{{ url_for('reset_db') }}" 
         onsubmit="return confirm('⚠️ This will delete ALL data. Are you sure?');">
     <button type="submit" class="btn btn-danger" style="margin-top:2rem;">
-  <i class="material-icons">delete_forever</i> Delete Database
-</button>
-
+      <i class="material-icons">delete_forever</i> Delete Database
+    </button>
   </form>
 {% endif %}
   </body>

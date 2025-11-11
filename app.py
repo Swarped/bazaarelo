@@ -445,6 +445,8 @@ def parse_eventlink_text(all_text: str):
 def home():
     return redirect(url_for('players'))
 
+from sqlalchemy import func
+
 @app.route('/players', methods=['GET', 'POST'])
 def players():
     if request.method == 'POST':
@@ -456,7 +458,27 @@ def players():
         return redirect(url_for('players'))
 
     all_players = Player.query.order_by(Player.elo.desc()).all()
-    return render_template('players.html', players=all_players)
+
+    # Top 4 archetypes by number of decks
+    top_archetypes = (
+        db.session.query(Deck.name, func.count(Deck.id).label("count"))
+        .filter(Deck.name.isnot(None))
+        .group_by(Deck.name)
+        .order_by(func.count(Deck.id).desc())
+        .limit(4)
+        .all()
+    )
+
+    top_decks = []
+    for name, _ in top_archetypes:
+        last_deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
+        top_decks.append({
+            "name": name,
+            "image_url": last_deck.image_url if last_deck and last_deck.image_url else ""
+        })
+
+    return render_template('players.html', players=all_players, top_decks=top_decks)
+
 
 @app.route('/decks')
 def decks_list():
