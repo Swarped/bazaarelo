@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <title>Choose Tournament Type</title>
+    <style>
+.material-icons {
+  font-size: 24px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.material-icons.large {
+  font-size: 48px;
+}
+
+
+
+
+      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; text-align: center; }
+      h1 { margin-bottom: 2rem; }
+      .option {
+        display: inline-block;
+        width: 40%;
+        margin: 1rem;
+        padding: 2rem;
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        color: #333;
+        font-size: 1.2rem;
+        transition: background 0.3s;
+      }
+      .option:hover {
+        background: #f0f0f0;
+      }
+      .option h2 {
+        margin-top: 0;
+        color: #4CAF50;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Choose Tournament Type</h1>
+<a href="{{ url_for('new_tournament') }}" class="option">
+  <h2><i class="material-icons large">emoji_events</i> Competitive (ELO)</h2>
+  <p>Track player ratings with ELO. Full standings and rating updates.</p>
+</a>
+<a href="{{ url_for('new_tournament_casual') }}" class="option">
+  <h2><i class="material-icons large">celebration</i> Casual (Top 8)</h2>
+  <p>Quick setup for casual play. Only Top 8 standings, no ELO changes.</p>
+</a>
+
+  </body>
+</html>

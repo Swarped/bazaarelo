@@ -72,7 +72,6 @@
         background-color: #f9f9f9;
       }
 
-      /* Aggressive hover + smooth transition */
       tr.clickable-row {
         transition: background-color 140ms ease, color 140ms ease;
       }
@@ -82,9 +81,68 @@
         cursor: pointer;
       }
 
-      /* Preserve link color if any anchor appears inside cells */
       tr.clickable-row:hover a {
         color: white;
+      }
+
+      .toggle-container {
+        position: relative;
+        display: flex;
+        width: 400px;
+        height: 50px;
+        background-color: #ddd;
+        border-radius: 30px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+      }
+
+      .toggle-container input {
+        display: none;
+      }
+
+      .toggle-container label {
+        flex: 1;
+        text-align: center;
+        line-height: 50px;
+        cursor: pointer;
+        z-index: 2;
+        color: #333;
+        font-weight: bold;
+        transition: color 0.3s;
+      }
+
+      .toggle-container .toggle-slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        background-color: #4CAF50;
+        border-radius: 30px;
+        transition: transform 0.3s;
+        z-index: 1;
+      }
+
+      .toggle-container input#casual:checked ~ .toggle-slider {
+        transform: translateX(100%);
+      }
+
+      .toggle-container input#competitive:checked + label {
+        color: white;
+      }
+      .toggle-container input#casual:checked + label {
+        color: white;
+      }
+
+      #competitive-table, #casual-table {
+        margin-top: 1rem;
+      }
+
+      #competitive-table h2,
+      #casual-table h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.2rem;
+        color: #2c3e50;
       }
     </style>
   </head>
@@ -96,27 +154,67 @@
       </div>
     </header>
 
-    <table>
-      <tr>
-        <th>Tournament</th>
-        <th>Date</th>
-        <th>Rounds</th>
-        <th>Player Count</th>
-      </tr>
-      {% for t in tournaments %}
-      <tr class="clickable-row"
-          tabindex="0"
-          role="link"
-          aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
-          data-href="{{ url_for('tournament_standings', tid=t.id) }}">
-        <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
-        <td>{{ t.date }}</td>
-        <td>{{ t.rounds }}</td>
-        <td>{{ t.count }}</td>
-      </tr>
-      {% endfor %}
-    </table>
+    <div class="toggle-container">
+      <input type="radio" id="competitive" name="toggle" checked>
+      <label for="competitive">Competitive</label>
+      <input type="radio" id="casual" name="toggle">
+      <label for="casual">Casual</label>
+      <div class="toggle-slider"></div>
+    </div>
 
+    <div id="competitive-table">
+      <h2>Competitive Tournaments</h2>
+      <table>
+<tr>
+  <th>Tournament</th>
+  <th>Date</th>
+  <th>Rounds</th>
+  <th>Player Count</th>
+  <th>Top Cut</th>
+</tr>
+
+        {% for t in competitive_tournaments %}
+        <tr class="clickable-row"
+            tabindex="0"
+            role="link"
+            aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
+            data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+          <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
+          <td>{{ t.date }}</td>
+          <td>{{ t.rounds }}</td>
+          <td>{{ t.count }}</td>
+          <td>{{ t.top_cut if t.top_cut else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <div id="casual-table" style="display:none;">
+      <h2>Casual Tournaments</h2>
+      <table>
+<tr>
+  <th>Tournament</th>
+  <th>Date</th>
+  <th>Rounds</th>
+  <th>Player Count</th>
+  <th>Top Cut</th>
+</tr>
+
+        {% for t in casual_tournaments %}
+        <tr class="clickable-row"
+            tabindex="0"
+            role="link"
+            aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
+            data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+          <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
+          <td>{{ t.date }}</td>
+          <td>{{ t.rounds }}</td>
+          <td>{{ t.player_count if t.player_count else '-' }}</td>   <!-- changed here -->
+          <td>{{ t.top_cut if t.top_cut else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
     <!-- Danger zone -->
     <form method="POST" action="{{ url_for('reset_db') }}"
           onsubmit="return confirm('Are you sure you want to delete ALL tournament data?');">
@@ -139,6 +237,16 @@
             if (href) window.location.href = href;
           }
         });
+      });
+
+      // Toggle between competitive and casual tables
+      document.getElementById('competitive').addEventListener('change', () => {
+        document.getElementById('competitive-table').style.display = 'block';
+        document.getElementById('casual-table').style.display = 'none';
+      });
+      document.getElementById('casual').addEventListener('change', () => {
+        document.getElementById('competitive-table').style.display = 'none';
+        document.getElementById('casual-table').style.display = 'block';
       });
     </script>
   </body>

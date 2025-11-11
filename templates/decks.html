@@ -1,0 +1,324 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Deck Archetypes</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: 2rem auto;
+  }
+
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: #4CAF50;
+  color: white;
+}
+.btn-primary:hover {
+  background-color: #45a049;
+}
+
+.btn-danger {
+  background-color: #d9534f;
+  color: white;
+}
+.btn-danger:hover {
+  background-color: #c9302c;
+}
+
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* ensures consistent column widths */
+  }
+
+th, td {
+  border: 1px solid #ccc;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.3rem 0.5rem; /* less vertical padding */
+  font-size: 0.95rem;
+}
+
+
+td.archetype-cell {
+  text-align: left;
+  font-weight: bold;
+}
+
+.count-cell {
+  width: 60px; /* narrower deck count column */
+}
+
+.tier-cell {
+  width: 120px;
+}
+
+.tier-box {
+  background: #4CAF50;
+  color: white;
+  padding: .3rem .5rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.tier-box input {
+  border: none;
+  background: transparent;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  width: 80px;
+}
+
+
+  th {
+    background: #f0f0f0;
+    padding: 1rem;
+  }
+
+  tr.clickable-row:hover {
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+  }
+
+/* --- Image column --- */
+th:first-child, td:first-child {
+  width: 240px;   /* wider column */
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 80px;   /* fixed row height for images */
+  overflow: hidden;
+}
+
+.image-wrapper img,
+.image-wrapper .placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(255,255,255,0.8);
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 4px;
+}
+
+  .archetype-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* crop/scale to fill square */
+    border-radius: 0;  /* no rounded corners */
+    display: block;
+  }
+
+
+
+
+  /* --- Other cells --- */
+  td {
+    padding: 1rem;
+  }
+
+  .mana-icon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+
+  .colors-cell {
+    text-align: right;
+  }
+
+  /* --- Modal --- */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.5);
+  }
+
+  .modal-content {
+    background: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 6px;
+    width: 400px;
+  }
+
+  .close {
+    float: right;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+
+  form { margin-top: 1rem; }
+  input[type="file"] { margin-bottom: 1rem; }
+  button {
+    padding: .5rem 1rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:hover { background: #0056b3; }
+</style>
+
+</head>
+
+<header>
+  <h1>Deck Archetypes</h1>
+  <div>
+{% if current_user.is_authenticated %}
+  <a href="{{ url_for('logout') }}" class="btn btn-danger">
+    <i class="material-icons">logout</i> Logout ({{ current_user.name }})
+  </a>
+{% else %}
+  <a href="{{ url_for('google.login') }}" class="btn btn-primary">
+    <i class="material-icons">login</i> Login with Google
+  </a>
+{% endif %}
+
+  </div>
+</header>
+
+
+<body>
+  <h1>Deck Archetypes</h1>
+  <table>
+    <tr>
+  <th> </th>
+  <th>Archetype</th>
+  <th>Tier</th>
+  <th>Count</th>
+  <th>Colors</th>
+</tr>
+
+    {% for name, decks in archetypes.items() %}
+    {% set last_deck = decks[-1] %}
+    <tr class="clickable-row"
+        data-href="{{ url_for('deck_detail', deck_name=name) }}"
+        data-colors='{{ archetype_colors[name]|tojson if archetype_colors and name in archetype_colors else "" }}'>
+      <td>
+<div class="image-wrapper">
+  {% if last_deck.image_url %}
+    <img src="{{ url_for('static', filename=last_deck.image_url) }}" alt="{{ name }} image" class="archetype-img">
+  {% else %}
+    <div class="placeholder">
+      <span class="material-icons">image</span>
+    </div>
+  {% endif %}
+  {% if current_user.is_authenticated and current_user.is_admin %}
+    <button class="edit-btn" data-archetype="{{ name }}"><span class="material-icons">edit</span></button>
+  {% endif %}
+</div>
+      </td>
+      <td class="archetype-cell">{{ name }}</td>
+<td class="tier-cell">
+  <div class="tier-box">
+    <input type="text" value="Tier 1">
+  </div>
+</td>
+<td class="count-cell">{{ decks|length }}</td>
+<td class="colors-cell"></td>
+
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h3 id="modalTitle">Upload Image</h3>
+      <form id="uploadForm" method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept=".jpg" required>
+        <button type="submit">Save Image</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Make rows clickable
+    document.querySelectorAll('tr.clickable-row').forEach(row=>{
+      row.addEventListener('click', e=>{
+        // prevent row click if edit button clicked
+        if(e.target.closest('.edit-btn')) return;
+        const href=row.getAttribute('data-href');
+        if(href) window.location.href=href;
+      });
+    });
+
+    // Edit button opens modal
+    document.querySelectorAll('.edit-btn').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        e.stopPropagation();
+        const archetype = btn.getAttribute('data-archetype');
+        document.getElementById('modalTitle').textContent = "Upload Image for " + archetype;
+        const form = document.getElementById('uploadForm');
+        form.action = "/archetype/" + encodeURIComponent(archetype) + "/edit";
+        document.getElementById('uploadModal').style.display = 'block';
+      });
+    });
+
+    function closeModal() {
+      document.getElementById('uploadModal').style.display = 'none';
+    }
+
+    // Render colors
+    let symbolMap = {};
+    fetch("https://api.scryfall.com/symbology")
+      .then(res => res.json())
+      .then(data => {
+        data.data.forEach(sym => { symbolMap[sym.symbol] = sym.svg_uri; });
+        document.querySelectorAll('tr.clickable-row').forEach(row => {
+          const colorsRaw = row.dataset.colors;
+          if (!colorsRaw) return;
+          const colors = JSON.parse(colorsRaw || '""');
+          const cell = row.querySelector(".colors-cell");
+          if (cell) {
+            cell.innerHTML = "";
+            ["W","U","B","R","G"].forEach(c => {
+              if (colors.includes(c)) {
+                const token = `{${c}}`;
+                const uri = symbolMap[token];
+                if (uri) {
+                  cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
+                }
+              }
+            });
+          }
+        });
+      });
+  </script>
+</body>
+</html>

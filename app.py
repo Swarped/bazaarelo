@@ -6,6 +6,11 @@ from flask import Flask, request, render_template, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from flask_dance.contrib.google import make_google_blueprint, google
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+import requests
+import html
+from werkzeug.utils import secure_filename
+from PIL import Image
+
 
 import sys
 print("Hello from Flask startup", file=sys.stderr)
@@ -76,6 +81,8 @@ class Tournament(db.Model):
     rounds = db.Column(db.Integer, nullable=False)
     imported_from_text = db.Column(db.Boolean, default=False)
     top_cut = db.Column(db.Integer, nullable=True)
+    casual = db.Column(db.Boolean, default=False) 
+    player_count = db.Column(db.Integer, nullable=True)  # NEW
 
 class TournamentPlayer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -96,9 +103,13 @@ class Deck(db.Model):
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=True)
     name = db.Column(db.String(120))
     list_text = db.Column(db.Text)
+    colors = db.Column(db.String(10))  # NEW: store deck colors like "WUBRG"
+    image_url = db.Column(db.String(255))  # NEW: store archetype image path
 
     player = db.relationship('Player', backref='decks')
     tournament = db.relationship('Tournament', backref='decks')
+
+
 
 # --- Helpers ---
 def ensure_player(name: str) -> Player:
@@ -162,6 +173,9 @@ def update_elo(player_a, player_b, score_a, score_b, k=32):
     expected_b = 1 / (1 + 10 ** ((player_a.elo - player_b.elo) / 400))
     player_a.elo += int(k * (result_a - expected_a))
     player_b.elo += int(k * (result_b - expected_b))
+
+
+
 # --- Auth routes ---
 @app.route("/google_login")
 def google_login():
@@ -235,6 +249,50 @@ def admin_panel():
 
     users = User.query.all()
     return render_template("admin.html", users=users)
+
+@app.route('/archetype/<name>/edit', methods=['GET','POST'])
+@login_required
+def edit_archetype(name):
+    if not current_user.is_admin:
+        flash("Admins only", "error")
+        return redirect(url_for('decks_list'))
+
+    if request.method == 'POST':
+        file = request.files.get('image')
+        if not file or file.filename == '':
+            flash("No file selected", "error")
+            return redirect(url_for('decks_list'))
+
+        # enforce .jpg
+        if not file.filename.lower().endswith('.jpg'):
+            flash("Only .jpg files are allowed", "error")
+            return redirect(url_for('decks_list'))
+
+        filename = secure_filename(file.filename)
+        upload_dir = os.path.join(app.static_folder, 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, filename)
+
+        # resize to 512x512
+        img = Image.open(file)
+        img = img.convert("RGB")
+        img = img.resize((512, 512))
+        img.save(path, "JPEG")
+
+        # assign to last deck of archetype
+        deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
+        if deck:
+            deck.image_url = f'uploads/{filename}'
+            db.session.commit()
+            flash("Image updated", "success")
+        else:
+            flash("No deck found for archetype", "error")
+
+        return redirect(url_for('decks_list'))
+
+    return render_template("edit_archetype.html", name=name)
+
+
 
 # --- Player search for autocomplete ---
 @app.route('/players/search')
@@ -400,6 +458,53 @@ def players():
     all_players = Player.query.order_by(Player.elo.desc()).all()
     return render_template('players.html', players=all_players)
 
+@app.route('/decks')
+def decks_list():
+    decks = Deck.query.filter(Deck.name.isnot(None)).all()
+    archetypes = {}
+    for d in decks:
+        archetypes.setdefault(d.name, []).append(d)
+
+    # compute colors for each archetype using the last submitted deck
+    archetype_colors = {}
+    for name, deck_list in archetypes.items():
+        # sort by id (or by tournament_id/date if you prefer)
+        last_deck = sorted(deck_list, key=lambda d: d.id)[-1]
+        archetype_colors[name] = last_deck.colors or ""
+
+    return render_template(
+        "decks.html",
+        archetypes=archetypes,
+        archetype_colors=archetype_colors
+    )
+
+@app.route('/decks/<deck_name>')
+def deck_detail(deck_name):
+    decks = Deck.query.filter_by(name=deck_name).all()
+    rows = []
+    for d in decks:
+        player = Player.query.get(d.player_id)
+        tournament = Tournament.query.get(d.tournament_id)
+        tp = TournamentPlayer.query.filter_by(tournament_id=tournament.id, player_id=player.id).first()
+        rank = getattr(tp, "rank", None)
+        rows.append({
+            "player": player,
+            "tournament": tournament,
+            "rank": rank,
+            "deck": d
+        })
+
+    # get most recent deck image
+    last_deck = Deck.query.filter_by(name=deck_name).order_by(Deck.id.desc()).first()
+    image_url = last_deck.image_url if last_deck and last_deck.image_url else None
+
+    return render_template("deck_detail.html",
+                           deck_name=deck_name,
+                           rows=rows,
+                           image_url=image_url)
+
+
+
 @app.route('/reset_db', methods=['POST'])
 @login_required
 def reset_db():
@@ -412,6 +517,13 @@ def reset_db():
         db.Model.metadata.create_all(bind=db.engine)
     flash("Tournament database has been reset.", "success")
     return redirect(url_for('players'))
+
+@app.route('/tournament/choose')
+@login_required
+def choose_tournament_type():
+    return render_template('choose_tournament_type.html')
+
+
 
 # --- New Tournament ---
 @app.route('/tournament/new', methods=['GET', 'POST'])
@@ -541,6 +653,7 @@ def new_tournament():
 
 
 
+
 def merge_player_ids(source_id, target_id):
     if source_id == target_id:
         return
@@ -555,6 +668,103 @@ def merge_player_ids(source_id, target_id):
     if src:
         db.session.delete(src)
         db.session.commit()
+
+
+@app.route('/tournament/new_casual', methods=['GET', 'POST'])
+@login_required
+def new_tournament_casual():
+    if request.method == 'POST':
+        tournament_name = request.form.get('tournament_name')
+        date_str = request.form.get('date')
+        top_cut = int(request.form.get('top_cut') or 0)
+        player_count = int(request.form.get('player_count') or 0)
+        rounds = int(request.form.get('rounds') or 0)
+
+        # Create the casual tournament
+        tournament = Tournament(
+            name=tournament_name,
+            date=datetime.strptime(date_str, "%Y-%m-%d"),
+            rounds=rounds,                 # no swiss rounds
+            imported_from_text=False,
+            casual=True,               # mark as casual
+            top_cut=top_cut,
+            player_count=player_count   # store it here
+        )
+        tournament.player_count = player_count  # if you add this column
+        db.session.add(tournament)
+        db.session.commit()
+
+        # Loop through final standings rows
+        for rank in range(1, top_cut + 1):
+            player_name = request.form.get(f"player_{rank}", "").strip()
+            deck_name = html.escape(request.form.get(f"deck_name_{rank}", "").strip())
+            deck_list = html.escape(request.form.get(f"deck_list_{rank}", "").strip())
+
+            if player_name:
+                player = ensure_player(player_name)
+                db.session.add(TournamentPlayer(tournament_id=tournament.id, player_id=player.id))
+
+                if deck_name or deck_list:
+                    deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
+                    if deck:
+                        deck.name = deck_name
+                        deck.list_text = deck_list
+                    else:
+                        deck = Deck(player_id=player.id,
+                                    tournament_id=tournament.id,
+                                    name=deck_name,
+                                    list_text=deck_list)
+                        db.session.add(deck)
+
+
+        db.session.commit()
+        flash("Casual tournament final standings saved!", "success")
+
+        # Redirect to a view page that shows players/decks so Edit/Delete buttons appear
+        return redirect(url_for('players'))
+
+
+    return render_template('new_tournament_casual.html')
+
+@app.route('/player/<int:pid>')
+@login_required
+def player_info(pid):
+    player = Player.query.get_or_404(pid)
+    tournaments = (
+        db.session.query(Tournament, TournamentPlayer)
+        .join(TournamentPlayer, Tournament.id == TournamentPlayer.tournament_id)
+        .filter(TournamentPlayer.player_id == pid)
+        .all()
+    )
+
+    history = []
+    top1 = top4 = top8 = 0
+    for t, tp in tournaments:
+        deck = Deck.query.filter_by(player_id=pid, tournament_id=t.id).first()
+
+        rank = getattr(tp, "rank", None)  # use the actual rank field
+
+        if rank and t.top_cut and rank <= t.top_cut:
+            if rank == 1:
+                top1 += 1
+            elif rank <= 4:
+                top4 += 1
+            elif rank <= 8:
+                top8 += 1
+
+        history.append({"tournament": t, "deck": deck, "rank": rank})
+
+    stats = {
+        "tournaments_played": len(tournaments),
+        "top1": top1,
+        "top4": top4,
+        "top8": top8,
+    }
+
+    return render_template("playerinfo.html", player=player, history=history, stats=stats)
+
+
+
 
 @app.route('/confirm_players', methods=['POST'])
 def confirm_players():
@@ -662,13 +872,16 @@ def confirm_players():
 
 
 
-# --- Deck submit ---
+
+
 @app.route('/submit_deck', methods=['POST'])
 def submit_deck():
     player_id = request.form.get("player_id")
     tournament_id = request.form.get("tournament_id")
-    deck_name = request.form.get("deck_name", "")
-    deck_list = request.form.get("deck_list", "")
+
+    # sanitize here
+    deck_name = html.escape(request.form.get("deck_name", "").strip())
+    deck_list = html.escape(request.form.get("deck_list", "").strip())
 
     if not player_id or not tournament_id:
         flash("Missing player or tournament ID", "error")
@@ -685,18 +898,9 @@ def submit_deck():
 
     db.session.commit()
     flash("Deck saved!", "success")
-    return redirect(url_for("tournament_round", tid=tournament_id, round_num=1))
-
-@app.route('/remove_deck', methods=['POST'])
-def remove_deck():
-    player_id = request.form.get("player_id")
-    tournament_id = request.form.get("tournament_id")
-    deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament_id).first()
-    if deck:
-        db.session.delete(deck)
-        db.session.commit()
-        flash("Deck removed.", "success")
     return redirect(url_for('tournament_round', tid=tournament_id, round_num=1))
+
+
 
 
 @app.route('/tournament/<int:tid>/round/<int:round_num>', methods=['GET', 'POST'])
@@ -750,6 +954,8 @@ def tournament_round(tid, round_num):
                         draws += 1; points += 1
                     else:
                         losses += 1
+            deck = Deck.query.filter_by(player_id=p.id, tournament_id=tid).first()
+
             standings.append({
                 "player": p,
                 "wins": wins,
@@ -757,8 +963,13 @@ def tournament_round(tid, round_num):
                 "losses": losses,
                 "points": points,
                 "elo_delta": elo_changes[p.id],
-                "deck": Deck.query.filter_by(player_id=p.id, tournament_id=tid).first()
+                "deck": deck,
+                "deck_colors": None  # skip backend color calculation
             })
+
+
+
+
 
         standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
 
@@ -824,6 +1035,8 @@ def tournament_round(tid, round_num):
 
     return render_template('round.html', players=players, round_num=round_num,
                            tid=tid, matches=existing_matches, tournament=tournament)
+
+
 
 
 @app.route('/tournament/<int:tid>/apply_top_cut', methods=['POST'])
@@ -921,10 +1134,24 @@ with app.app_context():
 # --- Misc ---
 @app.route('/tournaments')
 def tournaments_list():
+    # Query all tournaments ordered by date
     tournaments = Tournament.query.order_by(Tournament.date.desc()).all()
+
+    # Attach player counts
     for t in tournaments:
         t.count = TournamentPlayer.query.filter_by(tournament_id=t.id).count()
-    return render_template('tournaments.html', tournaments=tournaments)
+
+    # Separate into competitive and casual lists
+    competitive_tournaments = [t for t in tournaments if not t.casual]
+    casual_tournaments = [t for t in tournaments if t.casual]
+
+    # Pass both lists to the template
+    return render_template(
+        'tournaments.html',
+        competitive_tournaments=competitive_tournaments,
+        casual_tournaments=casual_tournaments
+    )
+
 
 @app.route('/delete_player/<int:pid>', methods=['POST'])
 @login_required
@@ -983,6 +1210,40 @@ def recalc_elo(player_id, k=32):
 
     db.session.commit()
 
+@app.route('/tournament/<int:tid>/casual_final', methods=['GET', 'POST'])
+@login_required
+def casual_final(tid):
+    tournament = Tournament.query.get_or_404(tid)
+    if not tournament.casual:
+        flash("This page is only for casual tournaments.", "error")
+        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+
+    if request.method == 'POST':
+        # Collect top cut players and their deck lists
+        top_cut = int(request.form.get("top_cut"))
+        tournament.top_cut = top_cut
+        db.session.commit()
+
+        for rank in range(1, top_cut+1):
+            player_id = request.form.get(f"player_{rank}")
+            deck_name = request.form.get(f"deck_name_{rank}")
+            deck_list = request.form.get(f"deck_list_{rank}")
+            if player_id and deck_name and deck_list:
+                deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament.id).first()
+                if deck:
+                    deck.name = deck_name
+                    deck.list_text = deck_list
+                else:
+                    deck = Deck(player_id=player_id, tournament_id=tournament.id,
+                                name=deck_name, list_text=deck_list)
+                    db.session.add(deck)
+        db.session.commit()
+        flash("Casual final standings saved!", "success")
+        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+
+    players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id)\
+                          .filter(TournamentPlayer.tournament_id == tid).all()
+    return render_template("casual_final.html", tournament=tournament, players=players)
 
 
 
@@ -1035,6 +1296,60 @@ def tournament_standings(tid):
     return render_template('tournament_standings.html',
                            tournament=tournament,
                            standings=standings)
+
+
+
+
+@app.route('/remove_deck', methods=['POST'])
+def remove_deck():
+    player_id = request.form.get("player_id")
+    tournament_id = request.form.get("tournament_id")
+    deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament_id).first()
+    if deck:
+        db.session.delete(deck)
+        db.session.commit()
+        flash("Deck removed.", "success")
+    return redirect(url_for('tournament_round', tid=tournament_id, round_num=1))
+
+
+def fetch_deck_colors(deck_list_text: str) -> str:
+    colors = set()
+    for line in deck_list_text.splitlines():
+        line = line.strip()
+        if not line or line.lower().startswith("sideboard"):
+            continue
+        parts = line.split(maxsplit=1)
+        name = parts[1] if len(parts) > 1 else parts[0]
+        print("DEBUG: Looking up card name ->", name)   # <--- debug
+        resp = requests.get("https://api.scryfall.com/cards/named", params={"fuzzy": name})
+        if resp.ok:
+            data = resp.json()
+            print("DEBUG: Scryfall returned colors ->", data.get("color_identity"))  # <--- debug
+            for c in data.get("color_identity", []):
+                colors.add(c)
+        else:
+            print("DEBUG: Scryfall request failed for", name, resp.status_code)
+    order = "WUBRG"
+    result = "".join([c for c in order if c in colors])
+    print("DEBUG: Final deck colors ->", result)   # <--- debug
+    return result
+
+
+def compute_colors_from_list(deck_list_text: str) -> str:
+    colors = set()
+    for line in deck_list_text.splitlines():
+        line = line.strip()
+        if not line or line.lower().startswith("sideboard"):
+            continue
+        parts = line.split(maxsplit=1)
+        name = parts[1] if len(parts) > 1 else parts[0]
+        resp = requests.get("https://api.scryfall.com/cards/named", params={"fuzzy": name})
+        if resp.ok:
+            data = resp.json()
+            for c in data.get("color_identity", []):
+                colors.add(c)
+    order = "WUBRG"
+    return "".join([c for c in order if c in colors])
 
 # --- Run locally ---
 if __name__ == '__main__':

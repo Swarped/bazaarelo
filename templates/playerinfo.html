@@ -2,172 +2,111 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
-  <title>{{ tournament.date }} Standings</title>
+  <title>{{ player.name }} Info</title>
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 900px;
-      margin: 2rem auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: .5rem;
-      text-align: center;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    tr:nth-child(even) {
-      background-color: #f9f9f9;
-    }
-    tr.clickable-row {
-      transition: background-color 140ms ease, color 140ms ease;
-    }
-    tr.clickable-row:hover {
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-    tr.highlight {
-      background-color: #ffeeba;
-      font-weight: bold;
-    }
-    .mana-icon {
-      width: 20px;
-      height: 20px;
-      vertical-align: middle;
-      margin: 0 2px;
-    }
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-    }
-    .modal-content {
-      background-color: #fff;
-      margin: 5% auto;
-      padding: 20px;
-      border-radius: 6px;
-      width: 900px;
-      max-width: 95%;
-      display: flex;
-      gap: 2rem;
-    }
-    .modal-left, .modal-right {
-      flex: 1;
-    }
-    .modal-left h4, .modal-right h4 {
-      margin-top: 0;
-    }
-    ul.card-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    ul.card-list li {
-      padding: .3rem;
-      cursor: pointer;
-    }
-    ul.card-list li:hover {
-      background-color: #e0e0e0;
-    }
-    .modal-right img {
-      max-width: 250px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      display: none;
-    }
-    .close {
-      float: right;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-    .colors-cell {
-      text-align: right;
-    }
-    .card-list li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .card-list li span {
-      margin-left: auto;
-    }
+    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 2rem auto; }
+    .container { display: flex; gap: 2rem; }
+    .profile-panel { flex: 0 0 250px; background:#f9f9f9; border:1px solid #ccc; border-radius:6px; padding:1rem; }
+    .profile-panel h1 { font-size:1.5rem; margin-top:0; }
+    .elo { font-size: 2.5rem; font-weight: bold; color: #4CAF50; margin:1rem 0; }
+    .stat { margin:.5rem 0; font-size:1rem; }
+    .history { flex:1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
+    th { background: #f0f0f0; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    tr.clickable-row { transition: background-color 140ms ease, color 140ms ease; }
+    tr.clickable-row:hover { background-color: #007bff; color: white; cursor: pointer; }
+    .casual-tag { background:#eee; color:#333; padding:.2rem .5rem; border-radius:4px; font-size:.8rem; }
+    .colors-cell { text-align: right; }
+    .mana-icon { width:20px; height:20px; vertical-align:middle; margin:0 2px; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 6px; width: 900px; max-width: 95%; display: flex; gap: 2rem; }
+    .modal-left, .modal-right { flex: 1; }
+    .modal-left h4, .modal-right h4 { margin-top: 0; }
+    ul.card-list { list-style: none; padding: 0; margin: 0; }
+    ul.card-list li { padding: .3rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    ul.card-list li:hover { background-color: #e0e0e0; }
+    .modal-right img { max-width: 250px; border: 1px solid #ccc; border-radius: 4px; display: none; }
+    .close { float: right; font-size: 1.2rem; cursor: pointer; }
+    .btn { padding:.4rem .8rem; border:none; border-radius:4px; cursor:pointer; }
+    .btn-danger { background:#d9534f; color:white; }
+    .btn-primary { background:#007bff; color:white; }
   </style>
 </head>
 <body>
-  <h1>Standings for Tournament on {{ tournament.date }}</h1>
-  {% if tournament.top_cut %}
-    <p><strong>Top Cut:</strong> Top {{ tournament.top_cut }} players are highlighted below.</p>
-  {% endif %}
-  <table>
-    <tr>
-      <th>Rank</th>
-      <th>Player</th>
-      <th>Wins</th>
-      <th>Draws</th>
-      <th>Losses</th>
-      <th>Points</th>
-      <th>Deck</th>
-      <th>Colors</th>
-    </tr>
-    {% for s in standings %}
-    <tr
-      class="clickable-row {% if tournament.top_cut and loop.index <= tournament.top_cut %}highlight{% endif %}"
-      tabindex="0"
-      role="link"
-      aria-label="Open deck for {{ s.player.name }}"
-      data-player-name='{{ s.player.name|tojson }}'
-      data-deck-name='{{ (s.deck.name if s.deck else "")|tojson }}'
-      data-deck-list='{{ (s.deck.list_text if s.deck else "")|tojson }}'>
-      <td>{{ loop.index }}</td>
-      <td>{{ s.player.name }}</td>
-      <td>{{ s.wins }}</td>
-      <td>{{ s.draws }}</td>
-      <td>{{ s.losses }}</td>
-      <td>{{ s.points }}</td>
-      <td>{% if s.deck %}{{ s.deck.name }}{% else %}–{% endif %}</td>
-      <td class="colors-cell"></td>
-    </tr>
-    {% endfor %}
-  </table>
+<div class="container">
+  <div class="profile-panel">
+    <h1>{{ player.name }}</h1>
+    <div class="elo">{{ player.elo }}</div>
+    <div class="stat"><strong>Tournaments:</strong> {{ stats.tournaments_played }}</div>
+    <div class="stat"><strong>Top 1:</strong> {{ stats.top1 }}</div>
+    <div class="stat"><strong>Top 4:</strong> {{ stats.top4 }}</div>
+    <div class="stat"><strong>Top 8:</strong> {{ stats.top8 }}</div>
 
-  <!-- Deck Modal -->
-  <div id="deckModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-left">
-        <span class="close" onclick="closeDeckModal()">&times;</span>
-        <h3 id="deckModalTitle">Deck</h3>
-        <h4>Main Deck</h4>
-        <ul id="mainDeck" class="card-list"></ul>
-      </div>
-      <div class="modal-middle">
-        <h4>Sideboard</h4>
-        <ul id="sideboard" class="card-list"></ul>
-      </div>
-      <div class="modal-right">
-        <img id="cardPreview" src="" alt="Card preview">
-      </div>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+      <form method="POST" action="{{ url_for('delete_player', pid=player.id) }}"
+            onsubmit="return confirm('Delete {{ player.name }}?');">
+        <button type="submit" class="btn btn-danger">Delete Player</button>
+      </form>
+      <form method="POST" action="{{ url_for('merge_player') }}">
+        <input type="hidden" name="source_id" value="{{ player.id }}">
+        <button type="submit" class="btn btn-primary">Merge Player</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="history">
+    <table>
+      <tr>
+        <th>Tournament</th>
+        <th>Date</th>
+        <th>Competitive/Casual</th>
+        <th>Deck</th>
+        <th>Colors</th>
+        <th>Position</th>
+      </tr>
+      {% for h in history %}
+      <tr class="clickable-row"
+          data-player-name='{{ player.name|tojson }}'
+          data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
+          data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
+        <td>{{ h.tournament.name }}</td>
+        <td>{{ h.tournament.date }}</td>
+        <td>{% if h.tournament.casual %}<span class="casual-tag">Casual</span>{% else %}Competitive{% endif %}</td>
+        <td>{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
+        <td class="colors-cell"></td>
+        <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
+
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<!-- Deck Modal -->
+<div id="deckModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-left">
+      <span class="close" onclick="closeDeckModal()">&times;</span>
+      <h3 id="deckModalTitle">Deck</h3>
+      <h4>Main Deck</h4>
+      <ul id="mainDeck" class="card-list"></ul>
+    </div>
+    <div class="modal-middle">
+      <h4>Sideboard</h4>
+      <ul id="sideboard" class="card-list"></ul>
+    </div>
+    <div class="modal-right">
+      <img id="cardPreview" src="" alt="Card preview">
     </div>
   </div>
+</div>
   <script>
     function openDeckModal(row) {
       const playerName = JSON.parse(row.dataset.playerName || '""');
       const deckName   = JSON.parse(row.dataset.deckName || '""');
       const deckList   = JSON.parse(row.dataset.deckList || '""');
-
       if (!deckName) return;
 
       document.getElementById('deckModal').style.display = 'block';
@@ -190,8 +129,7 @@
         const parts = line.trim().split(/\s+/, 2);
         const count = parts[0];
         const name = line.trim().substring(count.length).trim();
-
-        if (!name) return; // skip blanks
+        if (!name) return;
 
         const li = document.createElement('li');
         li.textContent = count + " " + name;
@@ -220,8 +158,7 @@
                 preview.style.display = "none";
               }
             });
-          })
-          .catch(err => console.error("Scryfall fetch error", err));
+          });
 
         if (inSideboard) {
           sideboard.appendChild(li);
@@ -238,12 +175,6 @@
       const preview = document.getElementById('cardPreview');
       preview.src = "";
       preview.style.display = "none";
-    }
-
-    window.onclick = function(event) {
-      if (event.target == document.getElementById('deckModal')) {
-        closeDeckModal();
-      }
     }
 
     document.querySelectorAll('tr.clickable-row').forEach(row => {
@@ -263,7 +194,6 @@
         data.data.forEach(sym => {
           symbolMap[sym.symbol] = sym.svg_uri;
         });
-        // Now compute colors for each row
         document.querySelectorAll('tr.clickable-row').forEach(row => {
           const deckListRaw = row.dataset.deckList;
           if (deckListRaw) {
@@ -280,7 +210,7 @@
         if (uri) {
           return `<img src="${uri}" alt="${match}" class="mana-icon">`;
         }
-        return match; // fallback if not found
+        return match;
       });
     }
 

@@ -1,0 +1,426 @@
+<!doctype html>
+<html>
+  <head>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
+
+    <meta charset="utf-8">
+    <title>Create New Casual Tournament</title>
+    <style>
+
+.custom-number {
+  display: flex;
+  flex-direction: column; /* stack vertically */
+  align-items: stretch;   /* children take full width */
+  gap: .4rem;
+}
+
+.custom-number input {
+  width: 100%;
+  font-size: 1.6rem;
+  text-align: center;
+  padding: .6rem;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.custom-number button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.2rem;
+  padding: .3rem;          /* reduced vertical padding */
+  cursor: pointer;
+  width: 100%;             /* match input width */
+  box-sizing: border-box;
+}
+
+.custom-number button:hover {
+  background: #45a049;
+}
+
+
+
+
+/* Bigger, vertical, green steppers */
+.side-panel input[type="number"] {
+  font-size: 1.6rem;
+  padding: 0.8rem 1rem;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  -moz-appearance: textfield; /* remove Firefox default arrows */
+}
+
+/* WebKit browsers (Chrome, Edge, Safari) */
+.side-panel input[type="number"]::-webkit-inner-spin-button,
+.side-panel input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button;
+  display: block;
+  width: 24px;
+  height: auto;
+  background: #4CAF50;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.side-panel input[type="number"]::-webkit-inner-spin-button:hover,
+.side-panel input[type="number"]::-webkit-outer-spin-button:hover {
+  background: #45a049;
+}
+
+
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-row label {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.form-row input {
+  width: 100%;
+  font-size: 1rem;
+  padding: 0.6rem;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+.form-row input:invalid {
+  border-color: #d9534f;
+  background-color: #fff8f8;
+}
+
+.form-row input:focus {
+  outline: none;
+  border-color: #c9302c;
+}
+
+.player-input {
+  display: block;
+  width: 100%;          /* fill the entire cell */
+  box-sizing: border-box; /* include padding/border in width */
+  font-size: 1.1rem;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+
+.material-icons {
+  font-size: 18px;       /* smaller than default 24px */
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+
+body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; }
+h1 { margin-bottom: 1rem; }
+table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
+th { background: #f0f0f0; }
+.flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
+.flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; border: 1px solid #c3e6cb; }
+
+.btn-submit { margin-top: 1rem; padding: .75rem 1.5rem; font-size: 1rem;
+              background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.btn-submit:hover { background: #45a049; }
+
+.btn-deck {
+  padding: .4rem .8rem;
+  font-size: 1rem;       /* slightly larger text */
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 2px;
+  display: inline-flex;  /* align icon and text nicely */
+  align-items: center;
+}
+.btn-deck i {
+  line-height: 1;        /* keep icon vertically centered */
+}
+
+
+.btn-deck:hover { background: #0069d9; }
+.icon { margin-right: 4px; }
+
+.side-panel { flex:0 0 200px; background:#f9f9f9; padding:1rem; border:1px solid #ccc; border-radius:6px; }
+.side-panel h3 { margin-top:0; }
+.option-group { display: flex; flex-direction: column; gap: .5rem; }
+.option input[type="radio"] { display: none; }
+.option span { display: block; padding: .6rem 1rem; border: 1px solid #ccc; border-radius: 6px;
+               cursor: pointer; background: #f9f9f9; transition: all 0.2s ease; text-align: center; }
+.option input[type="radio"]:checked + span { background: #4CAF50; color: white; border-color: #4CAF50; font-weight: bold; }
+.option span:hover { background: #e0e0e0; }
+
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+         width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+.modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 6px; width: 400px; }
+.modal-content h3 { margin-top: 0; }
+.modal-content input, .modal-content textarea { width: 100%; margin-bottom: 1rem; padding: .5rem;
+                                                border: 1px solid #ccc; border-radius: 4px; }
+.close { float: right; font-size: 1.2rem; cursor: pointer; }
+    </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
+
+  </head>
+  <body>
+    <h1>Create New Casual Tournament (Final Standings)</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <div class="form-row">
+        <label>
+          Tournament Name <span style="color:#d9534f">*</span><br>
+          <input type="text" name="tournament_name" required>
+        </label>
+        <label>
+          Date <span style="color:#d9534f">*</span><br>
+          <input type="date" name="date" required>
+        </label>
+      </div>
+<div style="display:flex; gap:2rem;">
+  <div style="flex:1;">
+    <h2>Final Standings</h2>
+    <table id="standingsTable">
+      <tr><th>Rank</th><th>Player</th><th>Deck</th></tr>
+    </table>
+  </div>
+
+  <!-- Right-hand column of stacked panels -->
+  <div style="display:flex; flex-direction:column; gap:1.5rem; flex:0 0 220px;">
+    <div class="side-panel">
+      <h3>Top Cut</h3>
+      <div class="option-group">
+        <label class="option">
+          <input type="radio" name="top_cut" value="4">
+          <span>TOP 4</span>
+        </label>
+        <label class="option">
+          <input type="radio" name="top_cut" value="8">
+          <span>TOP 8</span>
+        </label>
+        <label class="option">
+          <input type="radio" name="top_cut" value="16">
+          <span>TOP 16</span>
+        </label>
+        <label class="option">
+          <input type="radio" name="top_cut" value="32">
+          <span>TOP 32</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <h3>Player Count</h3>
+      <div class="custom-number">
+        <div class="controls">
+          <button type="button" onclick="stepNumber('playerCount', 1)">▲</button>
+        </div>
+        <input type="text" name="player_count" id="playerCount" value="0" />
+        <div class="controls">
+          <button type="button" onclick="stepNumber('playerCount', -1)">▼</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <h3>Round Count</h3>
+      <div class="custom-number">
+        <div class="controls">
+          <button type="button" onclick="stepNumber('roundCount', 1)">▲</button>
+        </div>
+        <input type="text" name="rounds" id="roundCount" value="0" />
+        <div class="controls">
+          <button type="button" onclick="stepNumber('roundCount', -1)">▼</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+      <button type="submit" class="btn-submit">Save Final Standings</button>
+    </form>
+
+    <div id="deckModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeDeckModal()">&times;</span>
+        <h3 id="deckModalTitle">Add Deck</h3>
+        <label>Deck Name</label>
+        <input type="text" id="deckName">
+        <label>Deck List</label>
+        <textarea id="deckList" rows="10"></textarea>
+        <button type="button" class="btn-deck" onclick="saveDeckTemp()">
+          <i class="material-icons">save</i> Save
+        </button>
+      </div>
+    </div>
+    <script>
+
+function stepNumber(id, step) {
+  const input = document.getElementById(id);
+  let value = parseInt(input.value, 10) || 0;
+  value += step;
+  if (value < 0) value = 0;
+  if (value > 4096) value = 4096;
+  input.value = value;
+}
+
+
+
+
+function attachAutocomplete(input) {
+  input.setAttribute("autocomplete", "off"); // disable native browser suggestions
+
+  const aw = new Awesomplete(input, {
+    minChars: 2,
+    list: []
+  });
+
+  input.addEventListener("input", function() {
+    const q = this.value;
+    if (q.length < 2) {
+      aw.list = [];
+      return;
+    }
+    fetch("/players/search?q=" + encodeURIComponent(q))
+      .then(res => res.json())
+      .then(data => {
+        aw.list = data; // backend returns ["Alice","Bob","Charlie"]
+      })
+      .catch(() => {
+        aw.list = [];
+      });
+  });
+}
+
+
+
+function renderStandings(topCut) {
+  const table = document.getElementById('standingsTable');
+  table.innerHTML = '<tr><th>Rank</th><th>Player</th><th>Deck</th></tr>';
+  for (let i = 1; i <= topCut; i++) {
+    const row = document.createElement('tr');
+row.innerHTML = `
+  <td>${i}</td>
+  <td>
+    <input type="text" name="player_${i}" class="player-input" placeholder="Type player name" tabindex="${i}">
+  </td>
+  <td>
+    <div class="deck-buttons">
+      <button type="button" class="btn-deck" data-rank="${i}" onclick="openDeckModal(this)" tabindex="-1">
+        <i class="material-icons">add</i> Add
+      </button>
+    </div>
+    <input type="hidden" name="deck_name_${i}" id="deckName_${i}" tabindex="-1">
+    <input type="hidden" name="deck_list_${i}" id="deckList_${i}" tabindex="-1">
+  </td>
+`;
+
+
+    table.appendChild(row);
+  }
+  document.querySelectorAll(".player-input").forEach(el => attachAutocomplete(el));
+}
+
+document.querySelectorAll("input[name='top_cut']").forEach(radio => {
+  radio.addEventListener("change", () => {
+    renderStandings(parseInt(radio.value, 10));
+  });
+});
+
+let currentRank = null;
+function openDeckModal(button) {
+  currentRank = button.dataset.rank;
+  document.getElementById('deckModal').style.display = 'block';
+  document.getElementById('deckModalTitle').textContent =
+    (button.textContent.includes("Edit") ? "Edit Deck for Rank " : "Add Deck for Rank ") + currentRank;
+
+  document.getElementById('deckName').value = document.getElementById('deckName_' + currentRank).value || "";
+  document.getElementById('deckList').value = document.getElementById('deckList_' + currentRank).value || "";
+}
+
+function closeDeckModal() {
+  document.getElementById('deckModal').style.display = 'none';
+}
+
+function saveDeckTemp() {
+  if (!currentRank) return;
+  const deckName = document.getElementById('deckName').value;
+  const deckList = document.getElementById('deckList').value;
+
+  const safeName = deckName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeList = deckList.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  document.getElementById('deckName_' + currentRank).value = safeName;
+  document.getElementById('deckList_' + currentRank).value = safeList;
+
+  const row = document.querySelector(`#standingsTable tr:nth-child(${parseInt(currentRank,10)+1})`);
+  const btnDiv = row.querySelector(".deck-buttons");
+btnDiv.innerHTML = `
+  <button type="button" class="btn-deck" data-rank="${currentRank}" onclick="openDeckModal(this)">
+    <i class="material-icons">edit</i> Edit
+  </button>
+  <button type="button" class="btn-deck" onclick="removeDeck(${currentRank})">
+    <i class="material-icons">delete</i> Delete
+  </button>
+`;
+
+
+  closeDeckModal();
+}
+
+function removeDeck(rank) {
+  const row = document.querySelector(`#standingsTable tr:nth-child(${parseInt(rank,10)+1})`);
+  const btnDiv = row.querySelector(".deck-buttons");
+
+  btnDiv.innerHTML = `
+    <button type="button" class="btn-deck" data-rank="${rank}" onclick="openDeckModal(this)">
+      <i class="material-icons">add</i> Add Deck
+    </button>
+  `;
+
+  document.getElementById('deckName_' + rank).value = "";
+  document.getElementById('deckList_' + rank).value = "";
+}
+
+document.querySelectorAll('#deckModal input, #deckModal textarea').forEach(el => {
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  });
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && e.target.classList.contains('player-input')) {
+    e.preventDefault();
+  }
+});
+    </script>
+  </body>
+</html>
