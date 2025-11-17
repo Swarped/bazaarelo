@@ -1,8 +1,14 @@
 <!doctype html>
 <html>
+    {% extends "base.html" %}
+
+{% block title %}Tournament Round{% endblock %}
+
+{% block content %}
+
   <head>
     <meta charset="utf-8">
-    <title>Tournament Round {{ round_num }}</title>
+    
     <style>
       body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; }
       nav { margin-bottom: 1rem; }
@@ -110,6 +116,7 @@
     </style>
   </head>
   <body>
+
     <h1>Tournament Round {{ round_num }}</h1>
 
     <nav>
@@ -198,47 +205,61 @@
             {% endfor %}
           </table>
         </div>
-        <div class="side-panel">
-          <h3>Playoff Cut</h3>
-          <form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
-            <div class="option-group">
-              <label class="option">
-                <input type="radio" name="top_cut" value="" {% if not tournament.top_cut %}checked{% endif %}>
-                <span>Auto</span>
-              </label>
+<div class="side-panel">
+  <h3>Playoff Cut</h3>
+  <form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
+    <div class="option-group">
+      <label class="option">
+        <input type="radio" name="top_cut" value="" {% if not tournament.top_cut %}checked{% endif %}>
+        <span>Auto</span>
+      </label>
 
-              {% if players|length >= 4 %}
-              <label class="option">
-                <input type="radio" name="top_cut" value="4" {% if tournament.top_cut == 4 %}checked{% endif %}>
-                <span>TOP 4</span>
-              </label>
-              {% endif %}
+      {% if players|length >= 4 %}
+      <label class="option">
+        <input type="radio" name="top_cut" value="4" {% if tournament.top_cut == 4 %}checked{% endif %}>
+        <span>TOP 4</span>
+      </label>
+      {% endif %}
 
-              {% if players|length >= 8 %}
-              <label class="option">
-                <input type="radio" name="top_cut" value="8" {% if tournament.top_cut == 8 %}checked{% endif %}>
-                <span>TOP 8</span>
-              </label>
-              {% endif %}
+      {% if players|length >= 8 %}
+      <label class="option">
+        <input type="radio" name="top_cut" value="8" {% if tournament.top_cut == 8 %}checked{% endif %}>
+        <span>TOP 8</span>
+      </label>
+      {% endif %}
 
-              {% if players|length >= 16 %}
-              <label class="option">
-                <input type="radio" name="top_cut" value="16" {% if tournament.top_cut == 16 %}checked{% endif %}>
-                <span>TOP 16</span>
-              </label>
-              {% endif %}
+      {% if players|length >= 16 %}
+      <label class="option">
+        <input type="radio" name="top_cut" value="16" {% if tournament.top_cut == 16 %}checked{% endif %}>
+        <span>TOP 16</span>
+      </label>
+      {% endif %}
 
-              {% if players|length >= 32 %}
-              <label class="option">
-                <input type="radio" name="top_cut" value="32" {% if tournament.top_cut == 32 %}checked{% endif %}>
-                <span>TOP 32</span>
-              </label>
-              {% endif %}
-            </div>
-            <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
-          </form>
-        </div>
-      </div>
+      {% if players|length >= 32 %}
+      <label class="option">
+        <input type="radio" name="top_cut" value="32" {% if tournament.top_cut == 32 %}checked{% endif %}>
+        <span>TOP 32</span>
+      </label>
+      {% endif %}
+    </div>
+    <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
+  </form>
+
+<h3>Country</h3>
+<form method="POST" action="{{ url_for('set_tournament_country', tid=tid) }}">
+  <select name="country" required>
+    <option value="">-- Select Country --</option>
+    <option value="AR">Argentina</option>
+    <option value="BR">Brazil</option>
+    <option value="CL">Chile</option>
+    <option value="US">United States</option>
+    <option value="ES">Spain</option>
+  </select>
+  <button type="submit" class="btn-confirm" style="margin-top:0.5rem;">Save Country</button>
+</form>
+
+</div>
+
 
       <!-- Deck Modal -->
       <div id="deckModal" class="modal">
@@ -390,4 +411,5 @@ function updateHighlight(topCut) {
       </form>
     {% endif %}
   </body>
+  {% endblock %}
 </html>

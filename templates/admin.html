@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
 <h1>Admin Panel</h1>
 
 <h2>Add Admin by Email</h2>
@@ -16,6 +21,7 @@
 
 <hr>
 
+<h2>Existing Users</h2>
 <table>
   <tr>
     <th>Name</th>
@@ -56,3 +62,67 @@
   </tr>
   {% endfor %}
 </table>
+
+<hr>
+
+<h2>Pending Access Requests</h2>
+{% if requests %}
+  <table>
+    <tr>
+      <th>User</th>
+      <th>Email</th>
+      <th>Reason</th>
+      <th>Date Submitted</th>
+      <th>Actions</th>
+    </tr>
+    {% for req in requests %}
+    <tr>
+      <td>{{ req.user.name }}</td>
+      <td>{{ req.user.email }}</td>
+      <td>{{ req.reason }}</td>
+      <td>{{ req.date_submitted.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>
+        <form method="POST" style="display:inline;">
+          <input type="hidden" name="action" value="approve_scorekeeper">
+          <input type="hidden" name="request_id" value="{{ req.id }}">
+          <button type="submit" class="btn btn-primary">Approve Scorekeeper</button>
+        </form>
+        <form method="POST" style="display:inline;">
+          <input type="hidden" name="action" value="approve_admin">
+          <input type="hidden" name="request_id" value="{{ req.id }}">
+          <button type="submit" class="btn btn-primary">Approve Admin</button>
+        </form>
+        <form method="POST" style="display:inline;">
+          <input type="hidden" name="action" value="deny_request">
+          <input type="hidden" name="request_id" value="{{ req.id }}">
+          <button type="submit" class="btn btn-danger">Deny</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p>No pending requests.</p>
+{% endif %}
+
+<hr>
+
+<h2>Danger Zone</h2>
+<p><strong>Warning:</strong> These actions are irreversible!</p>
+
+<form method="POST" style="margin-bottom:1rem;">
+  <input type="hidden" name="action" value="delete_user_db">
+  <button type="submit" class="btn btn-danger">Delete User Database</button>
+</form>
+
+<form method="POST" style="margin-bottom:1rem;">
+  <input type="hidden" name="action" value="delete_tournament_db">
+  <button type="submit" class="btn btn-danger">Delete Tournament Database</button>
+</form>
+
+<form method="POST">
+  <input type="hidden" name="action" value="delete_all_players">
+  <button type="submit" class="btn btn-danger">Delete All Players</button>
+</form>
+
+{% endblock %}

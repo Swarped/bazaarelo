@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Request Access{% endblock %}
+
+{% block content %}
+  <h1>Request Access</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        {% if category == 'error' %}
+          <div class="flash-error">{{ message }}</div>
+        {% elif category == 'success' %}
+          <div class="flash-success">{{ message }}</div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('request_access') }}" style="margin-top:1rem;">
+    <label for="reason">Please explain why you need access:</label><br>
+    <textarea id="reason" name="reason" rows="6" style="width:100%; margin-top:0.5rem;" required></textarea>
+
+    <button type="submit" class="btn-primary" style="margin-top:1rem;">
+      <i class="material-icons">send</i> Submit Request
+    </button>
+  </form>
+{% endblock %}

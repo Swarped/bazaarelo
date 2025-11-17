@@ -1,6 +1,12 @@
 <!doctype html>
 <html>
+  {% extends "base.html" %}
+
+{% block content %}
+
   <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
+
     <meta charset="utf-8">
     <title>Past Tournaments</title>
     <style>
@@ -149,9 +155,6 @@
   <body>
     <header>
       <h1>Past Tournaments</h1>
-      <div>
-        <a href="{{ url_for('players') }}" class="btn btn-primary">🏠 Back to Players</a>
-      </div>
     </header>
 
     <div class="toggle-container">
@@ -171,6 +174,7 @@
   <th>Rounds</th>
   <th>Player Count</th>
   <th>Top Cut</th>
+  <th>Country</th>
 </tr>
 
         {% for t in competitive_tournaments %}
@@ -184,6 +188,15 @@
           <td>{{ t.rounds }}</td>
           <td>{{ t.count }}</td>
           <td>{{ t.top_cut if t.top_cut else '-' }}</td>
+          <td>
+  {% if t.country %}
+    <span class="fi fi-{{ t.country|lower }}"></span>
+  {% else %}
+    –
+  {% endif %}
+</td>
+
+
         </tr>
         {% endfor %}
       </table>
@@ -250,4 +263,5 @@
       });
     </script>
   </body>
+  {% endblock %}
 </html>

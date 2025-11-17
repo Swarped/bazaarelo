@@ -1,8 +1,14 @@
 <!doctype html>
 <html>
+{% extends "base.html" %}
+
+{% block title %}Create New Tournament{% endblock %}
+
+{% block content %}
+
   <head>
     <meta charset="utf-8">
-    <title>Create New Tournament</title>
+
     <style>
       body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
       h1 { margin-bottom: 1rem; }
@@ -95,21 +101,6 @@
       {% endif %}
     {% endwith %}
 
-    <h2>Manual Tournament</h2>
-    <form method="POST">
-      <input type="hidden" name="workflow" value="manual">
-      <label>Tournament Name:<br>
-        <input type="text" name="tournament_name" required>
-      </label><br><br>
-      <label>Date:<br>
-        <input type="date" name="date" required>
-      </label><br><br>
-      <div id="players-container">
-        <input type="text" name="players" class="player-input" placeholder="Type player name and press Enter">
-      </div>
-      <button type="submit" class="btn-submit">Create Tournament</button>
-    </form>
-
     <h2>Import Tournament</h2>
     <form method="POST">
       <input type="hidden" name="workflow" value="import">
@@ -133,6 +124,21 @@
       <textarea name="import_text" rows="20" placeholder="Paste your tournament data here..."></textarea><br>
       <button type="submit" class="btn-submit">Import Tournament</button>
     </form>
+
+   <h2>Manual Tournament</h2>
+    <form method="POST">
+      <input type="hidden" name="workflow" value="manual">
+      <label>Tournament Name:<br>
+        <input type="text" name="tournament_name" required>
+      </label><br><br>
+      <label>Date:<br>
+        <input type="date" name="date" required>
+      </label><br><br>
+      <div id="players-container">
+        <input type="text" name="players" class="player-input" placeholder="Type player name and press Enter">
+      </div>
+      <button type="submit" class="btn-submit">Create Tournament</button>
+    </form>    
 
 <script>
   function attachAutocomplete(input) {
@@ -185,4 +191,5 @@
 </script>
 
   </body>
+  {% endblock %}
 </html>

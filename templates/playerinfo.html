@@ -1,5 +1,11 @@
 <!doctype html>
 <html>
+  
+  {% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
+
 <head>
   <meta charset="utf-8">
   <title>{{ player.name }} Info</title>
@@ -35,10 +41,12 @@
   </style>
 </head>
 <body>
+
 <div class="container">
   <div class="profile-panel">
     <h1>{{ player.name }}</h1>
     <div class="elo">{{ player.elo }}</div>
+    <div class="stat"><strong>Country:</strong> {{ player_country(player.id) or '–' }}</div>
     <div class="stat"><strong>Tournaments:</strong> {{ stats.tournaments_played }}</div>
     <div class="stat"><strong>Top 1:</strong> {{ stats.top1 }}</div>
     <div class="stat"><strong>Top 4:</strong> {{ stats.top4 }}</div>
@@ -56,33 +64,41 @@
     {% endif %}
   </div>
 
-  <div class="history">
-    <table>
-      <tr>
-        <th>Tournament</th>
-        <th>Date</th>
-        <th>Competitive/Casual</th>
-        <th>Deck</th>
-        <th>Colors</th>
-        <th>Position</th>
-      </tr>
-      {% for h in history %}
-      <tr class="clickable-row"
-          data-player-name='{{ player.name|tojson }}'
-          data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
-          data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
-        <td>{{ h.tournament.name }}</td>
-        <td>{{ h.tournament.date }}</td>
-        <td>{% if h.tournament.casual %}<span class="casual-tag">Casual</span>{% else %}Competitive{% endif %}</td>
-        <td>{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
-        <td class="colors-cell"></td>
-        <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
+<div class="history">
+  <table>
+    <tr>
+      <th>Tournament</th>
+      <th>Date</th>
+      <th>Competitive/Casual</th>
+      <th>Deck</th>
+      <th>Colors</th>
+      <th>Position</th>
+      <th>Country</th>
+    </tr>
+    {% for h in history %}
+    <tr class="clickable-row"
+        data-player-name='{{ player.name|tojson }}'
+        data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
+        data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
+      <td>{{ h.tournament.name }}</td>
+      <td>{{ h.tournament.date }}</td>
+      <td>{% if h.tournament.casual %}<span class="casual-tag">Casual</span>{% else %}Competitive{% endif %}</td>
+      <td>{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
+      <td class="colors-cell"></td>
+      <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
+      <td>
+  {% if h.tournament.country %}
+    <span class="fi fi-{{ h.tournament.country|lower }}"></span>
+  {% else %}
+    –
+  {% endif %}
+</td>
 
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
+    </tr>
+    {% endfor %}
+  </table>
 </div>
+
 
 <!-- Deck Modal -->
 <div id="deckModal" class="modal">
@@ -249,4 +265,5 @@
     }
   </script>
 </body>
+{% endblock %}
 </html>

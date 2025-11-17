@@ -1,12 +1,17 @@
 <!doctype html>
 <html>
+  
+  {% extends "base.html" %}
+
+{% block title %}Create New Casual Tournament{% endblock %}
+
+{% block content %}
   <head>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
 
     <meta charset="utf-8">
-    <title>Create New Casual Tournament</title>
     <style>
 
 .custom-number {
@@ -43,7 +48,10 @@
 }
 
 
-
+input.invalid {
+  border-color: #d9534f !important;
+  background-color: #fff8f8 !important;
+}
 
 /* Bigger, vertical, green steppers */
 .side-panel input[type="number"] {
@@ -117,6 +125,12 @@
   border-radius: 6px;
 }
 
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 0 0 220px;   /* fixed width */
+}
 
 .material-icons {
   font-size: 18px;       /* smaller than default 24px */
@@ -125,7 +139,18 @@
 }
 
 
-body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; }
+#standingsTable {
+  width: 100%;
+  max-width: none;   /* override any inherited bounds */
+}
+
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;          /* no auto centering */
+}
+
+
 h1 { margin-bottom: 1rem; }
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
@@ -157,7 +182,31 @@ th { background: #f0f0f0; }
 .btn-deck:hover { background: #0069d9; }
 .icon { margin-right: 4px; }
 
-.side-panel { flex:0 0 200px; background:#f9f9f9; padding:1rem; border:1px solid #ccc; border-radius:6px; }
+.custom-select select {
+  width: 100%;
+  font-size: 1.2rem;
+  padding: 0.75rem;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  background-color: #fff;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
+}
+.custom-select select:focus {
+  outline: none;
+  border-color: #45a049;
+}
+
+.side-panel {
+  background:#f9f9f9;
+  padding:1rem;
+  border:1px solid #ccc;
+  border-radius:6px;
+  width: 100%;       /* fill the right column only */
+  box-sizing: border-box;
+}
+
 .side-panel h3 { margin-top:0; }
 .option-group { display: flex; flex-direction: column; gap: .5rem; }
 .option input[type="radio"] { display: none; }
@@ -179,6 +228,7 @@ th { background: #f0f0f0; }
 
   </head>
   <body>
+  <div class="content-wrapper">
     <h1>Create New Casual Tournament (Final Standings)</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -201,70 +251,88 @@ th { background: #f0f0f0; }
         </label>
       </div>
 <div style="display:flex; gap:2rem;">
-  <div style="flex:1;">
+  <!-- Left column: standings table -->
+  <div style="flex:2; min-width:0;">
     <h2>Final Standings</h2>
     <table id="standingsTable">
       <tr><th>Rank</th><th>Player</th><th>Deck</th></tr>
     </table>
-  </div>
+</div>
+  <!-- Right side: two side-panel columns -->
+  <div style="display:flex; gap:2rem; flex:0 0 460px;">
+    
+    <!-- First column: Top Cut + Country -->
+    <div class="right-column">
+      <div class="side-panel">
+        <h3>Top Cut</h3>
+        <div class="option-group">
+          <label class="option">
+            <input type="radio" name="top_cut" value="4">
+            <span>TOP 4</span>
+          </label>
+          <label class="option">
+            <input type="radio" name="top_cut" value="8">
+            <span>TOP 8</span>
+          </label>
+          <label class="option">
+            <input type="radio" name="top_cut" value="16">
+            <span>TOP 16</span>
+          </label>
+          <label class="option">
+            <input type="radio" name="top_cut" value="32">
+            <span>TOP 32</span>
+          </label>
+        </div>
+      </div>
 
-  <!-- Right-hand column of stacked panels -->
-  <div style="display:flex; flex-direction:column; gap:1.5rem; flex:0 0 220px;">
-    <div class="side-panel">
-      <h3>Top Cut</h3>
-      <div class="option-group">
-        <label class="option">
-          <input type="radio" name="top_cut" value="4">
-          <span>TOP 4</span>
-        </label>
-        <label class="option">
-          <input type="radio" name="top_cut" value="8">
-          <span>TOP 8</span>
-        </label>
-        <label class="option">
-          <input type="radio" name="top_cut" value="16">
-          <span>TOP 16</span>
-        </label>
-        <label class="option">
-          <input type="radio" name="top_cut" value="32">
-          <span>TOP 32</span>
-        </label>
+      <div class="side-panel">
+        <h3>Country</h3>
+        <div class="custom-select">
+          <select id="countrySelect" name="country" required>
+            <option value="">-- Select Country --</option>
+            <option value="AR">Argentina</option>
+            <option value="BR">Brazil</option>
+            <option value="CL">Chile</option>
+            <option value="US">United States</option>
+            <option value="ES">Spain</option>
+          </select>
+        </div>
       </div>
     </div>
 
-    <div class="side-panel">
-      <h3>Player Count</h3>
-      <div class="custom-number">
-        <div class="controls">
-          <button type="button" onclick="stepNumber('playerCount', 1)">▲</button>
-        </div>
-        <input type="text" name="player_count" id="playerCount" value="0" />
-        <div class="controls">
-          <button type="button" onclick="stepNumber('playerCount', -1)">▼</button>
+    <!-- Second column: Player Count + Round Count -->
+    <div class="right-column">
+      <div class="side-panel">
+        <h3>Player Count</h3>
+        <div class="custom-number">
+          <div class="controls">
+            <button type="button" onclick="stepNumber('playerCount', 1)">▲</button>
+          </div>
+          <input type="text" name="player_count" id="playerCount" value="0" min="1" />
+          <div class="controls">
+            <button type="button" onclick="stepNumber('playerCount', -1)">▼</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="side-panel">
-      <h3>Round Count</h3>
-      <div class="custom-number">
-        <div class="controls">
-          <button type="button" onclick="stepNumber('roundCount', 1)">▲</button>
-        </div>
-        <input type="text" name="rounds" id="roundCount" value="0" />
-        <div class="controls">
-          <button type="button" onclick="stepNumber('roundCount', -1)">▼</button>
+      <div class="side-panel">
+        <h3>Round Count</h3>
+        <div class="custom-number">
+          <div class="controls">
+            <button type="button" onclick="stepNumber('roundCount', 1)">▲</button>
+          </div>
+          <input type="text" name="rounds" id="roundCount" value="0" min="1" />
+          <div class="controls">
+            <button type="button" onclick="stepNumber('roundCount', -1)">▼</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-
-
-
-      <button type="submit" class="btn-submit">Save Final Standings</button>
-    </form>
+<button type="submit" class="btn-submit">Save Final Standings</button>
+</form>
 
     <div id="deckModal" class="modal">
       <div class="modal-content">
@@ -290,7 +358,31 @@ function stepNumber(id, step) {
   input.value = value;
 }
 
+document.querySelector("form").addEventListener("submit", function(e) {
+  const playerCount = document.getElementById("playerCount");
+  const roundCount = document.getElementById("roundCount");
 
+  let valid = true;
+
+  if (parseInt(playerCount.value, 10) <= 0) {
+    playerCount.classList.add("invalid");
+    valid = false;
+  } else {
+    playerCount.classList.remove("invalid");
+  }
+
+  if (parseInt(roundCount.value, 10) <= 0) {
+    roundCount.classList.add("invalid");
+    valid = false;
+  } else {
+    roundCount.classList.remove("invalid");
+  }
+
+  if (!valid) {
+    e.preventDefault();
+    alert("Player Count and Round Count must be greater than zero.");
+  }
+});
 
 
 function attachAutocomplete(input) {
@@ -422,5 +514,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
     </script>
+    </div>
   </body>
+  {% endblock %}
 </html>

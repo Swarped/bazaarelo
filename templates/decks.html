@@ -1,8 +1,12 @@
 <!doctype html>
 <html>
+  {% extends "base.html" %}
+
+{% block title %}Deck Archetypes{% endblock %}
+
+{% block content %}
 <head>
   <meta charset="utf-8">
-  <title>Deck Archetypes</title>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
   body {
@@ -195,25 +199,8 @@ th:first-child, td:first-child {
 
 </head>
 
-<header>
-  <h1>Deck Archetypes</h1>
-  <div>
-{% if current_user.is_authenticated %}
-  <a href="{{ url_for('logout') }}" class="btn btn-danger">
-    <i class="material-icons">logout</i> Logout ({{ current_user.name }})
-  </a>
-{% else %}
-  <a href="{{ url_for('google.login') }}" class="btn btn-primary">
-    <i class="material-icons">login</i> Login with Google
-  </a>
-{% endif %}
-
-  </div>
-</header>
-
-
 <body>
-  <h1>Deck Archetypes</h1>
+
   <table>
     <tr>
   <th> </th>
@@ -321,4 +308,5 @@ th:first-child, td:first-child {
       });
   </script>
 </body>
+{% endblock %}
 </html>

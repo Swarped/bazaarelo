@@ -47,11 +47,12 @@ login_manager.login_view = "google.login"
 
 class User(db.Model, UserMixin):
     __bind_key__ = 'users'
-    id = db.Column(db.String(255), primary_key=True)  # Google user_id
+    __tablename__ = 'users'   # explicitly name the table
+    id = db.Column(db.String(255), primary_key=True)
     name = db.Column(db.String(120))
     email = db.Column(db.String(120), unique=True)
     is_admin = db.Column(db.Boolean, default=False)
-    is_scorekeeper = db.Column(db.Boolean, default=False)  # NEW
+    is_scorekeeper = db.Column(db.Boolean, default=False)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -74,6 +75,7 @@ class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
     elo = db.Column(db.Integer, default=DEFAULT_ELO)
+    country = db.Column(db.String(5), nullable=True)  # ISO code like "AR", "BR"
 
 class Tournament(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -83,12 +85,16 @@ class Tournament(db.Model):
     imported_from_text = db.Column(db.Boolean, default=False)
     top_cut = db.Column(db.Integer, nullable=True)
     casual = db.Column(db.Boolean, default=False) 
-    player_count = db.Column(db.Integer, nullable=True)  # NEW
+    player_count = db.Column(db.Integer, nullable=True) 
+    country = db.Column(db.String(5), nullable=True)  # NEW: ISO code like "AR", "BR", "CL"
 
 class TournamentPlayer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+
+    tournament = db.relationship('Tournament', backref='tournament_players')
+    player = db.relationship('Player', backref='tournament_players')
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -238,7 +244,6 @@ def admin_panel():
         action = request.form.get("action")
 
         if action == "add_by_email":
-            # existing admin creation logic
             email = request.form.get("email", "").strip()
             if not email:
                 flash("Email required.", "error")
@@ -254,7 +259,6 @@ def admin_panel():
             db.session.commit()
 
         elif action == "add_scorekeeper_by_email":
-            # NEW: add scorekeeper by email
             email = request.form.get("email", "").strip()
             if not email:
                 flash("Email required.", "error")
@@ -268,6 +272,49 @@ def admin_panel():
                 db.session.add(user)
                 flash(f"New scorekeeper created for {email}.", "success")
             db.session.commit()
+
+        elif action in ["approve_scorekeeper", "approve_admin", "deny_request"]:
+            req_id = request.form.get("request_id")
+            req = AccessRequest.query.get(req_id)
+            if not req:
+                flash("Request not found.", "error")
+                return redirect(url_for("admin_panel"))
+
+            if action == "approve_scorekeeper":
+                req.user.is_scorekeeper = True
+                req.reviewed = True
+                flash(f"{req.user.email} approved as scorekeeper.", "success")
+
+            elif action == "approve_admin":
+                req.user.is_admin = True
+                req.reviewed = True
+                flash(f"{req.user.email} approved as admin.", "success")
+
+            elif action == "deny_request":
+                req.reviewed = True
+                flash(f"Request from {req.user.email} denied.", "error")
+
+            db.session.commit()
+
+        elif action == "delete_user_db":
+            engine = db.get_engine(app, bind='users')
+            # Drop all tables bound to 'users'
+            db.Model.metadata.drop_all(bind=engine, tables=[User.__table__, AccessRequest.__table__])
+            # Recreate them
+            db.Model.metadata.create_all(bind=engine, tables=[User.__table__, AccessRequest.__table__])
+            flash("User database has been reset (tables dropped and recreated).", "success")
+
+
+        elif action == "delete_tournament_db":
+            # Drop all tables in default bind
+            db.Model.metadata.drop_all(bind=db.engine)
+            db.Model.metadata.create_all(bind=db.engine)
+            flash("Tournament database has been deleted and recreated.", "success")
+
+        elif action == "delete_all_players":
+            Player.query.delete()
+            db.session.commit()
+            flash("All players have been deleted.", "success")
 
         else:
             # toggle roles
@@ -286,16 +333,49 @@ def admin_panel():
         return redirect(url_for("admin_panel"))
 
     users = User.query.all()
-    return render_template("admin.html", users=users)
+    requests = AccessRequest.query.filter_by(reviewed=False).order_by(AccessRequest.date_submitted.desc()).all()
+    return render_template("admin.html", users=users, requests=requests)
 
 @app.route("/make_me_admin")
 @login_required
 def make_me_admin():
-    # Promote the current user to admin automatically
     current_user.is_admin = True
     db.session.commit()
     flash("You are now an admin!", "success")
     return redirect(url_for("admin_panel"))
+
+@app.route("/request_access", methods=["GET", "POST"])
+@login_required
+def request_access():
+    if request.method == "POST":
+        reason = request.form.get("reason")
+        # Save or email the request here
+        flash("Your access request has been submitted.", "success")
+        return redirect(url_for("players"))
+    return render_template("request_access.html")
+
+
+class AccessRequest(db.Model):
+    __bind_key__ = 'users'    # same bind as User
+    __tablename__ = 'access_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(255), db.ForeignKey('users.id'), nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
+    reviewed = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User', backref='access_requests')
+
+
+@app.route("/admin/access_requests")
+@login_required
+def access_requests():
+    if not current_user.is_admin:
+        flash("You do not have permission to view access requests.", "error")
+        return redirect(url_for("players"))
+
+    requests = AccessRequest.query.order_by(AccessRequest.date_submitted.desc()).all()
+    return render_template("access_requests.html", requests=requests)
 
 
 
@@ -506,7 +586,15 @@ def players():
             db.session.commit()
         return redirect(url_for('players'))
 
-    all_players = Player.query.order_by(Player.elo.desc()).all()
+    # --- NEW: country filter ---
+    country_filter = request.args.get("country")
+
+    # Base query: order players by elo
+    query = Player.query.order_by(Player.elo.desc())
+    if country_filter:
+        query = query.filter(Player.country == country_filter)
+
+    all_players = query.all()
 
     # Top 4 archetypes by number of decks
     top_archetypes = (
@@ -526,7 +614,28 @@ def players():
             "image_url": last_deck.image_url if last_deck and last_deck.image_url else ""
         })
 
-    return render_template('players.html', players=all_players, top_decks=top_decks)
+    # Helper: get most recent tournament country for a player
+    def player_country(player_id):
+        tp = (
+            TournamentPlayer.query.filter_by(player_id=player_id)
+            .order_by(TournamentPlayer.id.desc())
+            .first()
+        )
+        if tp:
+            tournament = Tournament.query.get(tp.tournament_id)
+            if tournament and tournament.country:
+                return tournament.country
+        return None
+
+    return render_template(
+        'players.html',
+        players=all_players,
+        top_decks=top_decks,
+        player_country=player_country   # <-- pass helper
+    )
+
+
+
 
 
 @app.route('/decks')
@@ -616,19 +725,24 @@ def new_tournament():
             num_players = len(player_objs)
             rounds = 3 if num_players <= 8 else 4 if num_players <= 16 else \
                      5 if num_players <= 32 else 6 if num_players <= 64 else 7
-
+            country = request.form.get("country")
             tournament = Tournament(
                 name=tournament_name,
                 date=datetime.strptime(date_str, "%Y-%m-%d"),
                 rounds=rounds,
                 imported_from_text=False,
+                country=country
             )
             db.session.add(tournament)
             db.session.commit()
 
             for p in player_objs:
                 db.session.add(TournamentPlayer(tournament_id=tournament.id, player_id=p.id))
+                # NEW: auto‑set player country if missing
+                if not p.country and tournament.country:
+                    p.country = tournament.country
             db.session.commit()
+
 
             return redirect(url_for('tournament_round', tid=tournament.id, round_num=1))
 
@@ -659,7 +773,11 @@ def new_tournament():
 
                 for p in player_objs:
                     db.session.add(TournamentPlayer(tournament_id=tournament.id, player_id=p.id))
+                    # NEW: auto‑set player country if missing
+                    if not p.country and tournament.country:
+                        p.country = tournament.country
                 db.session.commit()
+
 
                 for m in parsed_matches:
                     p1 = ensure_player(m["player"])
@@ -709,7 +827,11 @@ def new_tournament():
 
                 for p in player_objs:
                     db.session.add(TournamentPlayer(tournament_id=tournament.id, player_id=p.id))
+                    # NEW: auto‑set player country if missing
+                    if not p.country and tournament.country:
+                        p.country = tournament.country
                 db.session.commit()
+
 
                 for m in parsed_matches:
                     p1 = ensure_player(m["player"])
@@ -744,6 +866,34 @@ def merge_player_ids(source_id, target_id):
         db.session.delete(src)
         db.session.commit()
 
+from collections import Counter
+
+def player_country(player_id):
+    tournaments = (
+        db.session.query(Tournament.country)
+        .join(TournamentPlayer, Tournament.id == TournamentPlayer.tournament_id)
+        .filter(TournamentPlayer.player_id == player_id, Tournament.country.isnot(None))
+        .all()
+    )
+    if not tournaments:
+        return None
+    countries = [c[0] for c in tournaments]
+    counts = Counter(countries)
+    # max count; if tie, earliest tournament
+    max_count = max(counts.values())
+    top_countries = [c for c, v in counts.items() if v == max_count]
+    if len(top_countries) == 1:
+        return top_countries[0]
+    else:
+        first_tournament = (
+            db.session.query(Tournament.country)
+            .join(TournamentPlayer, Tournament.id == TournamentPlayer.tournament_id)
+            .filter(TournamentPlayer.player_id == player_id)
+            .order_by(Tournament.date.asc())
+            .first()
+        )
+        return first_tournament[0] if first_tournament else None
+
 
 @app.route('/tournament/new_casual', methods=['GET', 'POST'])
 @login_required
@@ -754,7 +904,7 @@ def new_tournament_casual():
         top_cut = int(request.form.get('top_cut') or 0)
         player_count = int(request.form.get('player_count') or 0)
         rounds = int(request.form.get('rounds') or 0)
-
+        country = request.form.get("country")
         # Create the casual tournament
         tournament = Tournament(
             name=tournament_name,
@@ -763,7 +913,8 @@ def new_tournament_casual():
             imported_from_text=False,
             casual=True,               # mark as casual
             top_cut=top_cut,
-            player_count=player_count   # store it here
+            player_count=player_count,   # store it here
+            country=country
         )
         tournament.player_count = player_count  # if you add this column
         db.session.add(tournament)
@@ -801,6 +952,27 @@ def new_tournament_casual():
 
     return render_template('new_tournament_casual.html')
 
+@app.route('/tournament/<int:tid>/set_country', methods=['POST'])
+@login_required
+def set_tournament_country(tid):
+    tournament = Tournament.query.get_or_404(tid)
+
+    # Only admins or scorekeepers can change
+    if not (current_user.is_admin or current_user.is_scorekeeper):
+        flash("You do not have permission to set the country.", "error")
+        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+
+    country = request.form.get("country")
+    if not country:
+        flash("Please select a country.", "error")
+        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+
+    tournament.country = country
+    db.session.commit()
+    flash(f"Tournament country set to {country}.", "success")
+    return redirect(url_for('tournament_round', tid=tid, round_num=1))
+
+
 @app.route('/player/<int:pid>')
 @login_required
 def player_info(pid):
@@ -816,8 +988,7 @@ def player_info(pid):
     top1 = top4 = top8 = 0
     for t, tp in tournaments:
         deck = Deck.query.filter_by(player_id=pid, tournament_id=t.id).first()
-
-        rank = getattr(tp, "rank", None)  # use the actual rank field
+        rank = getattr(tp, "rank", None)
 
         if rank and t.top_cut and rank <= t.top_cut:
             if rank == 1:
@@ -836,7 +1007,27 @@ def player_info(pid):
         "top8": top8,
     }
 
-    return render_template("playerinfo.html", player=player, history=history, stats=stats)
+    # Helper: get most recent tournament country for a player
+    def player_country(player_id):
+        tp = (
+            TournamentPlayer.query.filter_by(player_id=player_id)
+            .order_by(TournamentPlayer.id.desc())
+            .first()
+        )
+        if tp:
+            tournament = Tournament.query.get(tp.tournament_id)
+            if tournament and tournament.country:
+                return tournament.country
+        return None
+
+    return render_template(
+        "playerinfo.html",
+        player=player,
+        history=history,
+        stats=stats,
+        player_country=player_country   # <-- pass helper
+    )
+
 
 
 
@@ -954,26 +1145,53 @@ def submit_deck():
     player_id = request.form.get("player_id")
     tournament_id = request.form.get("tournament_id")
 
-    # sanitize here
     deck_name = html.escape(request.form.get("deck_name", "").strip())
-    deck_list = html.escape(request.form.get("deck_list", "").strip())
+    deck_list = request.form.get("deck_list", "").strip()  # don't escape yet
 
     if not player_id or not tournament_id:
         flash("Missing player or tournament ID", "error")
         return redirect(url_for("players"))
 
+    # --- Check spelling with Scryfall ---
+    errors = []
+    for line in deck_list.splitlines():
+        line = line.strip()
+        if not line or line.lower().startswith("sideboard"):
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) < 2:
+            continue
+        card_name = parts[1]
+        try:
+            resp = requests.get("https://api.scryfall.com/cards/named",
+                                params={"fuzzy": card_name}, timeout=5)
+            card = resp.json()
+            if card.get("object") == "error":
+                errors.append(f"{line} → {card.get('details')}")
+        except Exception:
+            errors.append(f"{line} → validation error")
+
+    if errors:
+        for e in errors:
+            flash(e, "error")
+        # keep the modal open by redirecting back
+        return redirect(url_for("tournament_round", tid=tournament_id, round_num=1))
+
+    # --- Save deck ---
     deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament_id).first()
     if deck:
         deck.name = deck_name
-        deck.list_text = deck_list
+        deck.list_text = html.escape(deck_list)
     else:
         deck = Deck(player_id=player_id, tournament_id=tournament_id,
-                    name=deck_name, list_text=deck_list)
+                    name=deck_name, list_text=html.escape(deck_list))
         db.session.add(deck)
 
     db.session.commit()
     flash("Deck saved!", "success")
     return redirect(url_for('tournament_round', tid=tournament_id, round_num=1))
+
+
 
 
 

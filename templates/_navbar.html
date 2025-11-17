@@ -1,0 +1,41 @@
+<div class="navbar-wrapper">
+  <nav class="navbar">
+    <a href="{{ url_for('players') }}"><i class="material-icons">groups</i> Player List</a>
+    <a href="{{ url_for('choose_tournament_type') }}"><i class="material-icons">add</i> Add Tournament</a>
+    <a href="{{ url_for('tournaments_list') }}"><i class="material-icons">list</i> See Past Tournaments</a>
+    <a href="{{ url_for('decks_list') }}"><i class="material-icons">style</i> See All Decks</a>
+
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('logout') }}" class="btn btn-danger">
+        <i class="material-icons">logout</i> Logout ({{ current_user.name }})
+      </a>
+    {% else %}
+      <a href="{{ url_for('google.login') }}" class="btn btn-primary">
+        <i class="material-icons">login</i> Login with Google
+      </a>
+    {% endif %}
+  </nav>
+</div>
+
+<style>
+  .navbar-wrapper {
+    width: 100%;              /* full screen width */
+    margin: 0;                /* no centering */
+  }
+.navbar {
+  position: relative;
+  left: 0;
+  width: 100vw;   /* full viewport width */
+  margin-left: calc(-50vw + 50%); /* trick to break out of centered container */
+}
+  .navbar a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .navbar a:hover { text-decoration: underline; }
+  .navbar .material-icons { font-size: 18px; }
+</style>

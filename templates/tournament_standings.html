@@ -1,10 +1,17 @@
 <!doctype html>
 <html>
+
+
+  {% extends "base.html" %}
+
+{% block title %}{{ tournament.date }} Standings{% endblock %}
+
+{% block content %}
+
 <head>
   <meta charset="utf-8">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-  <title>{{ tournament.date }} Standings</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -319,4 +326,5 @@
     }
   </script>
 </body>
+{% endblock %}
 </html>

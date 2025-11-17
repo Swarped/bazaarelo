@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+      /* Navbar container */
+      header.site-header {
+        width: 100%;
+        background: #d4edda; /* light green */
+        border-bottom: 1px solid #b2d8b2; /* subtle divider line */
+      }
+
+      .navbar-inner {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        align-items: center;
+        box-sizing: border-box;
+      }
+
+      /* Navbar links */
+      .navbar-inner a {
+        color: #155724; /* dark green text for readability */
+        text-decoration: none;
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+
+      .navbar-inner a:hover { text-decoration: underline; }
+      .navbar-inner .material-icons { font-size: 18px; color: #155724; }
+
+.container {
+  max-width: 1200px;   /* or 1100px, adjust to taste */
+  margin: 2rem auto;   /* top/bottom margin, auto centers horizontally */
+  padding: 1rem;       /* inner spacing */
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+}
+
+
+      /* Buttons */
+      .btn-primary,
+      .btn-danger,
+      .btn-request {
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        color: #fff !important; /* force white text */
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: background-color 0.2s ease, opacity 0.2s ease;
+      }
+
+      .btn-primary { background-color: #4CAF50; }   /* green */
+      .btn-danger  { background-color: #d9534f; }   /* red */
+      .btn-request { background-color: #007bff; }   /* blue */
+
+      /* Button icons */
+      .btn-primary .material-icons,
+      .btn-danger .material-icons,
+      .btn-request .material-icons {
+        color: #fff !important;
+      }
+
+      /* Hover states */
+      .btn-primary:hover { background-color: #45a049; text-decoration: none; }
+      .btn-danger:hover  { background-color: #c9302c; text-decoration: none; }
+      .btn-request:hover { background-color: #0069d9; text-decoration: none; }
+
+      /* Active states */
+      .btn-primary:active,
+      .btn-danger:active,
+      .btn-request:active {
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="navbar-inner">
+        <a href="{{ url_for('players') }}"><i class="material-icons">groups</i> Player List</a>
+
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_admin or current_user.is_scorekeeper %}
+            <a href="{{ url_for('choose_tournament_type') }}" class="btn-primary">
+              <i class="material-icons">add</i> Add Tournament
+            </a>
+          {% else %}
+            <a href="{{ url_for('request_access') }}" class="btn-request">
+              <i class="material-icons">lock_open</i> Request Access
+            </a>
+          {% endif %}
+        {% endif %}
+
+        <a href="{{ url_for('tournaments_list') }}"><i class="material-icons">list</i> See Past Tournaments</a>
+        <a href="{{ url_for('decks_list') }}"><i class="material-icons">style</i> See All Decks</a>
+
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('logout') }}" class="btn-danger">
+            <i class="material-icons">logout</i> Logout ({{ current_user.name }})
+          </a>
+        {% else %}
+          <a href="{{ url_for('google.login') }}" class="btn-primary">
+            <i class="material-icons">login</i> Login with Google
+          </a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
