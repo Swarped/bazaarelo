@@ -4,7 +4,6 @@
 
 {% block content %}
 
-  <head>
     <meta charset="utf-8">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
@@ -18,20 +17,27 @@
         margin-right: 4px;
       }
 
-      body {
-        font-family: Arial, Helvetica, sans-serif;
-        max-width: 900px;
-        margin: 2rem auto;
-        background-color: #f9f9f9;
-        color: #333;
-      }
+.players-page {
+  width: 100%;        /* respects scrollbar */
+  margin: 0;
+  padding: 0 1rem;    /* safe side padding */
+  box-sizing: border-box;
+}
 
-      header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-      }
+
+  .players-page > div {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: nowrap;   /* prevent aside from wrapping below */
+}
+
+.players-page header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
 
       h1 {
         margin: 0;
@@ -49,7 +55,7 @@
       }
 
       .btn-primary {
-        background-color: #4CAF50;
+        background-color: #4caf50;
         color: white;
       }
       .btn-primary:hover {
@@ -95,9 +101,6 @@
         background-color: #f9f9f9;
       }
 
-      tr:hover {
-        background-color: #eef;
-      }
 
       .flash-error {
         background: #f8d7da;
@@ -125,6 +128,40 @@
       tr:hover .player-actions {
         display: inline-flex;
       }
+
+      tr:hover {
+  background-color: #007bff; /* vivid blue */
+  color: #fff;               /* white text */
+    cursor: pointer;           /* show pointer hand */
+}
+tr:hover td, tr:hover th {
+  color: #fff;               /* ensure all cells switch to white */
+}
+
+.country-select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background-color: #fff;
+  cursor: pointer;
+}
+.country-select option {
+  padding: 0.3rem;
+}
+
+#tablesColumn {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  min-height: 400px; /* adjust to your tallest table */
+}
+
+aside {
+  width: 240px;
+  flex-shrink: 0;      /* keep aside fixed width */
+}
+
       .action-btn {
         padding: 0.3rem 0.6rem;
         font-size: 0.85rem;
@@ -138,10 +175,10 @@
       }
       .btn-delete:hover { background-color: #c9302c; }
       .btn-merge {
-        background-color: #007bff;
+        background-color: #4cae4f;
         color: white;
       }
-      .btn-merge:hover { background-color: #0069d9; }
+      .btn-merge:hover { background-color: #409943; }
 
       .modal {
         display: none;
@@ -175,130 +212,235 @@
         font-size: 1.2rem;
         cursor: pointer;
       }
+
+      .toggle-container {
+  position: relative;
+  display: flex;
+  width: 400px;
+  height: 50px;
+  background-color: #ddd;
+  border-radius: 30px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.toggle-container input {
+  display: none;
+}
+
+.toggle-container label {
+  flex: 1;
+  text-align: center;
+  line-height: 50px;
+  cursor: pointer;
+  z-index: 2;
+  color: #333;
+  font-weight: bold;
+  transition: color 0.3s;
+}
+
+.panels-wrapper {
+  position: relative;
+  /* wrapper always has height of the tallest table */
+  min-height: 400px; /* adjust if needed */
+}
+
+.table-panel {
+  position: absolute; /* stack inside panels-wrapper */
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  pointer-events: none;
+}
+
+.table-panel.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
+
+
+.toggle-container .toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #4CAF50;
+  border-radius: 30px;
+  transition: transform 0.3s;
+  z-index: 1;
+}
+
+.toggle-container input#casual:checked ~ .toggle-slider {
+  transform: translateX(100%);
+}
+
+.toggle-container input#competitive:checked + label {
+  color: white;
+}
+.toggle-container input#casual:checked + label {
+  color: white;
+}
+
     </style>
-  </head>
-  <body>
+<div class="players-page">
+  <header>
+    <h1>Players</h1>
+  </header>
 
-    <header>
-      <h1>Players</h1>
-    </header>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        {% if category == 'error' %}
+          <div class="flash-error">{{ message }}</div>
+        {% elif category == 'success' %}
+          <div class="flash-success">{{ message }}</div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          {% if category == 'error' %}
-            <div class="flash-error">{{ message }}</div>
-          {% elif category == 'success' %}
-            <div class="flash-success">{{ message }}</div>
-          {% endif %}
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+  <!-- FLEX CONTAINER: left tables + right aside -->
+  <div style="display:flex; gap:2rem; align-items:flex-start; flex-wrap:nowrap;">
+    <!-- LEFT COLUMN -->
+    <div style="flex:1; min-width:0; position:relative;" id="tablesColumn">
 
-    <input type="text" id="searchBar" placeholder="Search players...">
-
-
-
-    <div style="display: flex; gap: 2rem;">
-      <div style="flex: 1;">
-
-<form method="GET">
-  <label>Filter by Country:
-    <select name="country">
-      <option value="">All</option>
-      <option value="AR">Argentina</option>
-      <option value="BR">Brazil</option>
-      <option value="CL">Chile</option>
-    </select>
-  </label>
-  <button type="submit">Filter</button>
-</form>
-
-
-        <table id="playersTable">
-          <tr>
-            <th>Name</th>
-            <th>Elo</th>
-            <th>Country</th>
-            {% if current_user.is_authenticated %}
-            <th>Actions</th>
-            {% endif %}
-          </tr>
-          {% for p in players %}
-          <tr class="clickable-row"
-              tabindex="0"
-              role="link"
-              aria-label="Open info for {{ p.name }}"
-              data-href="{{ url_for('player_info', pid=p.id) }}">
-            <td>{{ p.name }}</td>
-            <td>{{ p.elo }}</td>
-            <td>
-  {% if player_country(p.id) %}
-    <span class="fi fi-{{ player_country(p.id)|lower }}"></span>
-  {% else %}
-    –
-  {% endif %}
-</td>
-
-            {% if current_user.is_authenticated %}
-            <td class="actions">
-              <div class="player-actions">
-                <form method="POST" action="{{ url_for('delete_player', pid=p.id) }}"
-                      onsubmit="return confirm('Delete {{ p.name }}?');">
-                  <button type="submit" class="action-btn btn-delete">
-                    <i class="material-icons">delete</i> Delete
-                  </button>
-                </form>
-                <button class="action-btn btn-merge"
-                        data-source-id="{{ p.id }}"
-                        data-source-name="{{ p.name|e }}">
-                  <i class="material-icons">merge_type</i> Merge
-                </button>
-              </div>
-            </td>
-            {% endif %}
-          </tr>
-          {% endfor %}
-        </table>
+      <div class="toggle-container" style="margin-bottom:1rem;">
+        <input type="radio" id="competitive" name="toggle" checked>
+        <label for="competitive">Competitive</label>
+        <input type="radio" id="casual" name="toggle">
+        <label for="casual">Casual</label>
+        <div class="toggle-slider"></div>
       </div>
-<aside style="width: 240px;">
-<a href="{{ url_for('decks_list') }}" class="btn btn-primary" 
-   style="display:block; margin-bottom:1rem; text-align:center; padding:1rem; font-size:1.1rem;">
-  <i class="material-icons" style="vertical-align:middle; font-size:22px;">style</i> 
-  See All Decks
-</a>
 
+      <form method="GET" style="margin-bottom:1rem;">
+        <label for="country">Filter by Country:</label>
+        <select name="country" id="country" class="country-select" onchange="this.form.submit()">
+          <option value="" {% if request.args.get('country') == '' %}selected{% endif %}>All</option>
+          <option value="AR" {% if request.args.get('country') == 'AR' %}selected{% endif %}>Argentina</option>
+          <option value="BR" {% if request.args.get('country') == 'BR' %}selected{% endif %}>Brazil</option>
+          <option value="CL" {% if request.args.get('country') == 'CL' %}selected{% endif %}>Chile</option>
+          <option value="US" {% if request.args.get('country') == 'US' %}selected{% endif %}>United States</option>
+          <option value="ES" {% if request.args.get('country') == 'ES' %}selected{% endif %}>Spain</option>
+        </select>
+      </form>
 
-  <h3 style="margin-bottom: 1rem;">Top Decks</h3>
-  {% for deck in top_decks %}
-  <a href="{{ url_for('deck_detail', deck_name=deck.name) }}"
-     style="display: block; position: relative; margin-bottom: 1rem; border-radius: 6px; overflow: hidden; text-decoration: none;">
-    <div style="
-      background-image: url('{{ url_for('static', filename=deck.image_url) if deck.image_url else '' }}');
-      background-size: cover;
-      background-position: center;
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;">
-      <span style="
-        color: white;
-        font-weight: bold;
-        font-size: 1.2rem;
-        text-shadow: 2px 2px 4px black;
-        text-align: center;
-        padding: 0.5rem;
-        background: rgba(0,0,0,0.3);
-        width: 100%;">
-        {{ deck.name }}
-      </span>
+      <input type="text" id="searchBar" placeholder="Search players...">
+
+      <!-- PANELS WRAPPER -->
+      <div class="panels-wrapper" style="position:relative;">
+        <!-- Competitive table -->
+        <div id="competitive-table" class="table-panel active">
+          <h2>Competitive Elo</h2>
+          <table id="playersTable">
+            <tr>
+              <th>Rank</th>
+              <th>Name</th>
+              <th>Elo</th>
+              <th>Country</th>
+            </tr>
+            {% for p in players %}
+            <tr class="clickable-row" data-href="{{ url_for('player_info', pid=p.player.id) }}">
+              <td>
+                {% if p.rank %}
+                  #{{ p.rank }}
+                {% else %}
+                  –
+                {% endif %}
+              </td>
+              <td>{{ p.player.name }}</td>
+              <td>
+                {% set num_tournaments = tournaments_played(p.player.id) %}
+                {% if num_tournaments < 3 and not current_user.is_admin %}
+                  <span style="color:gray;">Hidden</span>
+                {% elif num_tournaments < 3 and current_user.is_admin %}
+                  {{ p.player.elo }} <span style="color:orange;">(provisional)</span>
+                {% else %}
+                  {{ p.player.elo }}
+                {% endif %}
+              </td>
+              <td>
+                {% if player_country(p.player.id) %}
+                  <span class="fi fi-{{ player_country(p.player.id)|lower }}"></span>
+                {% else %} – {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+
+        <!-- Casual table -->
+        <div id="casual-table" class="table-panel">
+          <h2>Casual Ranking</h2>
+          <table id="casualPlayersTable">
+            <tr>
+              <th>Rank</th>
+              <th>Name</th>
+              <th>Casual Points</th>
+              <th>Country</th>
+            </tr>
+            {% for p in casual_players %}
+            <tr>
+              <td>#{{ p.rank }}</td>
+              <td>{{ p.player.name }}</td>
+              <td>{{ p.player.casual_points }}</td>
+              <td>
+                {% if player_country(p.player.id) %}
+                  <span class="fi fi-{{ player_country(p.player.id)|lower }}"></span>
+                {% else %} – {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
     </div>
-  </a>
-  {% endfor %}
-</aside>
+
+    <!-- RIGHT COLUMN -->
+    <aside style="width:240px; flex-shrink:0; margin-top:2.5rem;">
+      <a href="{{ url_for('decks_list') }}" class="btn btn-primary" 
+         style="display:block; margin-bottom:1rem; text-align:center; padding:1rem; font-size:1.1rem;">
+        <i class="material-icons" style="vertical-align:middle; font-size:22px;">style</i> 
+        See All Decks
+      </a>
+
+      <h3 style="margin-bottom:1rem;">Top Decks</h3>
+      {% for deck in top_decks %}
+      <a href="{{ url_for('deck_detail', deck_name=deck.name) }}"
+         style="display:block; position:relative; margin-bottom:1rem; border-radius:6px; overflow:hidden; text-decoration:none;">
+        <div style="
+          background-image: url('{{ url_for('static', filename=deck.image_url) if deck.image_url else '' }}');
+          background-size: cover;
+          background-position: center;
+          height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;">
+          <span style="
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 2px 2px 4px black;
+            text-align: center;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.3);
+            width: 100%;">
+            {{ deck.name }}
+          </span>
+        </div>
+      </a>
+      {% endfor %}
+    </aside>
+  </div>
+</div>
 
 
-    </div>
+
+
 
     {% if current_user.is_authenticated %}
     <div id="mergeModal" class="modal">
@@ -310,9 +452,13 @@
           <label>Merge <span id="mergeSourceName"></span> into:</label>
           <select name="target_id" required>
             <option value="">-- Select Player --</option>
-            {% for p in players %}
-              <option value="{{ p.id }}">{{ p.name }}</option>
-            {% endfor %}
+{% for p in players %}
+  <option value="{{ p.player.id }}">{{ p.player.name }}</option>
+{% endfor %}
+{% for p in casual_players %}
+  <option value="{{ p.player.id }}">{{ p.player.name }}</option>
+{% endfor %}
+
           </select>
           <button type="submit" class="btn btn-primary">Merge</button>
         </form>
@@ -342,15 +488,25 @@
     openMergeModal(id, name);
   });
 
-  const searchBar = document.getElementById("searchBar");
-  searchBar.addEventListener("keyup", () => {
-    const filter = searchBar.value.toLowerCase();
-    const rows = document.querySelectorAll("#playersTable tr:not(:first-child)");
-    rows.forEach(row => {
-      const nameCell = row.cells[0].textContent.toLowerCase();
-      row.style.display = nameCell.includes(filter) ? "" : "none";
-    });
+const searchBar = document.getElementById("searchBar");
+searchBar.addEventListener("keyup", () => {
+  const filter = searchBar.value.toLowerCase();
+
+  // Competitive rows
+  const compRows = document.querySelectorAll("#playersTable tr:not(:first-child)");
+  compRows.forEach(row => {
+    const nameCell = row.cells[1].textContent.toLowerCase();
+    row.style.display = nameCell.includes(filter) ? "" : "none";
   });
+
+  // Casual rows
+  const casualRows = document.querySelectorAll("#casualPlayersTable tr:not(:first-child)");
+  casualRows.forEach(row => {
+    const nameCell = row.cells[1].textContent.toLowerCase();
+    row.style.display = nameCell.includes(filter) ? "" : "none";
+  });
+});
+
 
   document.querySelectorAll('tr.clickable-row').forEach(row => {
     row.addEventListener('click', () => {
@@ -365,14 +521,43 @@
       }
     });
   });
+
+const compPanel = document.getElementById('competitive-table');
+const casualPanel = document.getElementById('casual-table');
+
+let hideTimeout; // track the timeout ID
+
+function swapPanels(showPanel, hidePanel) {
+  // cancel any previous hide
+  if (hideTimeout) {
+    clearTimeout(hideTimeout);
+    hideTimeout = null;
+  }
+
+  // show the new panel
+  showPanel.classList.add('active');
+  showPanel.style.display = 'block';
+
+  // fade out the old panel
+  hidePanel.classList.remove('active');
+
+  // schedule hiding after fade completes
+  hideTimeout = setTimeout(() => {
+    hidePanel.style.display = 'none';
+    hideTimeout = null;
+  }, 500); // match your CSS transition duration
+}
+
+document.getElementById('competitive').addEventListener('change', () => {
+  swapPanels(compPanel, casualPanel);
+});
+
+document.getElementById('casual').addEventListener('change', () => {
+  swapPanels(casualPanel, compPanel);
+});
+
 </script>
 
-{% if current_user.is_authenticated and current_user.is_admin %}
-  <form method="POST" action="{{ url_for('reset_db') }}" 
-        onsubmit="return confirm('⚠️ This will delete ALL data. Are you sure?');">
-    <button type="submit" class="btn btn-danger" style="margin-top:2rem;">
-      <i class="material-icons">delete_forever</i> Delete Database
-    </button>
-    </form>
-  {% endif %}
+
+
 {% endblock %}

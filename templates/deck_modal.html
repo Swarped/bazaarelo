@@ -1,75 +1,13 @@
-<!-- templates/deck_modal.html -->
 <div id="deckModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closeDeckModal()">&times;</span>
     <h3 id="deckModalTitle">Add Deck</h3>
-    <form id="deckForm" method="POST" action="{{ url_for('submit_deck') }}">
-      <input type="hidden" name="player_id" id="deckPlayerId">
-      <input type="hidden" name="tournament_id" value="{{ tid }}">
-      <label>Deck Name</label>
-      <input type="text" name="deck_name" id="deckName">
-      <label>Deck List</label>
-      <textarea name="deck_list" id="deckList" rows="10"></textarea>
-      <div id="deckValidation" style="margin-top:1rem; font-size:0.9rem;"></div>
-      <button type="submit" class="btn-deck"><span class="icon">💾</span>Save</button>
-    </form>
+    <label>Deck Name</label>
+    <input type="text" id="deckName">
+    <label>Deck List</label>
+    <textarea id="deckList" rows="10"></textarea>
+    <button type="button" class="btn-deck" onclick="saveDeckTemp()">
+      <i class="material-icons">save</i> Save
+    </button>
   </div>
 </div>
-
-<script>
-async function validateDeckList() {
-  const deckList = document.getElementById('deckList').value;
-  const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-  const validationDiv = document.getElementById('deckValidation');
-  validationDiv.innerHTML = "";
-
-  for (const line of lines) {
-    const parts = line.trim().split(/\s+/, 2);
-    const count = parts[0];
-    const name = line.trim().substring(count.length).trim();
-    if (!name) continue;
-
-    const p = document.createElement("p");
-    p.textContent = line;
-
-    try {
-      const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
-      const card = await res.json();
-
-      if (card.object === "error") {
-        // Not found
-        p.style.color = "red";
-        if (card.type === "ambiguous" && card.suggestions) {
-          const sugg = document.createElement("span");
-          sugg.style.color = "darkred";
-          sugg.style.fontStyle = "italic";
-          sugg.textContent = " → Suggestions: " + card.suggestions.join(", ");
-          p.appendChild(sugg);
-        } else if (card.details) {
-          const sugg = document.createElement("span");
-          sugg.style.color = "darkred";
-          sugg.style.fontStyle = "italic";
-          sugg.textContent = " → " + card.details;
-          p.appendChild(sugg);
-        }
-      } else {
-        // Found, show normally
-        p.style.color = "black";
-      }
-    } catch (err) {
-      p.style.color = "orange";
-      p.textContent += " (validation error)";
-    }
-
-    validationDiv.appendChild(p);
-  }
-}
-
-// Attach validation on blur or input
-document.getElementById('deckList').addEventListener('blur', validateDeckList);
-document.getElementById('deckList').addEventListener('input', () => {
-  // optional: live validation after typing stops
-  clearTimeout(window.deckValidationTimer);
-  window.deckValidationTimer = setTimeout(validateDeckList, 800);
-});
-</script>

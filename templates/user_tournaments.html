@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}My Tournaments{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
+
+<style>
+  .user-tournaments-page {
+    font-family: Arial, Helvetica, sans-serif;
+    max-width: 900px;
+    margin: 2rem auto;
+    background-color: #f9f9f9;
+    color: #333;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 0.75rem;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+    color: #2c3e50;
+  }
+  tr:nth-child(even) { background-color: #f9f9f9; }
+  tr.clickable-row { transition: background-color 140ms ease, color 140ms ease; }
+  tr.clickable-row:hover {
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+  }
+</style>
+
+<div class="user-tournaments-page">
+  <h1>My Tournaments</h1>
+
+  {% if tournaments %}
+  <table>
+    <tr>
+      <th>Tournament</th>
+      <th>Date</th>
+      <th>Rounds</th>
+      <th>Player Count</th>
+      <th>Top Cut</th>
+      <th>Country</th>
+    </tr>
+    {% for t in tournaments %}
+    <tr class="clickable-row"
+        tabindex="0"
+        role="link"
+        aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
+        data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+      <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
+      <td>{{ t.date }}</td>
+      <td>{{ t.rounds }}</td>
+      <td>{{ t.player_count if t.player_count else '-' }}</td>
+      <td>{% if t.top_cut %}TOP {{ t.top_cut }}{% else %}-{% endif %}</td>
+      <td>
+        {% if t.country %}
+          <span class="fi fi-{{ t.country|lower }}"></span>
+        {% else %} – {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p>You haven’t submitted any tournaments yet.</p>
+  {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll('tr.clickable-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const href = row.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const href = row.getAttribute('data-href');
+        if (href) window.location.href = href;
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,16 +1,14 @@
-<!doctype html>
-<html>
-  
+
   {% extends "base.html" %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
 
-<head>
+
   <meta charset="utf-8">
   <title>{{ player.name }} Info</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 2rem auto; }
+    .playerinfo-page { font-family: Arial, sans-serif; max-width: 1100px; margin: 2rem auto; }
     .container { display: flex; gap: 2rem; }
     .profile-panel { flex: 0 0 250px; background:#f9f9f9; border:1px solid #ccc; border-radius:6px; padding:1rem; }
     .profile-panel h1 { font-size:1.5rem; margin-top:0; }
@@ -39,13 +37,25 @@
     .btn-danger { background:#d9534f; color:white; }
     .btn-primary { background:#007bff; color:white; }
   </style>
-</head>
-<body>
+<div class="playerinfo-page"></div>
 
 <div class="container">
   <div class="profile-panel">
     <h1>{{ player.name }}</h1>
+{% if current_user.is_authenticated and current_user.is_admin %}
+  <!-- Admins always see Elo -->
+  <div class="elo">{{ player.elo }}</div>
+{% else %}
+  <!-- Regular users: only show Elo if 3+ tournaments -->
+  {% if stats.tournaments_played >= 3 %}
     <div class="elo">{{ player.elo }}</div>
+  {% else %}
+    <div class="elo" style="color:#888;">–</div>
+  {% endif %}
+{% endif %}
+
+
+
     <div class="stat"><strong>Country:</strong> {{ player_country(player.id) or '–' }}</div>
     <div class="stat"><strong>Tournaments:</strong> {{ stats.tournaments_played }}</div>
     <div class="stat"><strong>Top 1:</strong> {{ stats.top1 }}</div>
@@ -264,6 +274,5 @@
       });
     }
   </script>
-</body>
+
 {% endblock %}
-</html>

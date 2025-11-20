@@ -1,6 +1,6 @@
-<!doctype html>
-<html>
-<head>
+  {% extends "base.html" %}
+
+{% block content %}
   <meta charset="utf-8">
   <title>{{ deck_name }} Decks</title>
   <style>
@@ -22,7 +22,7 @@
   margin: 0;
 }
 
-    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 2rem auto; }
+    .deck-detail-page { font-family: Arial, sans-serif; max-width: 1000px; margin: 2rem auto; }
     table { width:100%; border-collapse: collapse; }
     th, td { border:1px solid #ccc; padding:.5rem; text-align:center; }
     th { background:#f0f0f0; }
@@ -41,8 +41,7 @@
     .close { float:right; font-size:1.2rem; cursor:pointer; }
     .colors-cell { text-align:right; }
   </style>
-</head>
-<body>
+<div class="deck-detail-page"></div>
     {% if image_url %}
   <div class="deck-header" style="background-image: url({{ url_for("static", filename=image_url) }});">
     <h1>{{ deck_name }} Decks</h1>
@@ -54,15 +53,16 @@
     <tr><th>Player</th><th>Tournament</th><th>Date</th><th>Rank</th><th>Colors</th></tr>
     {% for r in rows %}
 <tr class="clickable-row"
-    data-player-name='{{ r.player.name|tojson }}'
+    data-player-name='{{ (r.player.name if r.player else "")|tojson }}'
     data-deck-name='{{ (r.deck.name if r.deck else "")|tojson }}'
     data-deck-list='{{ (r.deck.list_text if r.deck else "")|tojson }}'>
-  <td>{{ r.player.name }}</td>
-  <td>{{ r.tournament.name }}</td>
-  <td>{{ r.tournament.date }}</td>
+  <td>{% if r.player %}{{ r.player.name }}{% else %}–{% endif %}</td>
+  <td>{% if r.tournament %}{{ r.tournament.name }}{% else %}–{% endif %}</td>
+  <td>{% if r.tournament %}{{ r.tournament.date }}{% else %}–{% endif %}</td>
   <td>{% if r.rank %}{{ r.rank }}{% else %}–{% endif %}</td>
   <td class="colors-cell"></td>
 </tr>
+
     {% endfor %}
   </table>
 
@@ -220,5 +220,4 @@ const deckList   = JSON.parse(row.dataset.deckList || '""');
       });
     }
   </script>
-</body>
-</html>
+  {% endblock %}

@@ -3,126 +3,322 @@
 {% block title %}Admin Panel{% endblock %}
 
 {% block content %}
-<h1>Admin Panel</h1>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
 
-<h2>Add Admin by Email</h2>
-<form method="POST">
-  <input type="hidden" name="action" value="add_by_email">
-  <input type="email" name="email" placeholder="Enter email" required>
-  <button type="submit" class="btn btn-primary">Add Admin</button>
-</form>
+<style>
+  .admin-page {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .admin-sidebar {
+    width: 220px;
+    background-color: #2c3e50;
+    color: #fff;
+    padding: 1rem;
+  }
+  .admin-sidebar h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .admin-sidebar a {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+  .admin-sidebar a:hover {
+    background-color: #34495e;
+  }
+  .admin-content {
+    flex: 1;
+    padding: 2rem;
+    background-color: #f9f9f9;
+  }
+.admin-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
 
-<h2>Add Scorekeeper by Email</h2>
-<form method="POST">
-  <input type="hidden" name="action" value="add_scorekeeper_by_email">
-  <input type="email" name="email" placeholder="Enter email" required>
-  <button type="submit" class="btn btn-primary">Add Scorekeeper</button>
-</form>
+.admin-section.hidden {
+  display: none;
+}
 
-<hr>
+  .admin-section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+  .btn {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn-primary {
+    background-color: #4caf50;
+    color: #fff;
+  }
+  .btn-danger {
+    background-color: #d9534f;
+    color: #fff;
+  }
+</style>
 
-<h2>Existing Users</h2>
-<table>
-  <tr>
-    <th>Name</th>
-    <th>Email</th>
-    <th>Admin?</th>
-    <th>Scorekeeper?</th>
-    <th>Actions</th>
-  </tr>
-  {% for u in users %}
-  <tr>
-    <td>{{ u.name }}</td>
-    <td>{{ u.email }}</td>
-    <td>{{ "Yes" if u.is_admin else "No" }}</td>
-    <td>{{ "Yes" if u.is_scorekeeper else "No" }}</td>
-    <td>
-      <!-- Toggle Admin -->
-      <form method="POST" style="display:inline;">
-        <input type="hidden" name="user_id" value="{{ u.id }}">
-        <input type="hidden" name="make_admin" value="{{ 'false' if u.is_admin else 'true' }}">
-        {% if u.is_admin %}
-          <button type="submit" class="btn btn-danger">Remove Admin</button>
-        {% else %}
-          <button type="submit" class="btn btn-primary">Make Admin</button>
-        {% endif %}
+<div class="admin-page">
+  <div class="admin-sidebar">
+    <h2>Admin Panel</h2>
+    <a href="#users-stores">Users & Stores</a>
+    <a href="#requests">Requests</a>
+    <a href="#events">Events & Logs</a>
+    <a href="#danger">Danger Zone</a>
+  </div>
+
+  <div class="admin-content">
+
+    <div id="users-stores" class="admin-section">
+      <h2>Users & Stores</h2>
+
+      <h3>Add Admin by Email</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="add_by_email">
+        <input type="email" name="email" placeholder="Enter email" required>
+        <button type="submit" class="btn btn-primary">Add Admin</button>
       </form>
 
-      <!-- Toggle Scorekeeper -->
-      <form method="POST" style="display:inline;">
-        <input type="hidden" name="user_id" value="{{ u.id }}">
-        <input type="hidden" name="make_scorekeeper" value="{{ 'false' if u.is_scorekeeper else 'true' }}">
-        {% if u.is_scorekeeper %}
-          <button type="submit" class="btn btn-danger">Remove Scorekeeper</button>
-        {% else %}
-          <button type="submit" class="btn btn-primary">Make Scorekeeper</button>
-        {% endif %}
+      <h3>Add Scorekeeper by Email</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="add_scorekeeper_by_email">
+        <input type="email" name="email" placeholder="Enter email" required>
+        <button type="submit" class="btn btn-primary">Add Scorekeeper</button>
       </form>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
 
-<hr>
+      <h3>Existing Users</h3>
+      <table>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Admin?</th>
+          <th>Scorekeeper?</th>
+          <th>Actions</th>
+        </tr>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ "Yes" if u.is_admin else "No" }}</td>
+          <td>{{ "Yes" if u.is_scorekeeper else "No" }}</td>
+          <td>
+            <form method="POST" style="display:inline;">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <input type="hidden" name="make_admin" value="{{ 'false' if u.is_admin else 'true' }}">
+              {% if u.is_admin %}
+                <button type="submit" class="btn btn-danger">Remove Admin</button>
+              {% else %}
+                <button type="submit" class="btn btn-primary">Make Admin</button>
+              {% endif %}
+            </form>
+            <form method="POST" style="display:inline;">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <input type="hidden" name="make_scorekeeper" value="{{ 'false' if u.is_scorekeeper else 'true' }}">
+              {% if u.is_scorekeeper %}
+                <button type="submit" class="btn btn-danger">Remove Scorekeeper</button>
+              {% else %}
+                <button type="submit" class="btn btn-primary">Make Scorekeeper</button>
+              {% endif %}
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
 
-<h2>Pending Access Requests</h2>
-{% if requests %}
-  <table>
-    <tr>
-      <th>User</th>
-      <th>Email</th>
-      <th>Reason</th>
-      <th>Date Submitted</th>
-      <th>Actions</th>
-    </tr>
-    {% for req in requests %}
-    <tr>
-      <td>{{ req.user.name }}</td>
-      <td>{{ req.user.email }}</td>
-      <td>{{ req.reason }}</td>
-      <td>{{ req.date_submitted.strftime("%Y-%m-%d %H:%M") }}</td>
-      <td>
-        <form method="POST" style="display:inline;">
-          <input type="hidden" name="action" value="approve_scorekeeper">
-          <input type="hidden" name="request_id" value="{{ req.id }}">
-          <button type="submit" class="btn btn-primary">Approve Scorekeeper</button>
+<h3>Stores</h3>
+
+<!-- Add Store form -->
+<form method="POST" action="{{ url_for('admin_stores') }}">
+  <input type="text" name="store_name" placeholder="Store Name" required>
+  <input type="text" name="location" placeholder="Location">
+  <input type="text" name="country" placeholder="Country Code">
+  <label><input type="checkbox" name="premium"> Premium</label>
+  <button type="submit" class="btn btn-primary">Add Store</button>
+</form>
+
+<!-- Refresh button -->
+<form method="GET" action="{{ url_for('admin_stores') }}" style="margin-top:1rem;">
+  <button type="submit" class="btn btn-secondary">🔄 Refresh Store List</button>
+</form>
+
+<!-- Store list -->
+{% for store in stores %}
+<div style="margin-top:1rem; border:1px solid #ccc; padding:1rem;">
+  <div style="display:flex; align-items:center; gap:1rem;">
+    {% if store.image_url %}
+      <img src="{{ url_for('static', filename=store.image_url) }}" style="width:80px;height:80px;">
+    {% else %}
+      <span class="material-icons">store</span>
+    {% endif %}
+    <strong>{{ store.name }}</strong>
+    <span>
+      {% if store.country %}
+        <span class="fi fi-{{ store.country|lower }}"></span>
+      {% endif %}
+      {{ store.country }} - {{ store.location }}
+    </span>
+    {% if store.premium %}
+      <span style="color:green; font-weight:bold;">Premium</span>
+    {% endif %}
+    <form method="POST" action="{{ url_for('edit_store_image', store_id=store.id) }}" enctype="multipart/form-data" style="margin-left:auto;">
+      <input type="file" name="image" accept=".jpg" required>
+      <button type="submit" class="btn btn-primary">Replace Image</button>
+    </form>
+  </div>
+  <form method="POST" action="{{ url_for('admin_stores') }}" style="margin-top:0.5rem;">
+    <input type="hidden" name="store_id" value="{{ store.id }}">
+    <input type="text" name="store_name" value="{{ store.name }}" required>
+    <input type="text" name="location" value="{{ store.location }}">
+    <input type="text" name="country" value="{{ store.country }}">
+    <label><input type="checkbox" name="premium" {% if store.premium %}checked{% endif %}> Premium</label>
+    <button type="submit" class="btn btn-primary">Update Store</button>
+  </form>
+  <ul>
+    {% for assignment in store.assignments %}
+      <li>
+        {{ assignment.user.email }}
+        <form method="POST" action="{{ url_for('remove_user_from_store', store_id=store.id, user_id=assignment.user.id) }}" style="display:inline;">
+          <button type="submit" class="btn btn-danger">Remove</button>
         </form>
-        <form method="POST" style="display:inline;">
-          <input type="hidden" name="action" value="approve_admin">
-          <input type="hidden" name="request_id" value="{{ req.id }}">
-          <button type="submit" class="btn btn-primary">Approve Admin</button>
-        </form>
-        <form method="POST" style="display:inline;">
-          <input type="hidden" name="action" value="deny_request">
-          <input type="hidden" name="request_id" value="{{ req.id }}">
-          <button type="submit" class="btn btn-danger">Deny</button>
-        </form>
-      </td>
-    </tr>
+      </li>
     {% endfor %}
-  </table>
+    <li>
+      <form method="POST" action="{{ url_for('assign_user_to_store', store_id=store.id) }}">
+        <input type="email" name="email" placeholder="Add User by Email" required>
+        <button type="submit" class="btn btn-primary">Add User</button>
+      </form>
+    </li>
+  </ul>
+</div>
+{% endfor %}
+
+
+    <div id="requests" class="admin-section">
+      <h2>Requests</h2>
+      {% if requests %}
+        <table>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Reason</th>
+            <th>Date Submitted</th>
+            <th>Actions</th>
+          </tr>
+          {% for req in requests %}
+          <tr>
+            <td>{{ req.user.name }}</td>
+            <td>{{ req.user.email }}</td>
+            <td>{{ req.reason }}</td>
+            <td>{{ req.date_submitted.strftime("%Y-%m-%d %H:%M") }}</td>
+<td>
+  <form method="POST" style="display:inline;">
+    <input type="hidden" name="action" value="approve_scorekeeper">
+    <input type="hidden" name="request_id" value="{{ req.id }}">
+    <button type="submit" class="btn btn-primary">Approve Scorekeeper</button>
+  </form>
+  <form method="POST" style="display:inline;">
+    <input type="hidden" name="action" value="approve_admin">
+    <input type="hidden" name="request_id" value="{{ req.id }}">
+    <button type="submit" class="btn btn-primary">Approve Admin</button>
+  </form>
+  <form method="POST" style="display:inline;">
+    <input type="hidden" name="action" value="deny_request">
+    <input type="hidden" name="request_id" value="{{ req.id }}">
+    <button type="submit" class="btn btn-danger">Deny</button>
+  </form>
+</td>
+</tr>
+{% endfor %}
+</table>
 {% else %}
   <p>No pending requests.</p>
 {% endif %}
+</div>
 
-<hr>
+<div id="events" class="admin-section">
+  <h2>Events & Logs</h2>
+  <p>Coming soon: here we’ll display system events, audit logs, and activity history.</p>
+</div>
 
-<h2>Danger Zone</h2>
-<p><strong>Warning:</strong> These actions are irreversible!</p>
+<div id="danger" class="admin-section">
+  <h2>Danger Zone</h2>
+  <p><strong>Warning:</strong> These actions are irreversible!</p>
 
-<form method="POST" style="margin-bottom:1rem;">
-  <input type="hidden" name="action" value="delete_user_db">
-  <button type="submit" class="btn btn-danger">Delete User Database</button>
-</form>
+  <form method="POST" style="margin-bottom:1rem;">
+    <input type="hidden" name="action" value="delete_user_db">
+    <button type="submit" class="btn btn-danger">Delete User Database</button>
+  </form>
 
-<form method="POST" style="margin-bottom:1rem;">
-  <input type="hidden" name="action" value="delete_tournament_db">
-  <button type="submit" class="btn btn-danger">Delete Tournament Database</button>
-</form>
+  <form method="POST" style="margin-bottom:1rem;">
+    <input type="hidden" name="action" value="delete_tournament_db">
+    <button type="submit" class="btn btn-danger">Delete Tournament Database</button>
+  </form>
 
-<form method="POST">
-  <input type="hidden" name="action" value="delete_all_players">
-  <button type="submit" class="btn btn-danger">Delete All Players</button>
-</form>
+  <form method="POST">
+    <input type="hidden" name="action" value="delete_all_players">
+    <button type="submit" class="btn btn-danger">Delete All Players</button>
+  </form>
+</div>
+
+</div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const links = document.querySelectorAll(".admin-sidebar a");
+  const sections = document.querySelectorAll(".admin-section");
+
+  links.forEach(link => {
+    link.addEventListener("click", e => {
+      e.preventDefault();
+      const targetId = link.getAttribute("href").substring(1);
+
+      sections.forEach(sec => {
+        if (sec.id === targetId) {
+          sec.classList.remove("hidden");
+        } else {
+          sec.classList.add("hidden");
+        }
+      });
+    });
+  });
+
+  // Show only the first section by default
+  sections.forEach((sec, idx) => {
+    if (idx === 0) {
+      sec.classList.remove("hidden");
+    } else {
+      sec.classList.add("hidden");
+    }
+  });
+});
+</script>
 
 {% endblock %}

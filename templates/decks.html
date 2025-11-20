@@ -1,15 +1,14 @@
-<!doctype html>
-<html>
+
   {% extends "base.html" %}
 
 {% block title %}Deck Archetypes{% endblock %}
 
 {% block content %}
-<head>
+
   <meta charset="utf-8">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
-  body {
+  .decks-page {
     font-family: Arial, sans-serif;
     max-width: 900px;
     margin: 2rem auto;
@@ -197,9 +196,9 @@ th:first-child, td:first-child {
   button:hover { background: #0056b3; }
 </style>
 
-</head>
 
-<body>
+
+<div class="decks-page"></div>
 
   <table>
     <tr>
@@ -208,6 +207,9 @@ th:first-child, td:first-child {
   <th>Tier</th>
   <th>Count</th>
   <th>Colors</th>
+  {% if current_user.is_authenticated and current_user.is_admin %}
+  <th>Actions</th>
+{% endif %}
 </tr>
 
     {% for name, decks in archetypes.items() %}
@@ -237,9 +239,27 @@ th:first-child, td:first-child {
 </td>
 <td class="count-cell">{{ decks|length }}</td>
 <td class="colors-cell"></td>
+{% if current_user.is_authenticated and current_user.is_admin %}
+<td>
+  <button class="btn btn-primary edit-name-btn" data-archetype="{{ name }}">Edit Name</button>
+</td>
+{% endif %}
 
     </tr>
     {% endfor %}
+
+{% if current_user.is_authenticated and current_user.is_admin %}
+<div style="margin-bottom:1rem;">
+  <form method="POST" action="{{ url_for('decks_list') }}">
+    <label>New Archetype</label>
+    <input type="text" name="deck_name" placeholder="e.g. Burn, UW Control" required>
+    <button type="submit" class="btn btn-primary">Add Archetype</button>
+  </form>
+</div>
+{% endif %}
+
+
+
   </table>
 
   <!-- Upload Modal -->
@@ -253,6 +273,22 @@ th:first-child, td:first-child {
       </form>
     </div>
   </div>
+
+    <!-- Edit Name Modal -->
+  <div id="editNameModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeEditNameModal()">&times;</span>
+      <h3 id="editNameTitle">Edit Archetype Name</h3>
+      <form id="editNameForm" method="POST">
+        <input type="text" name="new_name" id="newNameInput" required>
+        <button type="submit">Save Name</button>
+      </form>
+    </div>
+  </div>
+
+
+
+
 
   <script>
     // Make rows clickable
@@ -281,6 +317,22 @@ th:first-child, td:first-child {
       document.getElementById('uploadModal').style.display = 'none';
     }
 
+    // Edit Name button opens modal
+    document.querySelectorAll('.edit-name-btn').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        e.stopPropagation();
+        const archetype = btn.getAttribute('data-archetype');
+        document.getElementById('editNameTitle').textContent = "Edit Archetype Name: " + archetype;
+        const form = document.getElementById('editNameForm');
+        form.action = "/archetype/" + encodeURIComponent(archetype) + "/edit_name";
+        document.getElementById('editNameModal').style.display = 'block';
+      });
+    });
+    function closeEditNameModal() {
+      document.getElementById('editNameModal').style.display = 'none';
+    }
+
+
     // Render colors
     let symbolMap = {};
     fetch("https://api.scryfall.com/symbology")
@@ -307,6 +359,5 @@ th:first-child, td:first-child {
         });
       });
   </script>
-</body>
+
 {% endblock %}
-</html>

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Settings{% endblock %}
+
+{% block content %}
+<div style="max-width:600px; margin:0 auto; background:#fff; padding:1.5rem; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+  <h2>Profile Settings</h2>
+
+  <form method="POST" action="{{ url_for('profile_settings') }}">
+    <div style="margin-bottom:1rem;">
+      <label for="name" style="display:block; font-weight:bold; margin-bottom:0.5rem;">Display Name</label>
+      <input type="text" id="name" name="name" value="{{ current_user.name }}" required
+             style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      <i class="material-icons">save</i> Save Changes
+    </button>
+  </form>
+
+  <!-- Assigned Stores -->
+<h3 style="margin-top:2rem;">Assigned Stores</h3>
+{% if stores %}
+  <ul style="list-style:none; padding:0;">
+    {% for store in stores %}
+      <li style="padding:0.5rem 0; border-bottom:1px solid #eee; display:flex; align-items:center; gap:1rem;">
+  {% if store.image_url %}
+    <img src="{{ url_for('static', filename=store.image_url) }}"
+         alt="{{ store.name }} logo"
+         style="width:128px; height:64px; object-fit:cover; border-radius:4px;">
+  {% else %}
+    <span class="material-icons" style="font-size:48px; color:#888;">store</span>
+  {% endif %}
+  <div>
+    <strong>{{ store.name }}</strong><br>
+    <small>{{ store.location }}{% if store.country %} ({{ store.country }}){% endif %}</small>
+  </div>
+</li>
+
+    {% endfor %}
+  </ul>
+{% else %}
+  <p style="color:#666;">No stores assigned.</p>
+{% endif %}
+
+</div>
+{% endblock %}

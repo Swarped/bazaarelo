@@ -1,11 +1,9 @@
-<!doctype html>
-<html>
   {% extends "base.html" %}
 
 {% block title %}Choose Tournament Type{% endblock %}
 
 {% block content %}
-  <head>
+  
     <meta charset="utf-8">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
@@ -23,7 +21,7 @@
 
 
 
-      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; text-align: center; }
+      .choose-tournament-page { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; text-align: center; }
       h1 { margin-bottom: 2rem; }
       .option {
         display: inline-block;
@@ -46,8 +44,9 @@
         color: #4CAF50;
       }
     </style>
-  </head>
-  <body>
+ 
+  <div class="choose-tournament-type"></div>
+
     <h1>Choose Tournament Type</h1>
 <a href="{{ url_for('new_tournament') }}" class="option">
   <h2><i class="material-icons large">emoji_events</i> Competitive (ELO)</h2>
@@ -57,7 +56,12 @@
   <h2><i class="material-icons large">celebration</i> Casual (Top 8)</h2>
   <p>Quick setup for casual play. Only Top 8 standings, no ELO changes.</p>
 </a>
-
-  </body>
+<a href="{{ url_for('new_tournament', type='premium') }}" 
+   class="option" 
+   style="border-color:gold; color:#b8860b;">
+  <h2><i class="material-icons large" style="color:gold;">star</i> Premium Event</h2>
+  <p>Big Opens with boosted ELO rewards.</p>
+</a>
+  
   {% endblock %}
-</html>
+

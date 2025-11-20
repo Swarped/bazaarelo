@@ -1,12 +1,11 @@
-<!doctype html>
-<html>
+
     {% extends "base.html" %}
 
 {% block title %}Tournament Round{% endblock %}
 
 {% block content %}
 
-  <head>
+
     <meta charset="utf-8">
     
     <style>
@@ -92,6 +91,51 @@
         border:1px solid #ccc;
         border-radius:6px;
       }
+
+  .deck-editor-wrap {
+    position: relative;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-height: 200px;
+    background: #fff;
+    /* prevent width changes due to padding/border */
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+
+.deck-editor {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-height: 200px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: .5rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* Highlight spans behave exactly like text */
+.hl-valid,
+.hl-invalid,
+.hl-dup {
+  display: inline;
+  font: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  padding: 0;
+  margin: 0;
+}
+
+.hl-valid   { color: #2e7d32; }
+.hl-invalid { background: #f8d7da; color: #c0392b; }
+.hl-dup     { background: #ffeeba; color: #7f6000; }
+
+
       .side-panel h3 { margin-top:0; }
 
       .option-group { display: flex; flex-direction: column; gap: .5rem; }
@@ -114,8 +158,7 @@
       }
       .option span:hover { background: #e0e0e0; }
     </style>
-  </head>
-  <body>
+
 
     <h1>Tournament Round {{ round_num }}</h1>
 
@@ -134,9 +177,16 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-    {% if tournament.imported_from_text %}
-      <h2>This tournament was imported from EventLink text.</h2>
-      <p>All rounds have already been recorded. Please review the final standings before Elo is applied.</p>
+{% if tournament.imported_from_text %}
+  <h2>This tournament was imported from EventLink text.</h2>
+  <p>All rounds have already been recorded. Please review the final standings before Elo is applied.</p>
+
+  {% if tournament.premium %}
+    <p style="color:gold; font-weight:bold; margin-top:0.5rem;">
+      ★ This is a Premium Event ★
+    </p>
+  {% endif %}
+
 
       <div style="display:flex; gap:2rem;">
         <!-- Standings table -->
@@ -189,6 +239,7 @@
         <span class="icon">🗑️</span>Remove
       </button>
     </form>
+    
   {% else %}
     <!-- Add deck button: blue if in cut, grey if out -->
     <button class="btn-deck {% if not in_cut %}btn-deck-grey{% endif %}"
@@ -205,6 +256,7 @@
             {% endfor %}
           </table>
         </div>
+{% if tournament.pending and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
 <div class="side-panel">
   <h3>Playoff Cut</h3>
   <form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
@@ -245,20 +297,39 @@
     <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
   </form>
 
-<h3>Country</h3>
-<form method="POST" action="{{ url_for('set_tournament_country', tid=tid) }}">
-  <select name="country" required>
-    <option value="">-- Select Country --</option>
-    <option value="AR">Argentina</option>
-    <option value="BR">Brazil</option>
-    <option value="CL">Chile</option>
-    <option value="US">United States</option>
-    <option value="ES">Spain</option>
-  </select>
-  <button type="submit" class="btn-confirm" style="margin-top:0.5rem;">Save Country</button>
-</form>
+<h3>Store</h3>
+<select id="storeSelect" name="store_id">
+  <option value="">-- Select Store --</option>
+  {% for store in stores %}
+    <option value="{{ store.id }}" {% if tournament.store_id == store.id %}selected{% endif %}>
+      {{ store.name }}{% if store.location %} ({{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}){% elif store.country %} ({{ store.country }}){% endif %}
+    </option>
+  {% endfor %}
+</select>
+
+<div id="storeStatus"></div>
+
+<script>
+document.getElementById("storeSelect").addEventListener("change", function() {
+  const storeId = this.value;
+  if (!storeId) return;
+  fetch("{{ url_for('set_tournament_store', tid=tid) }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ store_id: storeId })
+  }).then(() => {
+    // After POST, the route redirects, but in fetch it won't follow in-page.
+    // Optionally show a message, then reload for consistent state:
+    document.getElementById("storeStatus").textContent = "Store updated. Reloading...";
+    window.location.reload();
+  });
+});
+</script>
+
 
 </div>
+{% endif %}
+
 
 
       <!-- Deck Modal -->
@@ -271,94 +342,292 @@
             <input type="hidden" name="tournament_id" value="{{ tid }}">
             <label>Deck Name</label>
             <input type="text" name="deck_name" id="deckName">
-            <label>Deck List</label>
-            <textarea name="deck_list" id="deckList" rows="10"></textarea>
+<label>Deck List</label>
+<div id="deckEditor" contenteditable="true" class="deck-editor"></div>
+
+<!-- hidden textarea to submit raw text -->
+<textarea name="deck_list" id="deckList" hidden></textarea>
+
+<div id="deckErrors" style="color:red; margin-top:0.5rem;"></div>
+
+
+
+
             <button type="submit" class="btn-deck"><span class="icon">💾</span>Save</button>
           </form>
         </div>
       </div>
 
-      <script>
-        function openDeckModal(button) {
-          const playerId = button.dataset.playerId;
-          const playerName = button.dataset.playerName;
-          const deckName = button.dataset.deckName;
-          const deckList = button.dataset.deckList;
+<script>
+  // Modal open/close + populate
+  function openDeckModal(button) {
+    const playerId   = button.dataset.playerId;
+    const playerName = button.dataset.playerName;
+    const deckName   = button.dataset.deckName;
+    const deckList   = button.dataset.deckList;
 
-          document.getElementById('deckModal').style.display = 'block';
-          document.getElementById('deckModalTitle').textContent =
-            (deckName ? 'Edit Deck for ' : 'Add Deck for ') + playerName;
-          document.getElementById('deckPlayerId').value = playerId;
-          document.getElementById('deckName').value = deckName || '';
-          document.getElementById('deckList').value = deckList || '';
-        }
-        function closeDeckModal() {
-          document.getElementById('deckModal').style.display = 'none';
-        }
-        window.onclick = function(event) {
-          if (event.target == document.getElementById('deckModal')) {
-            closeDeckModal();
-          }
-        }
+    const modal      = document.getElementById('deckModal');
+    const title      = document.getElementById('deckModalTitle');
+    const playerIdInput = document.getElementById('deckPlayerId');
+    const deckNameInput = document.getElementById('deckName');
+    const editor     = document.getElementById('deckEditor');
+    const hidden     = document.getElementById('deckList');
 
-function updateHighlight(topCut) {
-  const rows = document.querySelectorAll("tr[data-rank]");
-  rows.forEach(row => {
-    const rank = parseInt(row.dataset.rank, 10);
+    if (!modal || !title || !playerIdInput || !deckNameInput || !editor || !hidden) return;
 
-    // Highlight row if inside cut
-    if (topCut && rank <= topCut) {
-      row.classList.add("highlight");
-    } else {
-      row.classList.remove("highlight");
+    modal.style.display = 'block';
+    title.textContent   = (deckName ? 'Edit Deck for ' : 'Add Deck for ') + playerName;
+    playerIdInput.value = playerId;
+    deckNameInput.value = deckName || '';
+
+    const initial = deckList || '';
+    editor.textContent = initial;   // raw text only
+    hidden.value       = initial;
+    debouncedValidate();            // initial render
+  }
+
+  function closeDeckModal() {
+    const modal = document.getElementById('deckModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  window.onclick = function(event) {
+    const modal = document.getElementById('deckModal');
+    if (event.target === modal) closeDeckModal();
+  }
+
+  // Top Cut highlight logic
+  function updateHighlight(topCut) {
+    const rows = document.querySelectorAll("tr[data-rank]");
+    rows.forEach(row => {
+      const rank = parseInt(row.dataset.rank, 10);
+      if (topCut && rank <= topCut) row.classList.add("highlight");
+      else row.classList.remove("highlight");
+
+      const addBtn = row.querySelector("button.btn-deck");
+      if (addBtn && addBtn.textContent.includes("Add Deck")) {
+        if (topCut && rank <= topCut) addBtn.classList.remove("btn-deck-grey");
+        else addBtn.classList.add("btn-deck-grey");
+      }
+    });
+  }
+
+  const playersMetaEl = document.getElementById('playersMeta');
+  const numPlayers    = playersMetaEl ? parseInt(playersMetaEl.dataset.count, 10) : 0;
+
+  function defaultTopCut(n) {
+    let cut = 0;
+    if (n >= 9 && n <= 16) cut = 4;
+    else if (n >= 17 && n <= 32) cut = 8;
+    else if (n >= 33 && n <= 64) cut = 8;
+    else if (n >= 65 && n <= 128) cut = 8;
+    else if (n >= 129 && n <= 226) cut = 8;
+    else if (n >= 217 && n <= 256) cut = 16;
+    else if (n >= 257 && n <= 512) cut = 16;
+    else if (n >= 513 && n <= 1024) cut = 32;
+    else if (n >= 1025 && n <= 2048) cut = 32;
+    return Math.min(cut, n);
+  }
+
+  document.querySelectorAll("input[name='top_cut']").forEach(input => {
+    input.addEventListener("change", () => {
+      const val = input.value;
+      let topCut = val === "" ? defaultTopCut(numPlayers) : parseInt(val, 10);
+      topCut = Math.min(topCut, numPlayers);
+      updateHighlight(topCut);
+    });
+  });
+
+  const checked = document.querySelector("input[name='top_cut']:checked");
+  if (checked) {
+    const val = checked.value;
+    let topCut = val === "" ? defaultTopCut(numPlayers) : parseInt(val, 10);
+    topCut = Math.min(topCut, numPlayers);
+    updateHighlight(topCut);
+  }
+
+  // --- Inline validation inside editor (supports multiple cards per line) ---
+  const editor     = document.getElementById("deckEditor");
+  const hidden     = document.getElementById("deckList");
+  const deckErrors = document.getElementById("deckErrors");
+
+  function debounce(fn, delay = 300) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+  }
+
+  // Ensure each child is a DIV with a SPAN without rebuilding all text
+  function normalizeEditor() {
+    Array.from(editor.childNodes).forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const div = document.createElement("div");
+        const span = document.createElement("span");
+        span.textContent = node.textContent;
+        div.appendChild(span);
+        editor.replaceChild(div, node);
+      } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== "DIV") {
+        const div = document.createElement("div");
+        const span = document.createElement("span");
+        span.textContent = node.textContent;
+        div.appendChild(span);
+        editor.replaceChild(div, node);
+      } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "DIV") {
+        let span = node.querySelector("span");
+        if (!span) {
+          span = document.createElement("span");
+          span.textContent = node.textContent;
+          node.innerHTML = "";
+          node.appendChild(span);
+        }
+      }
+    });
+    if (!editor.firstChild) {
+      const div = document.createElement("div");
+      const span = document.createElement("span");
+      div.appendChild(span);
+      editor.appendChild(div);
     }
+  }
 
-    // Update Add Deck button style
-    const addBtn = row.querySelector("button.btn-deck");
-    if (addBtn && addBtn.textContent.includes("Add Deck")) {
-      if (topCut && rank <= topCut) {
-        addBtn.classList.remove("btn-deck-grey"); // make blue
+  // Extract individual card names from a line that may contain multiple entries
+  function extractNamesFromLine(rawLine) {
+    const tokens = rawLine.trim().split(/\s+/);
+    const names = [];
+    let current = [];
+
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = tokens[i];
+      const next = tokens[i + 1];
+
+      if (/^\d+$/.test(tok)) {
+        // count token: push any accumulated name before starting the next
+        if (current.length > 0) {
+          names.push(current.join(" "));
+          current = [];
+        }
+        continue; // skip the count; next tokens belong to the name
       } else {
-        addBtn.classList.add("btn-deck-grey"); // make grey
+        current.push(tok);
+        // if next token is a count or end of line, finalize current name
+        if (!next || /^\d+$/.test(next)) {
+          names.push(current.join(" "));
+          current = [];
+        }
       }
     }
+
+    return names
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
+  }
+
+  async function validateNames(cardNames) {
+    const invalid = new Set();
+    for (const name of cardNames) {
+      try {
+        const resp = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`);
+        const card = await resp.json();
+        if (card.object === "error") invalid.add(name.toLowerCase());
+      } catch {
+        invalid.add(name.toLowerCase());
+      }
+    }
+    return invalid;
+  }
+
+  async function validateAndHighlight() {
+    if (!editor || !hidden || !deckErrors) return;
+
+    normalizeEditor();
+
+    const lines = Array.from(editor.children).map(div => div.querySelector("span").textContent);
+    hidden.value = lines.join("\n");
+
+    // Build full list of names across all lines, with duplicate detection
+    const names = [];
+    const seen = new Set();
+    const dupSet = new Set();
+
+    const perLineNames = lines.map(line => extractNamesFromLine(line));
+    for (const arr of perLineNames) {
+      for (const nm of arr) {
+        const key = nm.toLowerCase();
+        if (seen.has(key)) dupSet.add(key);
+        else { seen.add(key); names.push(nm); }
+      }
+    }
+
+    const invalidSet = await validateNames(names);
+
+    // Decide line highlight: red if any invalid in that line, yellow if any duplicate (and no invalid), green otherwise
+    perLineNames.forEach((arr, i) => {
+      let isInvalid = false;
+      let isDup = false;
+      for (const nm of arr) {
+        const key = nm.toLowerCase();
+        if (invalidSet.has(key)) { isInvalid = true; break; }
+        if (dupSet.has(key)) isDup = true;
+      }
+      const cls = isInvalid ? "hl-invalid" : (isDup ? "hl-dup" : "hl-valid");
+
+      const span = editor.children[i].querySelector("span");
+      if (span.className !== cls) span.className = cls;
+    });
+
+    // Errors list for invalid names (unique)
+    deckErrors.innerHTML = "";
+    if (invalidSet.size > 0) {
+      const done = new Set();
+      for (const nm of names) {
+        const key = nm.toLowerCase();
+        if (invalidSet.has(key) && !done.has(key)) {
+          const div = document.createElement("div");
+          div.textContent = `${nm} → not found (exact match)`;
+          deckErrors.appendChild(div);
+          done.add(key);
+        }
+      }
+    }
+  }
+
+  const debouncedValidate = debounce(validateAndHighlight, 300);
+
+  if (editor) {
+    normalizeEditor();
+    editor.addEventListener("input", debouncedValidate);
+    editor.addEventListener("blur", validateAndHighlight);
+    editor.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        setTimeout(() => normalizeEditor(), 0);
+      }
+    });
+
+  // 👇 Add this paste handler here
+  editor.addEventListener("paste", e => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    const lines = text.replace(/\r/g, "").split("\n");
+
+    // Insert each line as its own div/span
+    lines.forEach(line => {
+      const div = document.createElement("div");
+      const span = document.createElement("span");
+      span.textContent = line;
+      div.appendChild(span);
+      editor.appendChild(div);
+    });
+
+    // After paste, normalize and validate
+    normalizeEditor();
+    debouncedValidate();
   });
 }
 
 
-        const numPlayers = parseInt(document.getElementById('playersMeta').dataset.count, 10);
+</script>
 
-        function defaultTopCut(n) {
-          let cut = 0;
-          if (n >= 9 && n <= 16) cut = 4;
-          else if (n >= 17 && n <= 32) cut = 8;
-          else if (n >= 33 && n <= 64) cut = 8;
-          else if (n >= 65 && n <= 128) cut = 8;
-          else if (n >= 129 && n <= 226) cut = 8;
-          else if (n >= 217 && n <= 256) cut = 16;
-          else if (n >= 257 && n <= 512) cut = 16;
-          else if (n >= 513 && n <= 1024) cut = 32;
-          else if (n >= 1025 && n <= 2048) cut = 32;
-          return Math.min(cut, n);
-        }
 
-        document.querySelectorAll("input[name='top_cut']").forEach(input => {
-          input.addEventListener("change", () => {
-            const val = input.value;
-            let topCut = val === "" ? defaultTopCut(numPlayers) : parseInt(val, 10);
-            topCut = Math.min(topCut, numPlayers);
-            updateHighlight(topCut);
-          });
-        });
 
-        const checked = document.querySelector("input[name='top_cut']:checked");
-        if (checked) {
-          const val = checked.value;
-          let topCut = val === "" ? defaultTopCut(numPlayers) : parseInt(val, 10);
-          topCut = Math.min(topCut, numPlayers);
-          updateHighlight(topCut);
-        }
-      </script>
 
     {% else %}
       <h2>Enter Matches for Round {{ round_num }}</h2>
@@ -410,6 +679,6 @@ function updateHighlight(topCut) {
         <button type="submit">Submit Round {{ round_num }}</button>
       </form>
     {% endif %}
-  </body>
+
   {% endblock %}
-</html>
+

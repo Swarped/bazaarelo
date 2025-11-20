@@ -1,29 +1,38 @@
-<!doctype html>
-<html>
   {% extends "base.html" %}
 
 {% block content %}
 
-  <head>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
 
     <meta charset="utf-8">
     <title>Past Tournaments</title>
     <style>
-      body {
+      .tournaments-page {
         font-family: Arial, Helvetica, sans-serif;
         max-width: 900px;
         margin: 2rem auto;
         background-color: #f9f9f9;
         color: #333;
       }
+td.store-cell {
+  width: 120px;       /* or whatever width you want for the column */
+  height: 60px;       /* fixed row height */
+  padding: 0;         /* no padding */
+  margin: 0;          /* no margin */
+  line-height: 0;     /* remove extra inline spacing */
+}
 
-      header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-      }
+td.store-cell img {
+  width: 100%;        /* stretch to cell width */
+  height: 100%;       /* stretch to cell height */
+  object-fit: cover;  /* crop to fill the box completely */
+  display: block;     /* remove inline gaps */
+  margin: 0;          /* no margin around the image */
+}
+
+
+
 
       h1 {
         margin: 0;
@@ -151,11 +160,11 @@
         color: #2c3e50;
       }
     </style>
-  </head>
-  <body>
-    <header>
+ <div class="tournaments-page"></div>
+
+
       <h1>Past Tournaments</h1>
-    </header>
+
 
     <div class="toggle-container">
       <input type="radio" id="competitive" name="toggle" checked>
@@ -169,25 +178,42 @@
       <h2>Competitive Tournaments</h2>
       <table>
 <tr>
+  <th>Store</th>   <!-- NEW -->
   <th>Tournament</th>
   <th>Date</th>
   <th>Rounds</th>
   <th>Player Count</th>
   <th>Top Cut</th>
   <th>Country</th>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <th>Actions</th>
+  {% endif %}
 </tr>
 
-        {% for t in competitive_tournaments %}
-        <tr class="clickable-row"
-            tabindex="0"
-            role="link"
-            aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
-            data-href="{{ url_for('tournament_standings', tid=t.id) }}">
-          <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
+{% for t in competitive_tournaments %}
+<tr class="clickable-row"
+    tabindex="0"
+    role="link"
+    aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
+    data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+<td class="store-cell">
+  {% if t.store and t.store.image_url %}
+    <img src="{{ url_for('static', filename=t.store.image_url) }}"
+         alt="{{ t.store.name }}">
+  {% else %}
+      –
+    {% endif %}
+  </td>
+          <td>
+  {{ t.name if t.name else ('Tournament on ' ~ t.date) }}
+  {% if t.premium %}
+    <span style="color:gold;">★</span>
+  {% endif %}
+</td>
           <td>{{ t.date }}</td>
           <td>{{ t.rounds }}</td>
           <td>{{ t.count }}</td>
-          <td>{{ t.top_cut if t.top_cut else '-' }}</td>
+          <td>{% if t.top_cut %}TOP {{ t.top_cut }}{% else %}-{% endif %}</td>
           <td>
   {% if t.country %}
     <span class="fi fi-{{ t.country|lower }}"></span>
@@ -196,6 +222,16 @@
   {% endif %}
 </td>
 
+  {% if current_user.is_authenticated and current_user.is_admin %}
+  <td>
+<form method="POST" action="{{ url_for('delete_tournament', tid=t.id) }}"
+      onsubmit="return confirm('Delete {{ t.name }}?');">
+  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+</form>
+
+    <a href="{{ url_for('edit_tournament', tid=t.id) }}" class="btn btn-primary btn-sm">Edit</a>
+  </td>
+  {% endif %}
 
         </tr>
         {% endfor %}
@@ -211,6 +247,10 @@
   <th>Rounds</th>
   <th>Player Count</th>
   <th>Top Cut</th>
+    <th>Country</th>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <th>Actions</th>
+  {% endif %}
 </tr>
 
         {% for t in casual_tournaments %}
@@ -223,7 +263,26 @@
           <td>{{ t.date }}</td>
           <td>{{ t.rounds }}</td>
           <td>{{ t.player_count if t.player_count else '-' }}</td>   <!-- changed here -->
-          <td>{{ t.top_cut if t.top_cut else '-' }}</td>
+          <td>{% if t.top_cut %}TOP {{ t.top_cut }}{% else %}-{% endif %}</td>
+                    <td>
+  {% if t.country %}
+    <span class="fi fi-{{ t.country|lower }}"></span>
+  {% else %}
+    –
+  {% endif %}
+</td>
+
+  {% if current_user.is_authenticated and current_user.is_admin %}
+  <td>
+<form method="POST" action="{{ url_for('delete_tournament', tid=t.id) }}"
+      onsubmit="return confirm('Delete {{ t.name }}?');">
+  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+</form>
+
+    <a href="{{ url_for('edit_tournament', tid=t.id) }}" class="btn btn-primary btn-sm">Edit</a>
+  </td>
+  {% endif %}
+
         </tr>
         {% endfor %}
       </table>
@@ -236,32 +295,48 @@
       </button>
     </form>
 
-    <script>
-      // Make table rows clickable (mouse + keyboard)
-      document.querySelectorAll('tr.clickable-row').forEach(row => {
-        row.addEventListener('click', () => {
-          const href = row.getAttribute('data-href');
-          if (href) window.location.href = href;
-        });
-        row.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            const href = row.getAttribute('data-href');
-            if (href) window.location.href = href;
-          }
-        });
-      });
+<script>
+  // Make table rows clickable (mouse + keyboard)
+  document.querySelectorAll('tr.clickable-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      // Prevent row navigation if the click was on a button, link, or inside a form
+      if (
+        e.target.tagName === 'BUTTON' ||
+        e.target.tagName === 'A' ||
+        e.target.closest('form')
+      ) {
+        return; // let the form or link handle it
+      }
+      const href = row.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
 
-      // Toggle between competitive and casual tables
-      document.getElementById('competitive').addEventListener('change', () => {
-        document.getElementById('competitive-table').style.display = 'block';
-        document.getElementById('casual-table').style.display = 'none';
-      });
-      document.getElementById('casual').addEventListener('change', () => {
-        document.getElementById('competitive-table').style.display = 'none';
-        document.getElementById('casual-table').style.display = 'block';
-      });
-    </script>
-  </body>
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const href = row.getAttribute('data-href');
+        if (href) window.location.href = href;
+      }
+    });
+  });
+
+  // Toggle between competitive and casual tables
+  const competitiveRadio = document.getElementById('competitive');
+  const casualRadio = document.getElementById('casual');
+  const competitiveTable = document.getElementById('competitive-table');
+  const casualTable = document.getElementById('casual-table');
+
+  competitiveRadio.addEventListener('change', () => {
+    competitiveTable.style.display = 'block';
+    casualTable.style.display = 'none';
+  });
+
+  casualRadio.addEventListener('change', () => {
+    competitiveTable.style.display = 'none';
+    casualTable.style.display = 'block';
+  });
+</script>
+
+
   {% endblock %}
-</html>
+
