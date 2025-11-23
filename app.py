@@ -1068,6 +1068,7 @@ def choose_tournament_type():
 
 
 
+# --- New Tournament ---
 @app.route('/tournament/new', methods=['GET', 'POST'])
 @login_required
 def new_tournament():
@@ -1100,7 +1101,7 @@ def new_tournament():
                 casual=(tournament_type == "casual"),
                 premium=(tournament_type == "premium"),
                 pending=True,
-                user_id=current_user.id,   # track creator
+                user_id=current_user.id,
                 submitted_at=datetime.utcnow()
             )
             db.session.add(tournament)
@@ -1504,9 +1505,12 @@ def player_info(pid):
 
 
 
+# --- Confirm Players ---
 @app.route('/confirm_players', methods=['POST'])
+@login_required
 def confirm_players():
     raw_text = request.form.get("raw_text", "")
+    event_name = request.form.get("event_name") or "Imported Tournament"
     parsed_matches = parse_arena_text(raw_text)
 
     # Resolve each name to a final player ID
@@ -1516,7 +1520,8 @@ def confirm_players():
             if not name:
                 continue
 
-            action = request.form.get(f"action_{name}")
+            safe_name = name.replace(" ", "_")
+            action = request.form.get(f"action_{safe_name}")
 
             if action == "create":
                 player = Player.query.filter_by(name=name).first()
@@ -1527,36 +1532,45 @@ def confirm_players():
                 m[role] = player.id
 
             elif action == "replace":
-                replace_id_str = request.form.get(f"replace_{name}")
+                replace_id_str = request.form.get(f"replace_{safe_name}")
                 if replace_id_str:
                     replace_id = int(replace_id_str)
-                    # If the name exists as a Player row, merge it into the chosen existing ID
                     current = Player.query.filter_by(name=name).first()
                     if current and current.id != replace_id:
                         merge_player_ids(current.id, replace_id)
-                    # Write the final ID to the parsed structure
                     m[role] = replace_id
                 else:
-                    # Fallback: if no replace_id provided, use existing player by name if present
                     player = Player.query.filter_by(name=name).first()
                     if player:
                         m[role] = player.id
 
             else:
-                # Default: use existing player if present
                 player = Player.query.filter_by(name=name).first()
                 if player:
                     m[role] = player.id
 
     # Collect final IDs from parsed matches
-    final_ids = {pid for m in parsed_matches for pid in [m.get("player"), m.get("opponent")] if isinstance(pid, int)}
+    final_ids = {
+        pid for m in parsed_matches
+        for pid in [m.get("player"), m.get("opponent")]
+        if isinstance(pid, int)
+    }
 
-    # Create the tournament
+    # Create the tournament with a confirm_token
     num_players = len(final_ids)
-    rounds = 3 if num_players <= 8 else 4 if num_players <= 16 else 5 if num_players <= 32 else 6 if num_players <= 64 else 7
-    event_name = request.form.get("event_name") or "Imported Tournament"
+    rounds = 3 if num_players <= 8 else 4 if num_players <= 16 else \
+             5 if num_players <= 32 else 6 if num_players <= 64 else 7
 
-    tournament = Tournament(name=event_name, date=datetime.today().date(), rounds=rounds, imported_from_text=True)
+    tournament = Tournament(
+        name=event_name,
+        date=datetime.today().date(),
+        rounds=rounds,
+        imported_from_text=True,
+        pending=True,
+        confirm_token=secrets.token_urlsafe(16),
+        user_id=current_user.id,
+        submitted_at=datetime.utcnow()
+    )
     db.session.add(tournament)
     db.session.commit()
 
@@ -1572,7 +1586,6 @@ def confirm_players():
         p2_id = m["opponent"] if isinstance(m["opponent"], int) else None
         result = m.get("result") or "1-1"
 
-        # If an ID is missing but the name exists in DB, resolve it
         if p1_id is None and isinstance(m.get("player"), str):
             p = Player.query.filter_by(name=m["player"]).first()
             p1_id = p.id if p else None
@@ -1604,7 +1617,17 @@ def confirm_players():
     db.session.commit()
 
     flash("Players confirmed and tournament created.", "success")
-    return redirect(url_for('tournament_round', tid=tournament.id, round_num=1))
+
+    # Redirect with token to avoid invalid/expired link errors
+    confirm_url = url_for(
+        'tournament_round',
+        tid=tournament.id,
+        round_num=1,
+        token=tournament.confirm_token
+    )
+    return redirect(confirm_url)
+
+
 
 
 

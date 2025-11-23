@@ -5,7 +5,7 @@
   <title>Confirm Players</title>
   <style>
     body {
-      font-family: Arial, Helvetica, sans-serif; /* modern sans-serif font */
+      font-family: Arial, Helvetica, sans-serif;
       margin: 20px;
       background-color: #f9f9f9;
       color: #333;
@@ -52,7 +52,7 @@
       cursor: pointer;
       top: 0; left: 0;
       right: 0; bottom: 0;
-      background-color: #4CAF50; /* green when ON */
+      background-color: #4CAF50;
       transition: .4s;
       border-radius: 20px;
     }
@@ -116,18 +116,19 @@
       </thead>
       <tbody>
         {% for name in unknown_names %}
+        {% set safe_name = name|replace(" ", "_") %}
         <tr>
           <td>{{ name }}</td>
           <td>
             <!-- Toggle switch defaults to "Create New" -->
             <label class="switch">
-              <input type="checkbox" name="action_{{ name }}" value="create" checked onchange="toggleReplace(this, '{{ name }}')">
+              <input type="checkbox" name="action_{{ safe_name }}" value="create" checked onchange="toggleReplace(this, '{{ safe_name }}')">
               <span class="slider"></span>
             </label>
-            <span id="label_{{ name }}" class="switch-label">Create New</span>
+            <span id="label_{{ safe_name }}" class="switch-label">Create New</span>
           </td>
           <td>
-            <select name="replace_{{ name }}" id="replace_{{ name }}" style="display:none;">
+            <select name="replace_{{ safe_name }}" id="replace_{{ safe_name }}" style="display:none;">
               {% for p in existing_players %}
                 <option value="{{ p.id }}">{{ p.name }}</option>
               {% endfor %}
@@ -138,14 +139,16 @@
       </tbody>
     </table>
 
+    <!-- Hidden fields must be inside the form -->
     <input type="hidden" name="raw_text" value="{{ raw_text }}">
+    <input type="hidden" name="event_name" value="{{ event_name }}">
     <button type="submit">Confirm</button>
   </form>
 
   <script>
-    function toggleReplace(checkbox, name) {
-      const label = document.getElementById("label_" + name);
-      const select = document.getElementById("replace_" + name);
+    function toggleReplace(checkbox, safeName) {
+      const label = document.getElementById("label_" + safeName);
+      const select = document.getElementById("replace_" + safeName);
 
       if (checkbox.checked) {
         label.textContent = "Create New";
@@ -158,8 +161,5 @@
       }
     }
   </script>
-
-<input type="hidden" name="event_name" value="{{ event_name }}">
-
 </body>
 </html>
