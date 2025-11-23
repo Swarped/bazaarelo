@@ -593,13 +593,13 @@ def edit_store_image(store_id):
 
 
 
-@app.route("/make_me_admin")
-@login_required
-def make_me_admin():
-    current_user.is_admin = True
-    db.session.commit()
-    flash("You are now an admin!", "success")
-    return redirect(url_for("admin_panel"))
+#@app.route("/make_me_admin")
+#@login_required
+#def make_me_admin():
+#    current_user.is_admin = True
+#    db.session.commit()
+#    flash("You are now an admin!", "success")
+#    return redirect(url_for("admin_panel"))
 
 @app.route("/request_access", methods=["GET", "POST"])
 @login_required
