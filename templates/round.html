@@ -7,6 +7,7 @@
 
 
     <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <style>
       body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; }
@@ -77,6 +78,56 @@
         border: 1px solid #ccc;
         border-radius: 4px;
       }
+
+      /* Deck Name Dropdown */
+      .deck-name-wrapper {
+        position: relative;
+        width: 100%;
+        margin-bottom: 1rem;
+      }
+      
+      .deck-name-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 1001;
+      }
+      
+      .deck-name-dropdown-item {
+        padding: 0.5rem;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .deck-name-dropdown-item:hover {
+        background-color: #f0f0f0;
+      }
+      
+      .deck-name-dropdown-item:last-child {
+        border-bottom: none;
+      }
+      
+      .deck-name-create {
+        padding: 0.5rem;
+        font-style: italic;
+        color: #007bff;
+        cursor: pointer;
+        border-top: 2px solid #007bff;
+      }
+      
+      .deck-name-create:hover {
+        background-color: #e7f3ff;
+      }
+
       .close {
         float: right;
         font-size: 1.2rem;
@@ -157,14 +208,280 @@
         font-weight: bold;
       }
       .option span:hover { background: #e0e0e0; }
+
+      .btn-toggle-rounds {
+        padding: .75rem 1.5rem;
+        font-size: 1rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 1rem;
+        transition: background 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .btn-toggle-rounds:hover { background: #0056b3; }
+      .btn-toggle-rounds.expanded { background: #0056b3; }
+      .btn-toggle-rounds .material-icons {
+        font-size: 20px;
+        transition: transform 0.3s ease;
+      }
+      .btn-toggle-rounds.expanded .material-icons {
+        transform: rotate(180deg);
+      }
+
+      #allRoundsSection {
+        display: none;
+        margin-top: 2rem;
+        padding: 1.5rem;
+        border: 2px solid #007bff;
+        border-radius: 6px;
+        background: #f8f9fa;
+      }
+
+      #allRoundsSection.visible {
+        display: block;
+      }
+
+      .round-group {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .round-group h3 {
+        margin-top: 0;
+        color: #2c3e50;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 0.5rem;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .round-group h3:hover {
+        background: #f8f9fa;
+      }
+
+      .round-toggle-icon {
+        font-size: 1.2rem;
+        transition: transform 0.3s ease;
+      }
+
+      .round-toggle-icon.collapsed {
+        transform: rotate(-90deg);
+      }
+
+      .round-content {
+        max-height: 1000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        opacity: 1;
+      }
+
+      .round-content.collapsed {
+        max-height: 0;
+        opacity: 0;
+      }
+
+      .round-group table {
+        width: 100%;
+        margin-top: 1rem;
+        table-layout: fixed;
+      }
+
+      .round-group th, .round-group td {
+        padding: 0.75rem;
+        text-align: center;
+        border: 1px solid #ddd;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+
+      .round-group th {
+        background: #f0f0f0;
+      }
+
+      .match-winner {
+        background-color: #cfe2ff;
+        font-weight: bold;
+      }
+
+      .elo-match-pos { color: green; font-weight: bold; }
+      .elo-match-neg { color: red; font-weight: bold; }
+
+      /* Editing mode styles */
+      .editable-match {
+        transition: background-color 0.2s ease;
+      }
+
+      .editable-cell {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        user-select: none;
+      }
+
+      .editable-cell:hover {
+        background-color: #e7f3ff !important;
+        box-shadow: inset 0 0 0 2px #4dabf7;
+      }
+
+      .editable-cell:active {
+        transform: scale(0.98);
+      }
+
+      /* Selected winner cell - enhanced highlighting */
+      .editable-cell.match-winner {
+        background-color: #d0e8ff !important;
+        box-shadow: inset 0 0 0 3px #0d6efd;
+        font-weight: bold;
+      }
+
+      .editable-cell.match-winner:hover {
+        background-color: #b8dcff !important;
+        box-shadow: inset 0 0 0 3px #0a58ca;
+      }
+
+      .btn-winner {
+        padding: 0.4rem 0.8rem;
+        font-size: 1.2rem;
+        background: #e0e0e0;
+        color: #666;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-winner:hover {
+        background: #d0d0d0;
+        border-color: #999;
+      }
+
+      .btn-winner.active {
+        background: #4CAF50;
+        color: white;
+        border-color: #4CAF50;
+        font-weight: bold;
+      }
+
+      /* Player name buttons in edit mode */
+      .player-name-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        width: 100%;
+        text-align: center;
+        transition: all 0.2s ease;
+        display: block;
+      }
+
+      .player-name-btn:hover {
+        background-color: #e7f3ff;
+        box-shadow: inset 0 0 0 2px #4dabf7;
+      }
+
+      .player-name-btn:active {
+        transform: scale(0.98);
+      }
+
+      .player-name-btn.winner {
+        font-weight: bold;
+      }
+
+      .changes-pending {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #ff9800;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 6px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        z-index: 1000;
+        display: none;
+      }
+
+      .changes-pending.visible {
+        display: block;
+      }
+
+      .btn-save-changes {
+        margin-top: 1rem;
+        padding: .75rem 1.5rem;
+        font-size: 1rem;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+      }
+      .btn-save-changes:hover { background: #45a049; }
+
+      /* Loading overlay for deck validation */
+      .deck-loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 1rem;
+        z-index: 10;
+        border-radius: 4px;
+      }
+
+      .deck-loading-overlay.active {
+        display: flex;
+      }
+
+      .deck-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .deck-loading-text {
+        font-size: 1rem;
+        color: #333;
+        font-weight: 500;
+      }
     </style>
 
 
-    <h1>Tournament Round {{ round_num }}</h1>
+    <h1>{% if tournament.imported_from_text and tournament.name %}{{ tournament.name }}{% else %}Tournament Round {{ round_num }}{% endif %}</h1>
 
-    <nav>
-      <a href="{{ url_for('new_tournament') }}">Create a new tournament</a>
-    </nav>
+    {% if tournament.rounds > 1 %}
+    <button id="toggleAllRoundsBtn" class="btn-toggle-rounds">
+      <span class="material-icons">expand_more</span>
+      <span>Round-by-Round Results</span>
+    </button>
+    {% endif %}
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -177,9 +494,92 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
+
+    <!-- All Rounds Expandable Section -->
+    {% if tournament.imported_from_text or is_editing %}
+    <div id="allRoundsSection">
+      <h2>📊 Round-by-Round Results{% if is_editing %} - Click to Select Winners{% endif %}</h2>
+      
+      {% set matches_by_round = {} %}
+      {% for match in all_matches %}
+        {% if match.round_num not in matches_by_round %}
+          {% set _ = matches_by_round.update({match.round_num: []}) %}
+        {% endif %}
+        {% if matches_by_round[match.round_num].append(match) %}{% endif %}
+      {% endfor %}
+
+      {% for round_num in matches_by_round|sort %}
+        <div class="round-group">
+          <h3 onclick="toggleRound(this)">
+            <span>Round {{ round_num }}</span>
+            <span class="round-toggle-icon collapsed">▼</span>
+          </h3>
+          <div class="round-content collapsed">
+          <table>
+            <tr>
+              <th style="width: 42%;">Player 1</th>
+              <th style="width: 16%;">{% if is_editing %}Winner{% else %}Elo Δ{% endif %}</th>
+              <th style="width: 16%;">{% if is_editing %}Winner{% else %}Elo Δ{% endif %}</th>
+              <th style="width: 42%;">Player 2</th>
+            </tr>
+            {% for match in matches_by_round[round_num] %}
+              {% set elo_data = per_round_elo_changes.get(round_num, {}).get(match.id, {'player1_elo_delta': 0, 'player2_elo_delta': 0, 'winner': 0}) if not is_editing else {} %}
+              <tr data-match-id="{{ match.id }}" class="{% if is_editing %}editable-match{% endif %}">
+                <td class="{% if is_editing and match.result in ['2-0', '2-1', '1-0'] %}match-winner{% endif %}{% if not is_editing and elo_data.winner == 1 %} match-winner{% endif %}">
+                  {% if is_editing and match.player1_id %}
+                    <button type="button" class="player-name-btn {% if match.result in ['2-0', '2-1', '1-0'] %}winner{% endif %}" onclick="selectWinner({{ match.id }}, 1)">
+                      {{ match.player1.name }}
+                    </button>
+                  {% elif match.player1_id %}
+                    {{ match.player1.name }}
+                  {% else %}
+                    <em>Bye</em>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if is_editing %}
+                    <button type="button" class="btn-winner {% if match.result in ['2-0', '2-1', '1-0'] %}active{% endif %}" 
+                            onclick="selectWinner({{ match.id }}, 1)">✓</button>
+                  {% elif elo_data.player1_elo_delta != 0 %}
+                    <span class="{{ 'elo-match-pos' if elo_data.player1_elo_delta > 0 else 'elo-match-neg' }}">
+                      {{ "+" if elo_data.player1_elo_delta > 0 else "" }}{{ elo_data.player1_elo_delta }}
+                    </span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>
+                  {% if is_editing %}
+                    <button type="button" class="btn-winner {% if match.result in ['0-2', '1-2', '0-1'] %}active{% endif %}" 
+                            onclick="selectWinner({{ match.id }}, 2)">✓</button>
+                  {% elif elo_data.player2_elo_delta != 0 %}
+                    <span class="{{ 'elo-match-pos' if elo_data.player2_elo_delta > 0 else 'elo-match-neg' }}">
+                      {{ "+" if elo_data.player2_elo_delta > 0 else "" }}{{ elo_data.player2_elo_delta }}
+                    </span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="{% if is_editing and match.result in ['0-2', '1-2', '0-1'] %}match-winner{% endif %}{% if not is_editing and elo_data.winner == 2 %} match-winner{% endif %}">
+                  {% if is_editing and match.player2_id %}
+                    <button type="button" class="player-name-btn {% if match.result in ['0-2', '1-2', '0-1'] %}winner{% endif %}" onclick="selectWinner({{ match.id }}, 2)">
+                      {{ match.player2.name }}
+                    </button>
+                  {% elif match.player2_id %}
+                    {{ match.player2.name }}
+                  {% else %}
+                    <em>Bye</em>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </table>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 {% if tournament.imported_from_text %}
-  <h2>This tournament was imported from EventLink text.</h2>
-  <p>All rounds have already been recorded. Please review the final standings before Elo is applied.</p>
 
   {% if tournament.premium %}
     <p style="color:gold; font-weight:bold; margin-top:0.5rem;">
@@ -229,14 +629,14 @@
             data-deck-name="{{ s.deck.name|e }}"
             data-deck-list="{{ s.deck.list_text|e }}"
             onclick="openDeckModal(this)">
-      <span class="icon">✏️</span>Edit
+      <span class="material-icons" style="font-size: 16px;">edit</span>Edit
     </button>
     <!-- Remove deck button (always blue) -->
     <form method="POST" action="{{ url_for('remove_deck') }}" style="display:inline;">
       <input type="hidden" name="player_id" value="{{ s.player.id }}">
       <input type="hidden" name="tournament_id" value="{{ tid }}">
       <button type="submit" class="btn-deck">
-        <span class="icon">🗑️</span>Remove
+        <span class="material-icons" style="font-size: 16px;">delete</span>Remove
       </button>
     </form>
     
@@ -246,7 +646,7 @@
             data-player-id="{{ s.player.id }}"
             data-player-name="{{ s.player.name|e }}"
             onclick="openDeckModal(this)">
-      <span class="icon">➕</span>Add Deck
+      <span class="material-icons" style="font-size: 16px;">add</span>Add Deck
     </button>
   {% endif %}
 </td>
@@ -258,6 +658,7 @@
         </div>
 {% if tournament.pending and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
 <div class="side-panel">
+  <!-- New imported tournament awaiting confirmation -->
   <h3>Playoff Cut</h3>
   <form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
     <div class="option-group">
@@ -297,39 +698,64 @@
     <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
   </form>
 
-<h3>Store</h3>
-<select id="storeSelect" name="store_id">
-  <option value="">-- Select Store --</option>
-  {% for store in stores %}
-    <option value="{{ store.id }}" {% if tournament.store_id == store.id %}selected{% endif %}>
-      {{ store.name }}{% if store.location %} ({{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}){% elif store.country %} ({{ store.country }}){% endif %}
-    </option>
-  {% endfor %}
-</select>
+  {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
+  <h3>Store</h3>
+  <select id="storeSelect" name="store_id">
+    <option value="">-- Select Store --</option>
+    {% for store in stores %}
+      <option value="{{ store.id }}" {% if tournament.store_id == store.id %}selected{% endif %}>
+        {{ store.name }}{% if store.location %} ({{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}){% elif store.country %} ({{ store.country }}){% endif %}
+      </option>
+    {% endfor %}
+  </select>
+  <div id="storeStatus"></div>
+  {% endif %}
+</div>
+{% elif is_editing and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
+<div class="side-panel">
+  <!-- Editing existing confirmed tournament -->
+  <form method="POST" action="{{ url_for('finalize_tournament_edit', tid=tid) }}">
+    <button type="submit" class="btn-confirm" style="background: #28a745;">
+      <span class="material-icons icon" style="vertical-align: middle;">check_circle</span>
+      Finalize Tournament Edits
+    </button>
+  </form>
 
-<div id="storeStatus"></div>
-
-<script>
-document.getElementById("storeSelect").addEventListener("change", function() {
-  const storeId = this.value;
-  if (!storeId) return;
-  fetch("{{ url_for('set_tournament_store', tid=tid) }}", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ store_id: storeId })
-  }).then(() => {
-    // After POST, the route redirects, but in fetch it won't follow in-page.
-    // Optionally show a message, then reload for consistent state:
-    document.getElementById("storeStatus").textContent = "Store updated. Reloading...";
-    window.location.reload();
-  });
-});
-</script>
-
-
+  <h3>Store</h3>
+  <select id="storeSelect" name="store_id">
+    <option value="">-- Select Store --</option>
+    {% for store in stores %}
+      <option value="{{ store.id }}" {% if tournament.store_id == store.id %}selected{% endif %}>
+        {{ store.name }}{% if store.location %} ({{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}){% elif store.country %} ({{ store.country }}){% endif %}
+      </option>
+    {% endfor %}
+  </select>
+  <div id="storeStatus"></div>
 </div>
 {% endif %}
 
+<script>
+{% if (tournament.pending or is_editing) and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
+document.getElementById("storeSelect").addEventListener("change", function() {
+  const storeId = this.value;
+  if (!storeId) return;
+  
+  // Create a form and submit it to follow the redirect properly
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = "{{ url_for('set_tournament_store', tid=tid) }}";
+  
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'store_id';
+  input.value = storeId;
+  form.appendChild(input);
+  
+  document.body.appendChild(form);
+  form.submit();
+});
+{% endif %}
+</script>
 
 
       <!-- Deck Modal -->
@@ -341,9 +767,19 @@ document.getElementById("storeSelect").addEventListener("change", function() {
             <input type="hidden" name="player_id" id="deckPlayerId">
             <input type="hidden" name="tournament_id" value="{{ tid }}">
             <label>Deck Name</label>
-            <input type="text" name="deck_name" id="deckName">
+            <div class="deck-name-wrapper">
+              <input type="text" name="deck_name" id="deckName" autocomplete="off" placeholder="Search or create archetype...">
+              <input type="hidden" id="deckNameConfirmed" value="false">
+              <div id="deckNameDropdown" class="deck-name-dropdown"></div>
+            </div>
 <label>Deck List</label>
-<div id="deckEditor" contenteditable="true" class="deck-editor"></div>
+<div class="deck-editor-wrap">
+  <div id="deckEditor" contenteditable="true" class="deck-editor"></div>
+  <div id="deckLoadingOverlay" class="deck-loading-overlay">
+    <div class="deck-spinner"></div>
+    <div class="deck-loading-text">Checking Cards...</div>
+  </div>
+</div>
 
 <!-- hidden textarea to submit raw text -->
 <textarea name="deck_list" id="deckList" hidden></textarea>
@@ -353,7 +789,7 @@ document.getElementById("storeSelect").addEventListener("change", function() {
 
 
 
-            <button type="submit" class="btn-deck"><span class="icon">💾</span>Save</button>
+            <button type="submit" class="btn-deck"><span class="material-icons" style="font-size: 16px;">save</span>Save</button>
           </form>
         </div>
       </div>
@@ -381,15 +817,138 @@ document.getElementById("storeSelect").addEventListener("change", function() {
     deckNameInput.value = deckName || '';
 
     const initial = deckList || '';
-    editor.textContent = initial;   // raw text only
-    hidden.value       = initial;
-    debouncedValidate();            // initial render
+    
+    // Properly structure the editor content
+    editor.innerHTML = '';
+    if (initial) {
+      const lines = initial.split('\n');
+      lines.forEach(line => {
+        const div = document.createElement('div');
+        const span = document.createElement('span');
+        span.textContent = line;
+        div.appendChild(span);
+        editor.appendChild(div);
+      });
+      hidden.value = initial;
+      validateAndHighlight();       // immediate validation for existing deck
+    } else {
+      // Empty editor with one empty line
+      const div = document.createElement('div');
+      const span = document.createElement('span');
+      div.appendChild(span);
+      editor.appendChild(div);
+      hidden.value = '';
+    }
   }
 
   function closeDeckModal() {
     const modal = document.getElementById('deckModal');
     if (modal) modal.style.display = 'none';
+    const dropdown = document.getElementById('deckNameDropdown');
+    if (dropdown) dropdown.style.display = 'none';
   }
+
+  // Deck archetype dropdown functionality
+  let archetypes = [];
+  
+  // Load archetypes from server
+  async function loadArchetypes() {
+    try {
+      const response = await fetch("{{ url_for('get_deck_archetypes') }}");
+      archetypes = await response.json();
+    } catch (error) {
+      console.error('Error loading archetypes:', error);
+      archetypes = [];
+    }
+  }
+
+  // Filter and display matching archetypes
+  function showArchetypeDropdown(searchText) {
+    const dropdown = document.getElementById('deckNameDropdown');
+    const confirmedInput = document.getElementById('deckNameConfirmed');
+    
+    if (!dropdown) return;
+    
+    // Clear previous content
+    dropdown.innerHTML = '';
+    
+    if (!searchText.trim()) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    
+    // Filter archetypes that match the search
+    const filtered = archetypes.filter(arch => 
+      arch.toLowerCase().includes(searchText.toLowerCase())
+    );
+    
+    // Check if exact match exists
+    const exactMatch = archetypes.find(arch => 
+      arch.toLowerCase() === searchText.toLowerCase()
+    );
+    
+    // Show existing archetypes
+    if (filtered.length > 0) {
+      filtered.forEach(arch => {
+        const item = document.createElement('div');
+        item.className = 'deck-name-dropdown-item';
+        item.textContent = arch;
+        item.onclick = () => {
+          document.getElementById('deckName').value = arch;
+          confirmedInput.value = 'true';
+          dropdown.style.display = 'none';
+        };
+        dropdown.appendChild(item);
+      });
+    }
+    
+    // Show "Create new" option if no exact match
+    if (!exactMatch && searchText.trim()) {
+      const createItem = document.createElement('div');
+      createItem.className = 'deck-name-create';
+      createItem.textContent = `✨ Create new archetype: "${searchText}"`;
+      createItem.onclick = () => {
+        if (confirm(`Create new archetype "${searchText}"?`)) {
+          confirmedInput.value = 'true';
+          dropdown.style.display = 'none';
+        }
+      };
+      dropdown.appendChild(createItem);
+    }
+    
+    dropdown.style.display = filtered.length > 0 || !exactMatch ? 'block' : 'none';
+  }
+
+  // Setup deck name input listeners
+  document.addEventListener('DOMContentLoaded', () => {
+    loadArchetypes();
+    
+    const deckNameInput = document.getElementById('deckName');
+    const confirmedInput = document.getElementById('deckNameConfirmed');
+    const dropdown = document.getElementById('deckNameDropdown');
+    
+    if (deckNameInput) {
+      // Show dropdown on input
+      deckNameInput.addEventListener('input', (e) => {
+        confirmedInput.value = 'false';
+        showArchetypeDropdown(e.target.value);
+      });
+      
+      // Show dropdown on focus
+      deckNameInput.addEventListener('focus', (e) => {
+        if (e.target.value) {
+          showArchetypeDropdown(e.target.value);
+        }
+      });
+      
+      // Hide dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!deckNameInput.contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+    }
+  });
 
   window.onclick = function(event) {
     const modal = document.getElementById('deckModal');
@@ -491,7 +1050,13 @@ document.getElementById("storeSelect").addEventListener("change", function() {
 
   // Extract individual card names from a line that may contain multiple entries
   function extractNamesFromLine(rawLine) {
-    const tokens = rawLine.trim().split(/\s+/);
+    // Skip sideboard lines and empty lines
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+      return [];
+    }
+    
+    const tokens = trimmed.split(/\s+/);
     const names = [];
     let current = [];
 
@@ -535,8 +1100,12 @@ document.getElementById("storeSelect").addEventListener("change", function() {
     return invalid;
   }
 
-  async function validateAndHighlight() {
+  async function validateAndHighlight(showLoading = false) {
     if (!editor || !hidden || !deckErrors) return;
+
+    // Show loading overlay only if requested (for paste operations)
+    const loadingOverlay = document.getElementById('deckLoadingOverlay');
+    if (showLoading && loadingOverlay) loadingOverlay.classList.add('active');
 
     normalizeEditor();
 
@@ -558,6 +1127,23 @@ document.getElementById("storeSelect").addEventListener("change", function() {
     }
 
     const invalidSet = await validateNames(names);
+
+    // Hide loading overlay
+    if (loadingOverlay) loadingOverlay.classList.remove('active');
+
+    // Update save button state
+    const saveBtn = document.querySelector('#deckForm button[type="submit"]');
+    if (saveBtn) {
+      if (invalidSet.size > 0) {
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = '0.5';
+        saveBtn.style.cursor = 'not-allowed';
+      } else {
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = '1';
+        saveBtn.style.cursor = 'pointer';
+      }
+    }
 
     // Decide line highlight: red if any invalid in that line, yellow if any duplicate (and no invalid), green otherwise
     perLineNames.forEach((arr, i) => {
@@ -608,6 +1194,9 @@ document.getElementById("storeSelect").addEventListener("change", function() {
     const text = (e.clipboardData || window.clipboardData).getData("text");
     const lines = text.replace(/\r/g, "").split("\n");
 
+    // Clear existing content
+    editor.innerHTML = "";
+
     // Insert each line as its own div/span
     lines.forEach(line => {
       const div = document.createElement("div");
@@ -617,11 +1206,167 @@ document.getElementById("storeSelect").addEventListener("change", function() {
       editor.appendChild(div);
     });
 
-    // After paste, normalize and validate
+    // After paste, normalize and validate immediately WITH loading overlay
     normalizeEditor();
-    debouncedValidate();
+    validateAndHighlight(true);  // showLoading = true
   });
+
+  // Form submission validation
+  const deckForm = document.getElementById('deckForm');
+  if (deckForm) {
+    deckForm.addEventListener('submit', (e) => {
+      const deckNameInput = document.getElementById('deckName');
+      const confirmedInput = document.getElementById('deckNameConfirmed');
+      const deckName = deckNameInput ? deckNameInput.value.trim() : '';
+      
+      // Check if deck name is provided
+      if (!deckName) {
+        e.preventDefault();
+        alert('Please enter a deck name.');
+        return false;
+      }
+      
+      // Check if it's a new archetype that hasn't been confirmed
+      const isExisting = archetypes.some(arch => 
+        arch.toLowerCase() === deckName.toLowerCase()
+      );
+      
+      if (!isExisting && confirmedInput.value !== 'true') {
+        e.preventDefault();
+        if (confirm(`Create new archetype "${deckName}"?`)) {
+          confirmedInput.value = 'true';
+          deckForm.submit();
+        }
+        return false;
+      }
+      
+      return true;
+    });
+  }
 }
+
+  // --- Toggle All Rounds Section ---
+  const toggleBtn = document.getElementById('toggleAllRoundsBtn');
+  const allRoundsSection = document.getElementById('allRoundsSection');
+
+  if (toggleBtn && allRoundsSection) {
+    toggleBtn.addEventListener('click', () => {
+      allRoundsSection.classList.toggle('visible');
+      toggleBtn.classList.toggle('expanded');
+    });
+  }
+
+  // --- Toggle Individual Rounds ---
+  function toggleRound(headerElement) {
+    const content = headerElement.nextElementSibling;
+    const icon = headerElement.querySelector('.round-toggle-icon');
+    
+    if (content && icon) {
+      content.classList.toggle('collapsed');
+      icon.classList.toggle('collapsed');
+    }
+  }
+
+  // Editing mode: track changes and update winners
+  const pendingChanges = {};
+
+  function selectWinner(matchId, playerNum) {
+    // Toggle winner selection
+    const currentWinner = pendingChanges[matchId] || null;
+    
+    if (currentWinner === playerNum) {
+      // Clicking same player deselects (draw)
+      delete pendingChanges[matchId];
+    } else {
+      // Select new winner
+      pendingChanges[matchId] = playerNum;
+    }
+
+    // Update visual feedback
+    updateMatchDisplay(matchId);
+    
+    // Show/hide save indicator
+    updateChangesIndicator();
+  }
+
+  function updateMatchDisplay(matchId) {
+    const row = document.querySelector(`tr[data-match-id="${matchId}"]`);
+    if (!row) return;
+
+    const player1Cell = row.querySelector('td:nth-child(1)');
+    const player2Cell = row.querySelector('td:nth-child(4)');
+    const btn1 = row.querySelector('td:nth-child(2) button');
+    const btn2 = row.querySelector('td:nth-child(3) button');
+
+    // Reset all
+    player1Cell.classList.remove('match-winner');
+    player2Cell.classList.remove('match-winner');
+    btn1.classList.remove('active');
+    btn2.classList.remove('active');
+
+    // Apply new selection
+    const winner = pendingChanges[matchId];
+    if (winner === 1) {
+      player1Cell.classList.add('match-winner');
+      btn1.classList.add('active');
+    } else if (winner === 2) {
+      player2Cell.classList.add('match-winner');
+      btn2.classList.add('active');
+    }
+  }
+
+  function updateChangesIndicator() {
+    const hasChanges = Object.keys(pendingChanges).length > 0;
+    let indicator = document.getElementById('changesIndicator');
+    
+    if (!indicator && hasChanges) {
+      // Create indicator
+      indicator = document.createElement('div');
+      indicator.id = 'changesIndicator';
+      indicator.className = 'changes-pending visible';
+      indicator.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">
+          ${Object.keys(pendingChanges).length} change(s) pending
+        </div>
+        <button onclick="saveChanges()" class="btn-save-changes">
+          Save All Changes
+        </button>
+      `;
+      document.body.appendChild(indicator);
+    } else if (indicator) {
+      if (hasChanges) {
+        indicator.querySelector('div').textContent = `${Object.keys(pendingChanges).length} change(s) pending`;
+      } else {
+        indicator.remove();
+      }
+    }
+  }
+
+  function saveChanges() {
+    if (Object.keys(pendingChanges).length === 0) return;
+
+    // Send changes to backend
+    fetch('{{ url_for("update_match_results", tid=tid) }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ changes: pendingChanges })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Reload to show updated standings
+        window.location.reload();
+      } else {
+        alert('Error saving changes: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      alert('Error saving changes: ' + error);
+    });
+  }
+
 
 
 </script>

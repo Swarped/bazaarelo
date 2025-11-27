@@ -1,0 +1,4 @@
+﻿  <h2>Events & Logs</h2>
+  <p>Coming soon: here we’ll display system events, audit logs, and activity history.</p>
+</div>
+

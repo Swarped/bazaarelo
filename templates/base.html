@@ -1,12 +1,579 @@
 <!doctype html>
-<html>
+<html{% if current_user.is_authenticated and current_user.dark_mode %} class="dark-mode"{% endif %}>
   <head>
     <meta charset="utf-8">
     <title>{% block title %}{% endblock %}</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
+      /* Dark Mode Styles */
+      html {
+        height: 100%;
+      }
+      html.dark-mode {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+      html.dark-mode body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+      html.dark-mode header.site-header {
+        background: #2a2a2a;
+        border-color: #4CAF50;
+      }
+      html.dark-mode .navbar-inner a {
+        color: #ffffff !important;
+      }
+      html.dark-mode .navbar-inner a:hover {
+        background-color: #3a3a3a;
+      }
+      html.dark-mode .navbar-inner .material-icons {
+        color: #ffffff !important;
+      }
+      html.dark-mode .btn-primary,
+      html.dark-mode .btn-request {
+        color: #fff !important;
+      }
+      html.dark-mode .btn-primary .material-icons,
+      html.dark-mode .btn-request .material-icons {
+        color: #fff !important;
+      }
+
+      /* Dark mode - Global overrides */
+      html.dark-mode input,
+      html.dark-mode textarea,
+      html.dark-mode select,
+      html.dark-mode div[style*="border"],
+      html.dark-mode li {
+        border-color: #505050 !important;
+      }
+      /* Additional border overrides for all border types */
+      html.dark-mode *[style*="border: 1px solid #ddd"],
+      html.dark-mode *[style*="border: 1px solid #ccc"],
+      html.dark-mode *[style*="border:1px solid #ddd"],
+      html.dark-mode *[style*="border:1px solid #ccc"] {
+        border-color: #505050 !important;
+      }
+      /* Override for elements with border classes */
+      html.dark-mode .modal-content,
+      html.dark-mode #searchBar,
+      html.dark-mode .country-select {
+        border-color: #505050 !important;
+      }
+      html.dark-mode h1, html.dark-mode h2, html.dark-mode h3, 
+      html.dark-mode h4, html.dark-mode h5, html.dark-mode h6 {
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode table {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0;
+      }
+      html.dark-mode th {
+        background-color: #3a3a3a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode td {
+        border-color: #505050 !important;
+      }
+      html.dark-mode tr td {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode tr:nth-child(even) td {
+        background-color: #252525 !important;
+      }
+      html.dark-mode input[type="text"],
+      html.dark-mode input[type="email"],
+      html.dark-mode input[type="number"],
+      html.dark-mode input[type="date"],
+      html.dark-mode textarea,
+      html.dark-mode select {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode input::placeholder,
+      html.dark-mode textarea::placeholder {
+        color: #888;
+      }
+      html.dark-mode label,
+      html.dark-mode p,
+      html.dark-mode li {
+        color: #e0e0e0 !important;
+      }
+      /* Generic spans - but exclude special classes */
+      html.dark-mode span:not(.material-icons):not(.elo-match-pos):not(.elo-match-neg):not([style*="color"]) {
+        color: #e0e0e0 !important;
+      }
+      /* Force ELO colors after generic span rule */
+      html.dark-mode .elo-match-pos,
+      html.dark-mode span.elo-match-pos,
+      html.dark-mode td span.elo-match-pos {
+        color: #66bb6a !important;
+      }
+      html.dark-mode .elo-match-neg,
+      html.dark-mode span.elo-match-neg,
+      html.dark-mode td span.elo-match-neg {
+        color: #ef5350 !important;
+      }
+      html.dark-mode a:not(.btn-primary):not(.btn-request):not(.profile-trigger) {
+        color: #6ab0f3 !important;
+      }
+      html.dark-mode a:not(.btn-primary):not(.btn-request):not(.profile-trigger):hover {
+        color: #8ac4f7 !important;
+      }
+      /* Override for navbar links specifically */
+      html.dark-mode .navbar-inner a:not(.btn-primary):not(.btn-request) {
+        color: #ffffff !important;
+      }
+      html.dark-mode .navbar-inner a:not(.btn-primary):not(.btn-request):hover {
+        color: #ffffff !important;
+      }
+      html.dark-mode small {
+        color: #b0b0b0 !important;
+      }
+      html.dark-mode strong {
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode .material-icons {
+        color: inherit;
+      }
+      html.dark-mode div[style*="background"],
+      html.dark-mode div[style*="Background"] {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode ul[style*="list-style"] li {
+        border-bottom-color: #505050 !important;
+      }
+      html.dark-mode #searchBar,
+      html.dark-mode input[id*="search"],
+      html.dark-mode input[id*="Search"] {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      
+      html.dark-mode .profile-trigger {
+        background-color: #a83232;
+      }
+      html.dark-mode .profile-trigger:hover {
+        background-color: #982828;
+      }
+      html.dark-mode .profile-dropdown {
+        background-color: #2a2a2a;
+        border: 1px solid #404040;
+      }
+      html.dark-mode .profile-dropdown a {
+        color: #e0e0e0;
+      }
+      html.dark-mode .profile-dropdown a:hover {
+        background-color: #3a3a3a;
+      }
+      html.dark-mode input[type="text"]:focus,
+      html.dark-mode input[type="email"]:focus,
+      html.dark-mode input[type="number"]:focus,
+      html.dark-mode input[type="date"]:focus,
+      html.dark-mode textarea:focus,
+      html.dark-mode select:focus {
+        border-color: #6a6a6a;
+        outline-color: #6a6a6a;
+      }
+      html.dark-mode .user-card,
+      html.dark-mode .store-card,
+      html.dark-mode .player-card {
+        background-color: #2a2a2a !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .modal-content {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0;
+      }
+      html.dark-mode .close {
+        color: #e0e0e0;
+      }
+      html.dark-mode .close:hover {
+        color: #fff;
+      }
+      html.dark-mode .btn-danger {
+        background-color: #d32f2f;
+      }
+      html.dark-mode .btn-danger:hover {
+        background-color: #b71c1c;
+      }
+      html.dark-mode .btn-primary,
+      html.dark-mode .btn-request,
+      html.dark-mode .btn-danger,
+      html.dark-mode .btn {
+        border-color: transparent !important;
+      }
+      html.dark-mode .deck-card,
+      html.dark-mode .tournament-card {
+        background-color: #2a2a2a !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .store-header {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode .store-image {
+        background-color: #3a3a3a !important;
+      }
+      html.dark-mode .store-card-link {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+      }
+      html.dark-mode .store-card-image {
+        background-color: #3a3a3a !important;
+      }
+      html.dark-mode .store-card-info {
+        background: #2a2a2a !important;
+        border-top-color: #505050 !important;
+      }
+      html.dark-mode .store-card-name {
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode .store-card-location {
+        color: #a0a0a0 !important;
+      }
+      /* Hover effects for deck and store cards */
+      .deck-card-link:hover,
+      .store-card-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+      }
+      html.dark-mode .deck-card-link:hover,
+      html.dark-mode .store-card-link:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+      }
+      html.dark-mode .stat {
+        background-color: #2a2a2a !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .stat-value {
+        color: #4CAF50 !important;
+      }
+      html.dark-mode .stat-label {
+        color: #a0a0a0 !important;
+      }
+      html.dark-mode .tournament-meta {
+        color: #a0a0a0 !important;
+      }
+      html.dark-mode hr {
+        border-color: #505050;
+      }
+      html.dark-mode footer {
+        background-color: #2a2a2a !important;
+        border-top-color: #505050 !important;
+        color: #a0a0a0 !important;
+      }
+      html.dark-mode footer a {
+        color: #4CAF50 !important;
+      }
+      html.dark-mode .badge {
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+      }
+      
+      /* Specific template overrides */
+      html.dark-mode .side-panel,
+      html.dark-mode .option span {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode .deck-editor-wrap,
+      html.dark-mode .deck-editor {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      
+      /* Editing mode dark mode */
+      html.dark-mode .editable-cell:hover {
+        background-color: #3a4a5a !important;
+      }
+      html.dark-mode .btn-winner {
+        background-color: #3a3a3a !important;
+        color: #999 !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .btn-winner:hover {
+        background-color: #4a4a4a !important;
+        border-color: #666 !important;
+      }
+      html.dark-mode .btn-winner.active {
+        background-color: #4CAF50 !important;
+        color: white !important;
+        border-color: #4CAF50 !important;
+      }
+      html.dark-mode .match-winner {
+        background-color: #2a4a6a !important;
+        border-color: #4a7aaa !important;
+      }
+      html.dark-mode .round-group {
+        background-color: #2a2a2a !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode #allRoundsSection {
+        background-color: #1a1a1a !important;
+        border-color: #4a7aaa !important;
+      }
+      
+      /* Round-by-round table colors in dark mode */
+      html.dark-mode .elo-match-pos {
+        color: #66bb6a !important;
+      }
+      html.dark-mode .elo-match-neg {
+        color: #ef5350 !important;
+      }
+      html.dark-mode span.elo-match-pos {
+        color: #66bb6a !important;
+      }
+      html.dark-mode span.elo-match-neg {
+        color: #ef5350 !important;
+      }
+      html.dark-mode td span.elo-match-pos {
+        color: #66bb6a !important;
+      }
+      html.dark-mode td span.elo-match-neg {
+        color: #ef5350 !important;
+      }
+      
+      /* Colored inline text in round.html */
+      html.dark-mode p[style*="color:gold"],
+      html.dark-mode p[style*="color: gold"] {
+        color: #ffd700 !important;
+      }
+      html.dark-mode div[style*="color:red"],
+      html.dark-mode div[style*="color: red"] {
+        color: #ef5350 !important;
+      }
+      
+      /* Fix round-by-round table row highlighting - remove conflicting rules */
+      html.dark-mode .round-group tr td {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode .round-group tr:nth-child(even) td {
+        background-color: #252525 !important;
+      }
+      html.dark-mode .round-group tr td.match-winner {
+        background-color: #2a4a6a !important;
+      }
+      
+      /* Top cut highlight in dark mode */
+      html.dark-mode tr.highlight {
+        background-color: #4a4020 !important;
+      }
+      html.dark-mode tr.highlight td {
+        background-color: #4a4020 !important;
+      }
+      
+      /* Top cut radio button selection in dark mode */
+      html.dark-mode .option input[type="radio"]:checked + span {
+        background: #4CAF50 !important;
+        color: white !important;
+        border-color: #4CAF50 !important;
+      }
+      html.dark-mode .option span {
+        background: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .option span:hover {
+        background: #3a3a3a !important;
+      }
+      
+      /* event_logs.html dark mode */
+      html.dark-mode div[style*="background: white"] {
+        background: #2a2a2a !important;
+      }
+      html.dark-mode span[style*="background-color: #d4edda"] {
+        background-color: #1a4d2e !important;
+        color: #66bb6a !important;
+      }
+      html.dark-mode span[style*="background-color: #f8d7da"] {
+        background-color: #5d1f1f !important;
+        color: #ef5350 !important;
+      }
+      html.dark-mode span[style*="background-color: #d1ecf1"] {
+        background-color: #1a3a4d !important;
+        color: #4fc3f7 !important;
+      }
+      html.dark-mode span[style*="background-color: #fff3cd"] {
+        background-color: #4d3d1a !important;
+        color: #ffb74d !important;
+      }
+      html.dark-mode span[style*="background-color: #d1e7dd"] {
+        background-color: #1a4d2e !important;
+        color: #66bb6a !important;
+      }
+      html.dark-mode span[style*="background-color: #e2e3e5"] {
+        background-color: #3a3a3a !important;
+        color: #b0b0b0 !important;
+      }
+      html.dark-mode td[style*="color: #666"] {
+        color: #999 !important;
+      }
+      html.dark-mode span[style*="color: #28a745"] {
+        color: #66bb6a !important;
+      }
+      html.dark-mode span[style*="color: #6c757d"] {
+        color: #999 !important;
+      }
+      html.dark-mode div[style*="color: #666"] p {
+        color: #999 !important;
+      }
+      
+      html.dark-mode .hl-valid {
+        color: #66bb6a !important;
+      }
+      html.dark-mode .hl-invalid {
+        background-color: #5d2424 !important;
+        color: #ff6b6b !important;
+      }
+      html.dark-mode .hl-dup {
+        background-color: #5d5224 !important;
+        color: #ffd966 !important;
+      }
+      html.dark-mode .filter-group,
+      html.dark-mode .option-group {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode input[type="radio"] + span {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode input[type="radio"]:checked + span {
+        background-color: #3a5a3a !important;
+        color: #a8d8a8 !important;
+      }
+      /* Toggle containers for competitive/casual switches */
+      html.dark-mode .toggle-container {
+        background-color: #2d2d2d !important;
+      }
+      html.dark-mode .toggle-container label {
+        color: #a0a0a0 !important;
+      }
+      html.dark-mode .toggle-container input#competitive:checked + label,
+      html.dark-mode .toggle-container input#casual:checked + label,
+      html.dark-mode .toggle-container input#eventlink:checked + label,
+      html.dark-mode .toggle-container input#arena:checked + label {
+        color: white !important;
+      }
+      html.dark-mode .toggle-container .toggle-slider {
+        background-color: #4CAF50 !important;
+      }
+      /* playerinfo.html specific */
+      html.dark-mode .profile-panel {
+        background-color: #2a2a2a !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .playerinfo-page .modal-content {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode .casual-tag {
+        background-color: #3a3a3a !important;
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode ul.card-list li:hover {
+        background-color: #3a3a3a !important;
+      }
+      /* Country select dropdowns */
+      html.dark-mode .country-select {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #505050 !important;
+      }
+      html.dark-mode .country-select option {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode .toggle-btn {
+        background-color: #3a3a3a !important;
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode .toggle-btn.active {
+        background-color: #3a5a3a !important;
+        color: #a8d8a8 !important;
+      }
+      html.dark-mode div[style*="background-color: #fff3cd"],
+      html.dark-mode div[style*="background-color:#fff3cd"] {
+        background-color: #4a4020 !important;
+      }
+      html.dark-mode div[style*="background-color: #f9f9f9"],
+      html.dark-mode div[style*="background-color:#f9f9f9"] {
+        background-color: #2a2a2a !important;
+      }
+      html.dark-mode div[style*="background-color: #f2f2f2"],
+      html.dark-mode div[style*="background-color:#f2f2f2"] {
+        background-color: #3a3a3a !important;
+      }
+      html.dark-mode div[style*="background-color: #ddd"],
+      html.dark-mode div[style*="background-color:#ddd"] {
+        background-color: #3a3a3a !important;
+      }
+      html.dark-mode .admin-content {
+        background-color: #1a1a1a !important;
+      }
+      
+      /* choose_tournament_type.html dark mode */
+      html.dark-mode .option {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #4CAF50 !important;
+      }
+      html.dark-mode .option:hover {
+        background-color: #3a3a3a !important;
+      }
+      html.dark-mode .option h2 {
+        color: #66bb6a !important;
+      }
+      html.dark-mode .option p {
+        color: #b0b0b0 !important;
+      }
+      html.dark-mode .option[style*="gold"] {
+        border-color: #ffd700 !important;
+        color: #e0e0e0 !important;
+      }
+      html.dark-mode .option[style*="gold"] h2 {
+        color: #ffd700 !important;
+      }
+      html.dark-mode .option[style*="gold"] p {
+        color: #d4af37 !important;
+      }
+      
+      /* players.html dark mode */
+      html.dark-mode .players-page table th,
+      html.dark-mode .players-page table td {
+        border: 1px solid #505050 !important;
+      }
+      html.dark-mode .players-page tr:hover,
+      html.dark-mode .players-page tr.clickable-row:hover {
+        background-color: #007bff !important;
+      }
+      html.dark-mode .players-page tr:hover td,
+      html.dark-mode .players-page tr:hover th,
+      html.dark-mode .players-page tr.clickable-row:hover td {
+        background-color: #007bff !important;
+        color: #fff !important;
+      }
+      html.dark-mode tr:hover span[style*="color:orange"],
+      html.dark-mode tr:hover span[style*="color: orange"] {
+        color: #ff9800 !important;
+      }
+      html.dark-mode span[style*="color:orange"],
+      html.dark-mode span[style*="color: orange"] {
+        color: #ff9800 !important;
+      }
+      html.dark-mode span[style*="color:gray"],
+      html.dark-mode span[style*="color: gray"] {
+        color: #999 !important;
+      }
+      
       header.site-header {
-        max-width: 1200px;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        width: 98%;
+        max-width: none;
         margin: 0 auto 0.75rem;
         background: #d4edda;
         border: 1px solid #b2d8b2;
@@ -16,7 +583,7 @@
       .navbar-inner {
         padding: 0 1rem;
         display: flex;
-        justify-content: center;
+        justify-content: space-between;
         flex-wrap: wrap;
         align-items: center;
         gap: 1rem;
@@ -43,14 +610,19 @@
       }
       .container {
         max-width: 1200px;
-        margin: 2rem auto;
-        padding: 1rem;
+        margin: 0 auto;
+        padding: 0;
         box-sizing: border-box;
+        flex: 1;
+        width: 100%;
       }
       body {
         font-family: system-ui, sans-serif;
         margin: 0;
         padding-top: 1rem;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
       }
       .btn-primary, .btn-request {
         padding: 0.4rem 0.8rem;
@@ -108,6 +680,333 @@
       .profile-menu.open .profile-dropdown {
         display: block;
       }
+      
+      /* Enhanced Deck Modal Styles */
+      .modal { 
+        display: none; 
+        position: fixed; 
+        z-index: 1000; 
+        left: 0; 
+        top: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+      }
+      
+      .modal-content-deck { 
+        background: #fff; 
+        margin: 2vh auto; 
+        padding: 0;
+        border-radius: 12px; 
+        width: 95%; 
+        max-width: 1400px;
+        height: 96vh;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .modal-content-deck h3 {
+        margin: 0;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        color: white;
+        font-size: 1.4rem;
+        border-bottom: 3px solid #3d8b40;
+        position: relative;
+        flex-shrink: 0;
+      }
+      
+      .modal-content-deck h3 .close {
+        position: absolute;
+        right: 1.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 2.5rem;
+        cursor: pointer;
+        color: white;
+        line-height: 1;
+        opacity: 0.95;
+        transition: opacity 0.2s, transform 0.2s;
+        font-weight: 300;
+        padding: 0;
+        margin: 0;
+        background: none;
+        border: none;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+      
+      .modal-content-deck h3 .close:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.15);
+      }
+      
+      .deck-modal-panels {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        overflow: hidden;
+        flex: 1;
+        min-height: 0;
+      }
+      
+      .deck-panel {
+        display: flex;
+        flex-direction: column;
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 0.75rem;
+        overflow: hidden;
+        min-height: 0;
+      }
+      
+      .deck-panel h4 {
+        margin: 0 0 0.75rem 0;
+        color: #333;
+        font-size: 1.05rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid #4CAF50;
+        flex-shrink: 0;
+      }
+      
+      .deck-panel-left {
+        flex: 1.2;
+      }
+      
+      .deck-panel-middle {
+        flex: 0.8;
+      }
+      
+      .deck-panel-right {
+        flex: 1;
+        background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+      }
+      
+      .card-list-enhanced {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1;
+      }
+      
+      .card-list-enhanced li {
+        padding: 0.35rem 0.5rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 4px;
+        margin-bottom: 0.1rem;
+        transition: all 0.2s ease;
+        background: white;
+        border: 1px solid #e0e0e0;
+        font-size: 0.9rem;
+        word-break: break-word;
+        overflow: hidden;
+      }
+      
+      .card-list-enhanced li:hover {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-color: #2196F3;
+        transform: translateX(4px);
+      }
+      
+      .card-list-enhanced li.selected {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        color: white;
+        border-color: #3d8b40;
+        font-weight: 500;
+      }
+      
+      .card-name-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: 0.5rem;
+      }
+      
+      .card-mana-cost {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      
+      .mana-icon {
+        width: 20px;
+        height: 20px;
+        vertical-align: middle;
+        margin: 0 2px;
+      }
+      
+      .card-info-panel {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        min-height: 0;
+      }
+      
+      .card-image-container {
+        flex: 0 0 auto;
+        text-align: center;
+        background: white;
+        border-radius: 8px;
+        padding: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-height: 45%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .card-image-container img {
+        max-width: 100%;
+        width: auto;
+        height: auto;
+        max-height: 100%;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        display: block;
+        margin: 0 auto;
+        visibility: visible;
+        object-fit: contain;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      
+      .card-image-container img.loaded {
+        opacity: 1;
+      }
+      
+      .card-details {
+        flex: 1;
+        overflow-y: auto;
+        background: white;
+        border-radius: 8px;
+        padding: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        min-height: 0;
+      }
+      
+      .card-details h4 {
+        margin: 0 0 0.75rem 0;
+        color: #333;
+        font-size: 1.1rem;
+        border-bottom: 2px solid #4CAF50;
+        padding-bottom: 0.4rem;
+      }
+      
+      .card-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      
+      .card-detail-row:last-child {
+        border-bottom: none;
+      }
+      
+      .detail-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+        font-size: 0.95rem;
+      }
+      
+      .detail-label .material-icons {
+        font-size: 18px;
+        color: #4CAF50;
+      }
+      
+      .detail-value {
+        font-weight: 500;
+        color: #333;
+      }
+      
+      .legality-legal {
+        color: #4CAF50;
+        font-weight: bold;
+      }
+      
+      .legality-not_legal {
+        color: #f44336;
+        font-weight: bold;
+      }
+      
+      .legality-restricted {
+        color: #ff9800;
+        font-weight: bold;
+      }
+      
+      .legality-banned {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+      
+      /* Dark mode for enhanced modal */
+      html.dark-mode .modal-content-deck {
+        background: #2a2a2a;
+        color: #e0e0e0;
+      }
+      
+      html.dark-mode .deck-panel {
+        background: #1a1a1a;
+      }
+      
+      html.dark-mode .deck-panel h4 {
+        color: #e0e0e0;
+      }
+      
+      html.dark-mode .deck-panel-right {
+        background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%);
+      }
+      
+      html.dark-mode .card-list-enhanced li {
+        background: #2a2a2a;
+        border-color: #404040;
+        color: #e0e0e0;
+      }
+      
+      html.dark-mode .card-list-enhanced li:hover {
+        background: linear-gradient(135deg, #1a3a5a 0%, #2a4a6a 100%);
+        border-color: #2196F3;
+      }
+      
+      html.dark-mode .card-list-enhanced li.selected {
+        background: linear-gradient(135deg, #3a5a3a 0%, #2a4a2a 100%);
+        color: #a8d8a8;
+        border-color: #4CAF50;
+      }
+      
+      html.dark-mode .card-image-container,
+      html.dark-mode .card-details {
+        background: #2a2a2a;
+        border-color: #404040;
+      }
+      
+      html.dark-mode .card-details h4 {
+        color: #e0e0e0;
+      }
+      
+      html.dark-mode .card-detail-row {
+        border-bottom-color: #404040;
+      }
+      
+      html.dark-mode .detail-label {
+        color: #b0b0b0;
+      }
+      
+      html.dark-mode .detail-value {
+        color: #e0e0e0;
+      }
     </style>
   </head>
   <body>
@@ -129,6 +1028,7 @@
 
         <a href="{{ url_for('tournaments_list') }}"><i class="material-icons">list</i> See Past Tournaments</a>
         <a href="{{ url_for('decks_list') }}"><i class="material-icons">style</i> See All Decks</a>
+        <a href="{{ url_for('blog') }}"><i class="material-icons">article</i> Blog</a>
 
         {% if current_user.is_authenticated and current_user.is_admin %}
           <a href="{{ url_for('admin_panel') }}" class="btn-request">
@@ -146,6 +1046,10 @@
             <div class="profile-dropdown">
               <a href="{{ url_for('profile_settings') }}"><i class="material-icons">settings</i> Settings</a>
               <a href="{{ url_for('user_tournaments', user_id=current_user.id) }}"><i class="material-icons">emoji_events</i> My Tournaments</a>
+              <a href="#" id="darkModeToggle" style="display:flex; justify-content:space-between; align-items:center;">
+                <span><i class="material-icons">dark_mode</i> Dark Mode</span>
+                <span id="darkModeStatus">{% if current_user.dark_mode %}ON{% else %}OFF{% endif %}</span>
+              </a>
               <a href="{{ url_for('logout') }}"><i class="material-icons">logout</i> Logout</a>
             </div>
           </div>
@@ -161,6 +1065,29 @@
       {% block content %}{% endblock %}
     </main>
 
+    <footer style="
+      margin-top: auto;
+      padding: 2rem 1rem;
+      background-color: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      text-align: center;
+      color: #666;
+      width: 100%;
+      box-sizing: border-box;
+    ">
+      <div style="max-width: 1200px; margin: 0 auto;">
+        <p style="margin: 0 0 0.5rem 0;">
+          <a href="mailto:swarped7@gmail.com" style="color: #4CAF50; text-decoration: none;">
+            <i class="material-icons" style="vertical-align: middle; font-size: 18px;">email</i>
+            Contact Us
+          </a>
+        </p>
+        <p style="margin: 0; font-size: 0.9rem;">
+          Copyright © 2025 Premodern ELO
+        </p>
+      </div>
+    </footer>
+
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         const menu = document.getElementById("profileMenu");
@@ -173,6 +1100,31 @@
             menu.classList.remove("open");
           }
         });
+
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById("darkModeToggle");
+        if (darkModeToggle) {
+          darkModeToggle.addEventListener("click", async (e) => {
+            e.preventDefault();
+            try {
+              const response = await fetch("{{ url_for('toggle_dark_mode') }}", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                }
+              });
+              if (response.ok) {
+                const data = await response.json();
+                // Toggle dark mode class
+                document.documentElement.classList.toggle("dark-mode");
+                // Update status text
+                document.getElementById("darkModeStatus").textContent = data.dark_mode ? "ON" : "OFF";
+              }
+            } catch (error) {
+              console.error("Error toggling dark mode:", error);
+            }
+          });
+        }
       });
     </script>
   </body>

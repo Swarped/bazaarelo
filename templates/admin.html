@@ -4,8 +4,32 @@
 
 {% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 
 <style>
+  /* CSS Variables for light mode */
+  :root {
+    --bg-primary: #fff;
+    --bg-secondary: #f9f9f9;
+    --bg-tertiary: #f2f2f2;
+    --text-primary: #2c3e50;
+    --text-secondary: #6c757d;
+    --border-color: #ddd;
+  }
+
+  /* Dark mode overrides */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1e;
+      --bg-secondary: #2d2d30;
+      --bg-tertiary: #3e3e42;
+      --text-primary: #e4e4e4;
+      --text-secondary: #b0b0b0;
+      --border-color: #454545;
+    }
+  }
+
   .admin-page {
     display: flex;
     width: 100%;
@@ -36,12 +60,12 @@
   .admin-content {
     flex: 1;
     padding: 2rem;
-    background-color: #f9f9f9;
+    background-color: var(--bg-secondary, #f9f9f9);
   }
 .admin-section {
   margin-bottom: 2rem;
   padding: 1rem;
-  background: #fff;
+  background: var(--bg-primary, #fff);
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
@@ -53,7 +77,7 @@
   .admin-section h2 {
     margin-top: 0;
     margin-bottom: 1rem;
-    color: #2c3e50;
+    color: var(--text-primary, #2c3e50);
   }
   table {
     width: 100%;
@@ -61,12 +85,12 @@
     margin-bottom: 1rem;
   }
   th, td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color, #ddd);
     padding: 0.5rem;
     text-align: left;
   }
   th {
-    background-color: #f2f2f2;
+    background-color: var(--bg-tertiary, #f2f2f2);
   }
   .btn {
     padding: 0.4rem 0.8rem;
@@ -83,6 +107,374 @@
     background-color: #d9534f;
     color: #fff;
   }
+  .btn-secondary {
+    background-color: #6c757d;
+    color: #fff;
+  }
+
+  /* User Cards */
+  .user-card {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--bg-secondary, #f8f9fa);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .user-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-right: 1rem;
+  }
+  .user-info {
+    flex: 1;
+  }
+  .user-name {
+    font-weight: bold;
+    font-size: 1.05rem;
+    margin-bottom: 0.25rem;
+  }
+  .user-email {
+    color: var(--text-secondary, #6c757d);
+    font-size: 0.9rem;
+  }
+  .user-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+  }
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-admin {
+    background: #28a745;
+    color: white;
+  }
+  .badge-scorekeeper {
+    background: #17a2b8;
+    color: white;
+  }
+  .user-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  /* Store Cards */
+  .store-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    background: var(--bg-primary, #fff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .store-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .store-image-wrapper {
+    position: relative;
+    width: 120px;
+    height: 60px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .store-image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .store-image-wrapper .material-icons {
+    font-size: 36px;
+    color: #ccc;
+  }
+  .store-image-edit {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .store-image-edit:hover {
+    background: white;
+  }
+  .store-info {
+    flex: 1;
+  }
+  .store-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .store-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  .badge-premium {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .store-location {
+    color: #6c757d;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .store-users {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+  }
+  .store-user-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0.25rem;
+    background: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  .store-user-tag button {
+    background: none;
+    border: none;
+    color: #d9534f;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.25rem;
+  }
+
+  /* Image Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+  }
+  .modal-content {
+    background: var(--bg-primary, #fff);
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 6px;
+    width: 400px;
+  }
+  .image-modal-content {
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .close {
+    float: right;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #999;
+  }
+  .close:hover {
+    color: var(--text-primary, #333);
+  }
+  .modal-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border-color, #ddd);
+    margin-bottom: 1rem;
+  }
+  .modal-tab {
+    flex: 1;
+    padding: 0.75rem;
+    background: #f0f0f0;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+  }
+  .modal-tab.active {
+    background: #4CAF50;
+    color: white;
+    font-weight: bold;
+  }
+  .modal-tab:hover:not(.active) {
+    background: #e0e0e0;
+  }
+  .tab-content {
+    display: none;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  .image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  .gallery-item {
+    position: relative;
+    cursor: pointer;
+    border: 3px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: all 0.2s;
+    aspect-ratio: 2/1;
+  }
+  .gallery-item:hover {
+    border-color: #4CAF50;
+    transform: scale(1.05);
+  }
+  .gallery-item.selected {
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  }
+  .gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .cropper-container-wrapper {
+    max-height: 500px;
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  #imageToCrop {
+    max-width: 100%;
+    display: block;
+  }
+  .crop-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .crop-btn {
+    padding: 0.5rem 1rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .crop-btn:hover {
+    background: #0056b3;
+  }
+  .crop-info {
+    font-size: 0.85rem;
+    color: #666;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+
+  /* User Search Results */
+  .user-search-results {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 0.25rem;
+  }
+  .user-search-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+  }
+  .user-search-item:hover {
+    background: #f8f9fa;
+  }
+  .user-search-item:last-child {
+    border-bottom: none;
+  }
+  .user-search-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+  .user-search-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .user-search-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .user-search-email {
+    color: #6c757d;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .user-search-no-results {
+    padding: 1rem;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+  }
 </style>
 
 <div class="admin-page">
@@ -90,7 +482,7 @@
     <h2>Admin Panel</h2>
     <a href="#users-stores">Users & Stores</a>
     <a href="#requests">Requests</a>
-    <a href="#events">Events & Logs</a>
+    <a href="#event-logs">Event Logs</a>
     <a href="#danger">Danger Zone</a>
   </div>
 
@@ -99,36 +491,28 @@
     <div id="users-stores" class="admin-section">
       <h2>Users & Stores</h2>
 
-      <h3>Add Admin by Email</h3>
-      <form method="POST">
-        <input type="hidden" name="action" value="add_by_email">
-        <input type="email" name="email" placeholder="Enter email" required>
-        <button type="submit" class="btn btn-primary">Add Admin</button>
-      </form>
-
-      <h3>Add Scorekeeper by Email</h3>
-      <form method="POST">
-        <input type="hidden" name="action" value="add_scorekeeper_by_email">
-        <input type="email" name="email" placeholder="Enter email" required>
-        <button type="submit" class="btn btn-primary">Add Scorekeeper</button>
-      </form>
-
-      <h3>Existing Users</h3>
-      <table>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Admin?</th>
-          <th>Scorekeeper?</th>
-          <th>Actions</th>
-        </tr>
+      <h3>Users Management</h3>
+      <div style="margin-bottom: 1rem;">
+        <input type="text" id="userSearchFilter" placeholder="Search users by name or email..." 
+               style="width: 100%; max-width: 400px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      <div>
         {% for u in users %}
-        <tr>
-          <td>{{ u.name }}</td>
-          <td>{{ u.email }}</td>
-          <td>{{ "Yes" if u.is_admin else "No" }}</td>
-          <td>{{ "Yes" if u.is_scorekeeper else "No" }}</td>
-          <td>
+        <div class="user-card">
+          <div class="user-avatar">{{ u.name[0].upper() if u.name else '?' }}</div>
+          <div class="user-info">
+            <div class="user-name">{{ u.name }}</div>
+            <div class="user-email">{{ u.email }}</div>
+            <div class="user-badges">
+              {% if u.is_admin %}
+                <span class="badge badge-admin">Admin</span>
+              {% endif %}
+              {% if u.is_scorekeeper %}
+                <span class="badge badge-scorekeeper">Scorekeeper</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="user-actions">
             <form method="POST" style="display:inline;">
               <input type="hidden" name="user_id" value="{{ u.id }}">
               <input type="hidden" name="make_admin" value="{{ 'false' if u.is_admin else 'true' }}">
@@ -142,155 +526,809 @@
               <input type="hidden" name="user_id" value="{{ u.id }}">
               <input type="hidden" name="make_scorekeeper" value="{{ 'false' if u.is_scorekeeper else 'true' }}">
               {% if u.is_scorekeeper %}
-                <button type="submit" class="btn btn-danger">Remove Scorekeeper</button>
+                <button type="submit" class="btn btn-danger">Remove SK</button>
               {% else %}
-                <button type="submit" class="btn btn-primary">Make Scorekeeper</button>
+                <button type="submit" class="btn btn-primary">Make SK</button>
               {% endif %}
             </form>
-          </td>
-        </tr>
+          </div>
+        </div>
         {% endfor %}
-      </table>
+      </div>
 
-<h3>Stores</h3>
-
-<!-- Add Store form -->
-<form method="POST" action="{{ url_for('admin_stores') }}">
-  <input type="text" name="store_name" placeholder="Store Name" required>
-  <input type="text" name="location" placeholder="Location">
-  <input type="text" name="country" placeholder="Country Code">
-  <label><input type="checkbox" name="premium"> Premium</label>
-  <button type="submit" class="btn btn-primary">Add Store</button>
-</form>
-
-<!-- Refresh button -->
-<form method="GET" action="{{ url_for('admin_stores') }}" style="margin-top:1rem;">
-  <button type="submit" class="btn btn-secondary">🔄 Refresh Store List</button>
-</form>
+<h3>Stores Management</h3>
+<div style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
+  <button type="button" class="btn btn-primary" onclick="openAddStoreModal()">
+    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">add</span>
+    Add Store
+  </button>
+  <form method="GET" action="{{ url_for('admin_stores') }}" style="margin: 0;">
+    <button type="submit" class="btn btn-secondary">
+      <span class="material-icons" style="font-size: 16px; vertical-align: middle;">refresh</span>
+      Refresh
+    </button>
+  </form>
+</div>
 
 <!-- Store list -->
 {% for store in stores %}
-<div style="margin-top:1rem; border:1px solid #ccc; padding:1rem;">
-  <div style="display:flex; align-items:center; gap:1rem;">
+<div class="store-card">
+  <div class="store-image-wrapper">
     {% if store.image_url %}
-      <img src="{{ url_for('static', filename=store.image_url) }}" style="width:80px;height:80px;">
+      <img src="{{ url_for('static', filename=store.image_url) }}" alt="{{ store.name }}">
     {% else %}
       <span class="material-icons">store</span>
     {% endif %}
-    <strong>{{ store.name }}</strong>
-    <span>
+    <button class="store-image-edit" onclick="openStoreImageModal({{ store.id }}, '{{ store.name }}')"
+            title="Edit Image">
+      <span class="material-icons" style="font-size: 18px;">edit</span>
+    </button>
+  </div>
+  <div class="store-info">
+    <div class="store-header">
+      <span class="store-name">{{ store.name }}</span>
+      {% if store.premium %}
+        <span class="badge-premium">✨ Premium</span>
+      {% endif %}
+    </div>
+    <div class="store-location">
       {% if store.country %}
         <span class="fi fi-{{ store.country|lower }}"></span>
       {% endif %}
-      {{ store.country }} - {{ store.location }}
-    </span>
-    {% if store.premium %}
-      <span style="color:green; font-weight:bold;">Premium</span>
-    {% endif %}
-    <form method="POST" action="{{ url_for('edit_store_image', store_id=store.id) }}" enctype="multipart/form-data" style="margin-left:auto;">
-      <input type="file" name="image" accept=".jpg" required>
-      <button type="submit" class="btn btn-primary">Replace Image</button>
+      <span>{{ store.location }}{{ ', ' + store.country if store.country else '' }}</span>
+    </div>
+    <form method="POST" action="{{ url_for('admin_stores') }}" style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+      <input type="hidden" name="store_id" value="{{ store.id }}">
+      <input type="text" name="store_name" value="{{ store.name }}" required style="flex:1; min-width:150px;">
+      <input type="text" name="location" value="{{ store.location }}" placeholder="Location" style="flex:1; min-width:120px;">
+      <input type="text" name="country" value="{{ store.country }}" placeholder="Country" style="width:60px;">
+      <label style="display:flex; align-items:center; gap:0.25rem;">
+        <input type="checkbox" name="premium" {% if store.premium %}checked{% endif %}>
+        Premium
+      </label>
+      <button type="submit" class="btn btn-primary">Update</button>
     </form>
+    <form method="POST" action="{{ url_for('delete_store', store_id=store.id) }}" style="margin-top: 0.5rem;" onsubmit="return confirm('Are you sure you want to delete this store? All tournaments using this store will have their store reference removed.');">
+      <button type="submit" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">delete</span>
+        Delete Store
+      </button>
+    </form>
+    <details class="store-users" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e9ecef;">
+      <summary style="cursor: pointer; font-weight: 600; color: #6c757d; list-style-position: outside; margin-bottom: 0.5rem;">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">people</span>
+        Assigned Users ({{ store.assignments|length }})
+      </summary>
+      <div style="margin-left: 1.5rem; margin-top: 0.5rem;">
+        {% if store.assignments %}
+          {% for assignment in store.assignments %}
+            <div class="store-user-tag" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; padding: 0.5rem; background: #f8f9fa; border-radius: 4px;">
+              <span style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-icons" style="font-size: 18px; color: #6c757d;">person</span>
+                {{ assignment.user.email }}
+              </span>
+              <form method="POST" action="{{ url_for('remove_user_from_store', store_id=store.id, user_id=assignment.user.id) }}" style="margin: 0;">
+                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" title="Remove user from store">Remove</button>
+              </form>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p style="color: #999; font-style: italic; margin: 0.5rem 0;">No users assigned</p>
+        {% endif %}
+        <div style="margin-top: 0.75rem; position: relative;">
+          <input type="text" id="userSearch-{{ store.id }}" placeholder="Search users to assign..." 
+                 oninput="searchUsersForStore({{ store.id }})"
+                 style="width: 100%; padding: 0.5rem; font-size: 0.85rem; border: 1px solid #ddd; border-radius: 4px;">
+          <div id="userSearchResults-{{ store.id }}" class="user-search-results" style="display: none;"></div>
+        </div>
+      </div>
+    </details>
   </div>
-  <form method="POST" action="{{ url_for('admin_stores') }}" style="margin-top:0.5rem;">
-    <input type="hidden" name="store_id" value="{{ store.id }}">
-    <input type="text" name="store_name" value="{{ store.name }}" required>
-    <input type="text" name="location" value="{{ store.location }}">
-    <input type="text" name="country" value="{{ store.country }}">
-    <label><input type="checkbox" name="premium" {% if store.premium %}checked{% endif %}> Premium</label>
-    <button type="submit" class="btn btn-primary">Update Store</button>
-  </form>
-  <ul>
-    {% for assignment in store.assignments %}
-      <li>
-        {{ assignment.user.email }}
-        <form method="POST" action="{{ url_for('remove_user_from_store', store_id=store.id, user_id=assignment.user.id) }}" style="display:inline;">
-          <button type="submit" class="btn btn-danger">Remove</button>
-        </form>
-      </li>
-    {% endfor %}
-    <li>
-      <form method="POST" action="{{ url_for('assign_user_to_store', store_id=store.id) }}">
-        <input type="email" name="email" placeholder="Add User by Email" required>
-        <button type="submit" class="btn btn-primary">Add User</button>
-      </form>
-    </li>
-  </ul>
 </div>
 {% endfor %}
 
+    </div> <!-- End Users & Stores section -->
+
+    <div id="event-logs" class="admin-section">
+      <h2>Event Logs</h2>
+      <p>Track all administrative actions and user activities</p>
+
+      <div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1.5rem; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #dee2e6;">
+              <th style="padding: 0.75rem; text-align: left;">Timestamp</th>
+              <th style="padding: 0.75rem; text-align: left;">User</th>
+              <th style="padding: 0.75rem; text-align: left;">Action</th>
+              <th style="padding: 0.75rem; text-align: left;">Details</th>
+              <th style="padding: 0.75rem; text-align: center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in event_logs %}
+            <tr style="border-bottom: 1px solid #dee2e6;">
+              <td style="padding: 0.75rem; font-size: 0.9rem; color: #666;">
+                {{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+              </td>
+              <td style="padding: 0.75rem;">
+                {{ log.user_name }}
+              </td>
+              <td style="padding: 0.75rem;">
+                <span style="background-color: 
+                  {% if 'created' in log.action_type %}#d4edda
+                  {% elif 'deleted' in log.action_type %}#f8d7da
+                  {% elif 'granted' in log.action_type or 'approved' in log.action_type %}#d1ecf1
+                  {% elif 'changed' in log.action_type %}#fff3cd
+                  {% elif 'recovered' in log.action_type %}#d1e7dd
+                  {% else %}#e2e3e5
+                  {% endif %};
+                  color: 
+                  {% if 'created' in log.action_type %}#155724
+                  {% elif 'deleted' in log.action_type %}#721c24
+                  {% elif 'granted' in log.action_type or 'approved' in log.action_type %}#0c5460
+                  {% elif 'changed' in log.action_type %}#856404
+                  {% elif 'recovered' in log.action_type %}#0f5132
+                  {% else %}#383d41
+                  {% endif %};
+                  padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; font-weight: 600;">
+                  {{ log.action_type.replace('_', ' ').title() }}
+                </span>
+              </td>
+              <td style="padding: 0.75rem; max-width: 400px;">
+                {{ log.details }}
+              </td>
+              <td style="padding: 0.75rem; text-align: center;">
+                {% if log.recoverable and not log.recovered %}
+                <form method="POST" action="{{ url_for('recover_event', event_id=log.id) }}" style="display: inline;">
+                  <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                    <span class="material-icons" style="font-size: 14px; vertical-align: middle;">restore</span>
+                    Recover
+                  </button>
+                </form>
+                {% elif log.recovered %}
+                <span style="color: #28a745; font-size: 0.85rem; font-weight: 600;">
+                  <span class="material-icons" style="font-size: 14px; vertical-align: middle;">check_circle</span>
+                  Recovered
+                </span>
+                {% else %}
+                <span style="color: #6c757d; font-size: 0.85rem;">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if event_logs|length == 0 %}
+        <div style="text-align: center; padding: 3rem; color: #666;">
+          <span class="material-icons" style="font-size: 48px; opacity: 0.3;">event_note</span>
+          <p style="margin-top: 1rem;">No events logged yet. Events will appear here when you create tournaments, modify users, or perform admin actions.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
 
     <div id="requests" class="admin-section">
       <h2>Requests</h2>
       {% if requests %}
-        <table>
-          <tr>
-            <th>User</th>
-            <th>Email</th>
-            <th>Reason</th>
-            <th>Date Submitted</th>
-            <th>Actions</th>
-          </tr>
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
           {% for req in requests %}
-          <tr>
-            <td>{{ req.user.name }}</td>
-            <td>{{ req.user.email }}</td>
-            <td>{{ req.reason }}</td>
-            <td>{{ req.date_submitted.strftime("%Y-%m-%d %H:%M") }}</td>
-<td>
-  <form method="POST" style="display:inline;">
-    <input type="hidden" name="action" value="approve_scorekeeper">
-    <input type="hidden" name="request_id" value="{{ req.id }}">
-    <button type="submit" class="btn btn-primary">Approve Scorekeeper</button>
-  </form>
-  <form method="POST" style="display:inline;">
-    <input type="hidden" name="action" value="approve_admin">
-    <input type="hidden" name="request_id" value="{{ req.id }}">
-    <button type="submit" class="btn btn-primary">Approve Admin</button>
-  </form>
-  <form method="POST" style="display:inline;">
-    <input type="hidden" name="action" value="deny_request">
-    <input type="hidden" name="request_id" value="{{ req.id }}">
-    <button type="submit" class="btn btn-danger">Deny</button>
-  </form>
-</td>
-</tr>
-{% endfor %}
-</table>
-{% else %}
-  <p>No pending requests.</p>
-{% endif %}
-</div>
+          <div style="background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <!-- User Info Header -->
+            <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e9ecef;">
+              <img src="https://ui-avatars.com/api/?name={{ req.user.name|urlencode }}&size=80&background=667eea&color=fff" 
+                   alt="{{ req.user.name }}" 
+                   style="width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0;">
+              <div style="flex: 1;">
+                <h3 style="margin: 0 0 0.5rem 0; color: #2c3e50;">{{ req.user.name }}</h3>
+                <p style="margin: 0 0 0.5rem 0; color: #6c757d;"><span class="material-icons" style="font-size: 16px; vertical-align: middle;">email</span> {{ req.user.email }}</p>
+                <p style="margin: 0; color: #6c757d; font-size: 0.9rem;"><span class="material-icons" style="font-size: 16px; vertical-align: middle;">schedule</span> {{ req.date_submitted.strftime("%B %d, %Y at %H:%M") }}</p>
+              </div>
+            </div>
+            
+            <!-- Reason -->
+            <div style="margin-bottom: 1rem;">
+              <h4 style="margin: 0 0 0.5rem 0; color: #495057; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-icons">description</span> Reason for Request
+              </h4>
+              <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ req.reason }}</div>
+            </div>
+            
+            <!-- User Image (if provided) -->
+            {% if req.image_url %}
+            <div style="margin-bottom: 1rem;">
+              <h4 style="margin: 0 0 0.5rem 0; color: #495057; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-icons">image</span> User Image
+              </h4>
+              <img src="{{ url_for('static', filename=req.image_url) }}" alt="User submission" style="max-width: 300px; border-radius: 4px; border: 1px solid #dee2e6;">
+            </div>
+            {% endif %}
+            
+            <!-- Store Information -->
+            <div style="margin-bottom: 1rem; background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+              <h4 style="margin: 0 0 1rem 0; color: #495057; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-icons">store</span> Proposed Store
+              </h4>
+              <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                {% if req.store_image_url %}
+                <img src="{{ url_for('static', filename=req.store_image_url) }}" alt="{{ req.store_name }}" style="width: 200px; height: 100px; object-fit: cover; border-radius: 4px; flex-shrink: 0;">
+                {% endif %}
+                <div>
+                  <p style="margin: 0 0 0.5rem 0;"><strong>Name:</strong> {{ req.store_name }}</p>
+                  <p style="margin: 0;"><strong>Country:</strong> 
+                    {% if req.store_country %}
+                      <span class="fi fi-{{ req.store_country|lower }}"></span> {{ req.store_country }}
+                    {% else %}
+                      Not provided
+                    {% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+              <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="approve_scorekeeper">
+                <input type="hidden" name="request_id" value="{{ req.id }}">
+                <button type="submit" class="btn btn-primary">Approve Scorekeeper</button>
+              </form>
+              <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="approve_admin">
+                <input type="hidden" name="request_id" value="{{ req.id }}">
+                <button type="submit" class="btn btn-primary">Approve Admin</button>
+              </form>
+              <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="deny_request">
+                <input type="hidden" name="request_id" value="{{ req.id }}">
+                <button type="submit" class="btn btn-danger">Deny</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>No pending requests.</p>
+      {% endif %}
+    </div>
 
-<div id="events" class="admin-section">
-  <h2>Events & Logs</h2>
-  <p>Coming soon: here we’ll display system events, audit logs, and activity history.</p>
-</div>
-
-<div id="danger" class="admin-section">
+    <div id="danger" class="admin-section">
   <h2>Danger Zone</h2>
   <p><strong>Warning:</strong> These actions are irreversible!</p>
 
-  <form method="POST" style="margin-bottom:1rem;">
-    <input type="hidden" name="action" value="delete_user_db">
-    <button type="submit" class="btn btn-danger">Delete User Database</button>
-  </form>
+  <!-- Demo Mode Toggle -->
+  <div style="background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+      <span class="material-icons" style="color: #856404;">science</span>
+      <h3 style="margin: 0; color: #856404;">Demo Mode</h3>
+      {% if demo_mode %}
+        <span class="badge" style="background-color: #28a745; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">ACTIVE</span>
+      {% else %}
+        <span class="badge" style="background-color: #6c757d; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">OFF</span>
+      {% endif %}
+    </div>
+    <p style="margin: 0.5rem 0; color: #856404; font-size: 0.9rem;">
+      {% if demo_mode %}
+        Currently using <strong>demo databases</strong> (tournaments_demo.db, users_demo.db). Switch to production mode to use live data.
+      {% else %}
+        Currently using <strong>production databases</strong> (tournament.db, users.db). Switch to demo mode for testing without affecting live data.
+      {% endif %}
+    </p>
+    <form method="POST" style="margin-top: 1rem;">
+      <input type="hidden" name="action" value="toggle_demo_mode">
+      {% if demo_mode %}
+        <button type="submit" class="btn btn-primary">
+          <span class="material-icons" style="font-size: 16px; vertical-align: middle;">production_quantity_limits</span>
+          Switch to Production Mode
+        </button>
+      {% else %}
+        <button type="submit" class="btn" style="background-color: #ffc107; color: #856404; border: 1px solid #856404;">
+          <span class="material-icons" style="font-size: 16px; vertical-align: middle;">science</span>
+          Switch to Demo Mode
+        </button>
+      {% endif %}
+      <span style="margin-left: 0.5rem; color: #856404; font-size: 0.85rem; font-style: italic;">
+        ⚠️ Requires app restart
+      </span>
+    </form>
+  </div>
 
-  <form method="POST" style="margin-bottom:1rem;">
-    <input type="hidden" name="action" value="delete_tournament_db">
-    <button type="submit" class="btn btn-danger">Delete Tournament Database</button>
-  </form>
+  <!-- Restart Server -->
+  <div style="background-color: #e7f3ff; border: 2px solid #0d6efd; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+      <span class="material-icons" style="color: #0d6efd;">restart_alt</span>
+      <h3 style="margin: 0; color: #0d6efd;">Restart Server</h3>
+    </div>
+    <p style="margin: 0.5rem 0; color: #084298; font-size: 0.9rem;">
+      Restart the Flask application to apply database changes or reload configuration.
+    </p>
+    <form method="POST" style="margin-top: 1rem;">
+      <input type="hidden" name="action" value="restart_server">
+      <button type="submit" class="btn btn-primary">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">restart_alt</span>
+        Restart Server
+      </button>
+      <span style="margin-left: 0.5rem; color: #084298; font-size: 0.85rem; font-style: italic;">
+        Server will restart in ~2 seconds
+      </span>
+    </form>
+  </div>
 
-  <form method="POST">
-    <input type="hidden" name="action" value="delete_all_players">
-    <button type="submit" class="btn btn-danger">Delete All Players</button>
-  </form>
+  <!-- Delete User Database -->
+  <div style="background-color: #f8d7da; border: 2px solid #dc3545; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+      <span class="material-icons" style="color: #721c24;">delete_forever</span>
+      <h3 style="margin: 0; color: #721c24;">Delete User Database</h3>
+    </div>
+    <p style="margin: 0.5rem 0; color: #721c24; font-size: 0.9rem;">
+      Permanently delete all users, access requests, and event logs. A backup will be created automatically.
+    </p>
+    <form method="POST" style="margin-top: 1rem;" onsubmit="return confirm('⚠️ WARNING: This will delete ALL users and access data! A backup will be saved. Continue?');">
+      <input type="hidden" name="action" value="delete_user_db">
+      <button type="submit" class="btn btn-danger">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">delete_forever</span>
+        Delete User Database
+      </button>
+      <span style="margin-left: 0.5rem; color: #721c24; font-size: 0.85rem; font-style: italic;">
+        ⚠️ Backup will be saved
+      </span>
+    </form>
+  </div>
+
+  <!-- Delete Tournament Database -->
+  <div style="background-color: #f8d7da; border: 2px solid #dc3545; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+      <span class="material-icons" style="color: #721c24;">delete_sweep</span>
+      <h3 style="margin: 0; color: #721c24;">Delete Tournament Database</h3>
+    </div>
+    <p style="margin: 0.5rem 0; color: #721c24; font-size: 0.9rem;">
+      Permanently delete all tournaments, matches, decks, players, and stores. A backup will be created automatically.
+    </p>
+    <form method="POST" style="margin-top: 1rem;" onsubmit="return confirm('⚠️ WARNING: This will delete ALL tournament data! A backup will be saved. Continue?');">
+      <input type="hidden" name="action" value="delete_tournament_db">
+      <button type="submit" class="btn btn-danger">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">delete_sweep</span>
+        Delete Tournament Database
+      </button>
+      <span style="margin-left: 0.5rem; color: #721c24; font-size: 0.85rem; font-style: italic;">
+        ⚠️ Backup will be saved
+      </span>
+    </form>
+  </div>
+
+  <!-- Delete All Players -->
+  <div style="background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+      <span class="material-icons" style="color: #856404;">person_remove</span>
+      <h3 style="margin: 0; color: #856404;">Delete All Players</h3>
+    </div>
+    <p style="margin: 0.5rem 0; color: #856404; font-size: 0.9rem;">
+      Remove all player records from the database. Tournaments will remain but player data will be lost.
+    </p>
+    <form method="POST" style="margin-top: 1rem;" onsubmit="return confirm('Are you sure you want to delete all players? This cannot be undone!');">
+      <input type="hidden" name="action" value="delete_all_players">
+      <button type="submit" class="btn" style="background-color: #ffc107; color: #856404; border: 1px solid #856404;">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person_remove</span>
+        Delete All Players
+      </button>
+    </form>
+  </div>
 </div>
 
 </div>
 </div>
 
+<!-- Add Store Modal -->
+<div id="addStoreModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeAddStoreModal()">&times;</span>
+    <h3>Add New Store</h3>
+    <form method="POST" action="{{ url_for('admin_stores') }}">
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.25rem; font-weight: 600;">Store Name *</label>
+        <input type="text" name="store_name" placeholder="Enter store name" required 
+               style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.25rem; font-weight: 600;">Location</label>
+        <input type="text" name="location" placeholder="City, State" 
+               style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.25rem; font-weight: 600;">Country Code</label>
+        <input type="text" name="country" placeholder="US, ES, etc." maxlength="2"
+               style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; text-transform: uppercase;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" name="premium">
+          <span style="font-weight: 600;">Premium Store</span>
+        </label>
+      </div>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-danger" onclick="closeAddStoreModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Store</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Image Upload Modal -->
+<div id="imageModal" class="modal">
+  <div class="modal-content image-modal-content">
+    <span class="close" onclick="closeImageModal()">&times;</span>
+    <h3 id="imageModalTitle">Select or Upload Image</h3>
+    
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchImageTab('upload')">Upload New</button>
+      <button class="modal-tab" onclick="switchImageTab('select')">Select Existing</button>
+    </div>
+
+    <!-- Upload Tab -->
+    <div id="uploadTab" class="tab-content active">
+      <input type="file" id="imageInput" accept="image/jpeg,image/jpg,image/png" style="margin-bottom: 1rem;">
+      <div class="cropper-container-wrapper" id="cropperWrapper" style="display: none;">
+        <img id="imageToCrop" />
+        <div class="crop-controls">
+          <button type="button" class="crop-btn" onclick="cropStoreImage('zoom', 0.1)">🔍 Zoom In</button>
+          <button type="button" class="crop-btn" onclick="cropStoreImage('zoom', -0.1)">🔍 Zoom Out</button>
+          <button type="button" class="crop-btn" onclick="cropStoreImage('move', -10, 0)">← Move</button>
+          <button type="button" class="crop-btn" onclick="cropStoreImage('move', 10, 0)">Move →</button>
+          <button type="button" class="crop-btn" onclick="cropStoreImage('move', 0, -10)">↑ Move</button>
+          <button type="button" class="crop-btn" onclick="cropStoreImage('move', 0, 10)">Move ↓</button>
+          <button type="button" class="crop-btn" onclick="cropStoreImage('reset')">↺ Reset</button>
+        </div>
+        <div class="crop-info">
+          Target size: 512x256px (2:1 ratio)
+        </div>
+      </div>
+    </div>
+
+    <!-- Select Tab -->
+    <div id="selectTab" class="tab-content">
+      <p style="margin-bottom: 1rem; color: #666;">Click an image to select it:</p>
+      <div id="imageGallery" class="image-gallery"></div>
+    </div>
+
+    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+      <button type="button" class="btn btn-danger" onclick="closeImageModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveStoreImage()" id="saveImageBtn">Save Image</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <script>
+let storeCropper = null;
+let currentStoreId = null;
+let selectedExistingImage = null;
+let availableImages = [];
+
+// Load available images
+async function loadAvailableImages() {
+  try {
+    const response = await fetch("{{ url_for('get_available_images') }}");
+    availableImages = await response.json();
+    renderImageGallery();
+  } catch (error) {
+    console.error('Error loading images:', error);
+    availableImages = [];
+  }
+}
+
+// Render image gallery
+function renderImageGallery() {
+  const gallery = document.getElementById('imageGallery');
+  gallery.innerHTML = '';
+  
+  if (availableImages.length === 0) {
+    gallery.innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No images available</p>';
+    return;
+  }
+
+  availableImages.forEach(imagePath => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    item.innerHTML = `<img src="/static/${imagePath}" alt="Image">`;
+    item.onclick = () => selectExistingImage(imagePath, item);
+    gallery.appendChild(item);
+  });
+}
+
+// Select existing image
+function selectExistingImage(imagePath, element) {
+  selectedExistingImage = imagePath;
+  document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+  element.classList.add('selected');
+}
+
+// Switch tabs
+function switchImageTab(tabName) {
+  document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+  event.target.classList.add('active');
+
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+  document.getElementById(tabName + 'Tab').classList.add('active');
+
+  if (tabName === 'upload') {
+    selectedExistingImage = null;
+    document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+  }
+}
+
+// Open store image modal
+function openStoreImageModal(storeId, storeName) {
+  currentStoreId = storeId;
+  document.getElementById('imageModalTitle').textContent = `Select or Upload Image for ${storeName}`;
+  
+  // Reset modal state
+  document.getElementById('imageInput').value = '';
+  document.getElementById('cropperWrapper').style.display = 'none';
+  if (storeCropper) {
+    storeCropper.destroy();
+    storeCropper = null;
+  }
+  selectedExistingImage = null;
+  document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+  
+  // Set first tab as active
+  document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.modal-tab')[0].classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+  document.getElementById('uploadTab').classList.add('active');
+  
+  document.getElementById('imageModal').style.display = 'block';
+}
+
+function closeImageModal() {
+  document.getElementById('imageModal').style.display = 'none';
+  if (storeCropper) {
+    storeCropper.destroy();
+    storeCropper = null;
+  }
+  currentStoreId = null;
+  selectedExistingImage = null;
+}
+
+// Handle file input
+document.addEventListener('DOMContentLoaded', () => {
+  loadAvailableImages();
+
+  const imageInput = document.getElementById('imageInput');
+  if (imageInput) {
+    imageInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const image = document.getElementById('imageToCrop');
+          image.src = event.target.result;
+          document.getElementById('cropperWrapper').style.display = 'block';
+          
+          if (storeCropper) {
+            storeCropper.destroy();
+          }
+
+          storeCropper = new Cropper(image, {
+            aspectRatio: 2 / 1,
+            viewMode: 2,
+            autoCropArea: 1,
+            responsive: true,
+            guides: true,
+            center: true,
+            highlight: true,
+            cropBoxResizable: true,
+            cropBoxMovable: true,
+            toggleDragModeOnDblclick: false,
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+});
+
+// Crop controls
+function cropStoreImage(action, ...args) {
+  if (!storeCropper) return;
+  
+  switch(action) {
+    case 'zoom':
+      storeCropper.zoom(args[0]);
+      break;
+    case 'move':
+      storeCropper.move(args[0], args[1]);
+      break;
+    case 'reset':
+      storeCropper.reset();
+      break;
+  }
+}
+
+// Save selected/cropped image
+async function saveStoreImage() {
+  if (!currentStoreId) {
+    alert('No store selected');
+    return;
+  }
+
+  const activeTab = document.querySelector('.tab-content.active').id;
+  
+  if (activeTab === 'selectTab') {
+    if (!selectedExistingImage) {
+      alert('Please select an image');
+      return;
+    }
+    await saveExistingStoreImage(selectedExistingImage);
+  } else {
+    if (!storeCropper) {
+      alert('Please select an image to upload');
+      return;
+    }
+    await saveCroppedStoreImage();
+  }
+}
+
+// Save existing image
+async function saveExistingStoreImage(imagePath) {
+  try {
+    const formData = new FormData();
+    formData.append('existing_image', imagePath);
+    
+    const response = await fetch(`/store/${currentStoreId}/edit_image`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      window.location.reload();
+    } else {
+      alert('Error saving image');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error saving image');
+  }
+}
+
+// Save cropped image
+async function saveCroppedStoreImage() {
+  try {
+    const canvas = storeCropper.getCroppedCanvas({
+      width: 512,
+      height: 256,
+      imageSmoothingQuality: 'high'
+    });
+    
+    canvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append('image', blob, 'cropped.jpg');
+      
+      const response = await fetch(`/store/${currentStoreId}/edit_image`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert('Error saving image');
+      }
+    }, 'image/jpeg', 0.9);
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error saving image');
+  }
+}
+
+// Add Store Modal
+function openAddStoreModal() {
+  document.getElementById('addStoreModal').style.display = 'block';
+}
+
+function closeAddStoreModal() {
+  document.getElementById('addStoreModal').style.display = 'none';
+}
+
+// User Search Filter
+function filterUsers() {
+  const searchInput = document.getElementById('userSearchFilter');
+  const filter = searchInput.value.toLowerCase();
+  const userCards = document.querySelectorAll('.user-card');
+  
+  userCards.forEach(card => {
+    const name = card.querySelector('.user-name').textContent.toLowerCase();
+    const email = card.querySelector('.user-email').textContent.toLowerCase();
+    
+    if (name.includes(filter) || email.includes(filter)) {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+// User search for store assignment
+let searchTimeout = null;
+let allUsers = {{ users_json|tojson }};
+
+async function searchUsersForStore(storeId) {
+  const searchInput = document.getElementById(`userSearch-${storeId}`);
+  const resultsDiv = document.getElementById(`userSearchResults-${storeId}`);
+  const query = searchInput.value.trim().toLowerCase();
+  
+  // Clear previous timeout
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  
+  if (!query) {
+    resultsDiv.style.display = 'none';
+    return;
+  }
+  
+  // Debounce search
+  searchTimeout = setTimeout(() => {
+    const filtered = allUsers.filter(user => 
+      user.name.toLowerCase().includes(query) || 
+      user.email.toLowerCase().includes(query)
+    );
+    
+    resultsDiv.innerHTML = '';
+    
+    if (filtered.length === 0) {
+      resultsDiv.innerHTML = '<div class="user-search-no-results">No users found</div>';
+    } else {
+      filtered.slice(0, 10).forEach(user => {
+        const item = document.createElement('div');
+        item.className = 'user-search-item';
+        item.innerHTML = `
+          <div class="user-search-avatar">${user.name.charAt(0).toUpperCase()}</div>
+          <div class="user-search-info">
+            <div class="user-search-name">${user.name}</div>
+            <div class="user-search-email">${user.email}</div>
+          </div>
+        `;
+        item.onclick = () => assignUserToStore(storeId, user.id, user.email);
+        resultsDiv.appendChild(item);
+      });
+    }
+    
+    resultsDiv.style.display = 'block';
+  }, 300);
+}
+
+async function assignUserToStore(storeId, userId, userEmail) {
+  try {
+    const formData = new FormData();
+    formData.append('user_id', userId);
+    
+    const response = await fetch(`/store/${storeId}/assign_user`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      window.location.reload();
+    } else {
+      const data = await response.json();
+      alert(data.error || 'Error assigning user to store');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error assigning user to store');
+  }
+}
+
+// Close search results when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.user-search-results') && !e.target.id.startsWith('userSearch-')) {
+    document.querySelectorAll('.user-search-results').forEach(div => {
+      div.style.display = 'none';
+    });
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const links = document.querySelectorAll(".admin-sidebar a");
   const sections = document.querySelectorAll(".admin-section");
@@ -318,6 +1356,12 @@ document.addEventListener("DOMContentLoaded", () => {
       sec.classList.add("hidden");
     }
   });
+
+  // Setup user search filter
+  const userSearchFilter = document.getElementById('userSearchFilter');
+  if (userSearchFilter) {
+    userSearchFilter.addEventListener('input', filterUsers);
+  }
 });
 </script>
 

@@ -32,7 +32,6 @@
         border-radius: 8px;
         cursor: pointer;
         text-decoration: none;
-        color: #333;
         font-size: 1.2rem;
         transition: background 0.3s;
       }
@@ -57,10 +56,10 @@
   <p>Quick setup for casual play. Only Top 8 standings, no ELO changes.</p>
 </a>
 <a href="{{ url_for('new_tournament', type='premium') }}" 
-   class="option" 
-   style="border-color:gold; color:#b8860b;">
+   class="option option-premium" 
+   style="border-color:gold;">
   <h2><i class="material-icons large" style="color:gold;">star</i> Premium Event</h2>
-  <p>Big Opens with boosted ELO rewards.</p>
+  <p style="color:#b8860b;">Big Opens with boosted ELO rewards.</p>
 </a>
   
   {% endblock %}

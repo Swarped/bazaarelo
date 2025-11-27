@@ -13,6 +13,16 @@
              style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
     </div>
 
+    <div style="margin-bottom:1rem;">
+      <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+        <input type="checkbox" id="dark_mode" name="dark_mode" {% if current_user.dark_mode %}checked{% endif %}
+               style="width:18px; height:18px; cursor:pointer;">
+        <span style="font-weight:bold; display:flex; align-items:center; gap:0.5rem;">
+          <i class="material-icons">dark_mode</i> Enable Dark Mode
+        </span>
+      </label>
+    </div>
+
     <button type="submit" class="btn btn-primary">
       <i class="material-icons">save</i> Save Changes
     </button>

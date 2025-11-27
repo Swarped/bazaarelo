@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Event Logs</h1>
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+      <span class="material-icons" style="font-size: 16px; vertical-align: middle;">arrow_back</span>
+      Back to Admin
+    </a>
+  </div>
+
+  <div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1.5rem;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="border-bottom: 2px solid #dee2e6;">
+          <th style="padding: 0.75rem; text-align: left;">Timestamp</th>
+          <th style="padding: 0.75rem; text-align: left;">User</th>
+          <th style="padding: 0.75rem; text-align: left;">Action</th>
+          <th style="padding: 0.75rem; text-align: left;">Details</th>
+          <th style="padding: 0.75rem; text-align: center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr style="border-bottom: 1px solid #dee2e6;">
+          <td style="padding: 0.75rem; font-size: 0.9rem; color: #666;">
+            {{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td style="padding: 0.75rem;">
+            {{ log.user_name }}
+          </td>
+          <td style="padding: 0.75rem;">
+            <span style="background-color: 
+              {% if 'created' in log.action_type %}#d4edda
+              {% elif 'deleted' in log.action_type %}#f8d7da
+              {% elif 'granted' in log.action_type or 'approved' in log.action_type %}#d1ecf1
+              {% elif 'changed' in log.action_type %}#fff3cd
+              {% elif 'recovered' in log.action_type %}#d1e7dd
+              {% else %}#e2e3e5
+              {% endif %};
+              color: 
+              {% if 'created' in log.action_type %}#155724
+              {% elif 'deleted' in log.action_type %}#721c24
+              {% elif 'granted' in log.action_type or 'approved' in log.action_type %}#0c5460
+              {% elif 'changed' in log.action_type %}#856404
+              {% elif 'recovered' in log.action_type %}#0f5132
+              {% else %}#383d41
+              {% endif %};
+              padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; font-weight: 600;">
+              {{ log.action_type.replace('_', ' ').title() }}
+            </span>
+          </td>
+          <td style="padding: 0.75rem; max-width: 400px;">
+            {{ log.details }}
+          </td>
+          <td style="padding: 0.75rem; text-align: center;">
+            {% if log.recoverable and not log.recovered %}
+            <form method="POST" action="{{ url_for('recover_event', event_id=log.id) }}" style="display: inline;">
+              <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">restore</span>
+                Recover
+              </button>
+            </form>
+            {% elif log.recovered %}
+            <span style="color: #28a745; font-size: 0.85rem; font-weight: 600;">
+              <span class="material-icons" style="font-size: 14px; vertical-align: middle;">check_circle</span>
+              Recovered
+            </span>
+            {% else %}
+            <span style="color: #6c757d; font-size: 0.85rem;">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if logs|length == 0 %}
+    <div style="text-align: center; padding: 3rem; color: #666;">
+      <span class="material-icons" style="font-size: 48px; opacity: 0.3;">event_note</span>
+      <p style="margin-top: 1rem;">No events logged yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

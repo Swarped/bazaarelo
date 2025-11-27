@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ store.name }}{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+  .store-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .store-header {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+  }
+  
+  .store-image {
+    width: 300px;
+    height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .store-info {
+    flex: 1;
+  }
+  
+  .store-info h1 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .store-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+  }
+  
+  .stat {
+    padding: 1rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+  }
+  
+  .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4CAF50;
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+  
+  .tournaments-section {
+    margin-top: 2rem;
+  }
+  
+  .tournament-card {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    transition: box-shadow 0.2s;
+  }
+  
+  .tournament-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  .tournament-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .tournament-meta {
+    display: flex;
+    gap: 1.5rem;
+    color: #666;
+    font-size: 0.95rem;
+  }
+  
+  .tournament-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .tournament-meta .material-icons {
+    font-size: 18px;
+  }
+</style>
+
+<div class="store-page">
+  <div class="store-header">
+    <div class="store-image">
+      {% if store.image_url %}
+        <img src="{{ url_for('static', filename=store.image_url) }}" alt="{{ store.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+      {% else %}
+        <span class="material-icons" style="font-size: 80px; color: #ccc;">store</span>
+      {% endif %}
+    </div>
+    
+    <div class="store-info">
+      <h1>{{ store.name }}</h1>
+      
+      {% if store.location or store.country %}
+      <p style="font-size: 1.1rem; color: #666; margin-bottom: 1rem;">
+        <span class="material-icons" style="vertical-align: middle; font-size: 20px;">location_on</span>
+        {% if store.location %}{{ store.location }}{% endif %}
+        {% if store.location and store.country %}, {% endif %}
+        {% if store.country %}{{ store.country }}{% endif %}
+      </p>
+      {% endif %}
+      
+      <div class="store-stats">
+        <div class="stat">
+          <div class="stat-value">{{ total_tournaments }}</div>
+          <div class="stat-label">Tournaments</div>
+        </div>
+        
+        <div class="stat">
+          <div class="stat-value">{{ avg_players }}</div>
+          <div class="stat-label">Avg Players</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="tournaments-section">
+    <h2>Tournaments at {{ store.name }}</h2>
+    
+    {% if tournaments|length == 0 %}
+      <p style="text-align: center; padding: 2rem; color: #666;">No tournaments found at this store.</p>
+    {% else %}
+      {% for tournament in tournaments %}
+      <div class="tournament-card">
+        <h3>
+          <a href="{{ url_for('tournament_standings', tid=tournament.id) }}" style="text-decoration: none; color: inherit;">
+            {{ tournament.name }}
+          </a>
+        </h3>
+        
+        <div class="tournament-meta">
+          <span>
+            <span class="material-icons">event</span>
+            {{ tournament.date.strftime('%Y-%m-%d') }}
+          </span>
+          
+          <span>
+            <span class="material-icons">groups</span>
+            {{ tournament.tournament_players|length }} players
+          </span>
+          
+          <span>
+            <span class="material-icons">casino</span>
+            {{ tournament.rounds }} rounds
+          </span>
+          
+          {% if tournament.casual %}
+            <span style="color: #ff9800;">
+              <span class="material-icons">celebration</span>
+              Casual
+            </span>
+          {% elif tournament.premium %}
+            <span style="color: gold;">
+              <span class="material-icons">star</span>
+              Premium
+            </span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

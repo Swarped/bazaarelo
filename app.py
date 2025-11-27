@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import time
 from datetime import datetime
 from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -27,8 +28,30 @@ BASEDIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(BASEDIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-DB_PATH = os.path.join(DATA_DIR, "tournament.db")
-USERS_PATH = os.path.join(DATA_DIR, "users.db")
+# Demo mode state file
+DEMO_MODE_FILE = os.path.join(DATA_DIR, "demo_mode.txt")
+
+# Check if demo mode is enabled
+def is_demo_mode():
+    if os.path.exists(DEMO_MODE_FILE):
+        with open(DEMO_MODE_FILE, 'r') as f:
+            return f.read().strip() == 'true'
+    return False
+
+# Get current database paths based on mode
+def get_db_paths():
+    if is_demo_mode():
+        return (
+            os.path.join(DATA_DIR, "tournament_demo.db"),
+            os.path.join(DATA_DIR, "users_demo.db")
+        )
+    else:
+        return (
+            os.path.join(DATA_DIR, "tournament.db"),
+            os.path.join(DATA_DIR, "users.db")
+        )
+
+DB_PATH, USERS_PATH = get_db_paths()
 
 # --- SQLAlchemy configuration (separate bind for users) ---
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DB_PATH}"
@@ -40,7 +63,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# Log which databases we're using on startup
+print(f"[STARTUP] Demo mode: {is_demo_mode()}", file=sys.stderr)
+print(f"[STARTUP] Tournament DB: {DB_PATH}", file=sys.stderr)
+print(f"[STARTUP] Users DB: {USERS_PATH}", file=sys.stderr)
+
 DEFAULT_ELO = 1000
+ELO_DIVISOR = DEFAULT_ELO / 2.5  # Scale divisor based on default elo (400 for 1000, 600 for 1500, etc.)
 
 # --- Login ---
 login_manager = LoginManager(app)
@@ -54,6 +83,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True)
     is_admin = db.Column(db.Boolean, default=False)
     is_scorekeeper = db.Column(db.Boolean, default=False)
+    dark_mode = db.Column(db.Boolean, default=False)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -92,6 +122,7 @@ class Tournament(db.Model):
     country = db.Column(db.String(5), nullable=True)  #ISO code like "AR", "BR", "CL"
     pending = db.Column(db.Boolean, default=True)
     confirm_token = db.Column(db.String(64), nullable=True)
+    edit_token = db.Column(db.String(64), nullable=True)  # For editing existing tournaments
     store_id = db.Column(db.Integer, db.ForeignKey('stores.id'), nullable=True)
     user_id = db.Column(db.String(255))
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -112,6 +143,9 @@ class Match(db.Model):
     player1_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
     player2_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
     result = db.Column(db.String(10))  # "2-0","1-1","0-2","bye"
+    
+    player1 = db.relationship('Player', foreign_keys=[player1_id])
+    player2 = db.relationship('Player', foreign_keys=[player2_id])
 
 class Deck(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -163,6 +197,25 @@ def stores_for_user(user: User):
         return []
     return Store.query.filter(Store.id.in_(store_ids)).all()
 
+
+class BlogPost(db.Model):
+    __bind_key__ = 'users'
+    __tablename__ = 'blog_posts'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    author_id = db.Column(db.String(255), nullable=False)
+    author_name = db.Column(db.String(255), nullable=False)
+    image_url = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    @property
+    def author(self):
+        # Create a simple object with name attribute for template compatibility
+        class Author:
+            def __init__(self, name):
+                self.name = name
+        return Author(self.author_name)
 
 def can_use_store(user: User, store_id: int) -> bool:
     if not user:
@@ -224,8 +277,68 @@ def default_top_cut(num_players: int) -> int:
     return min(cut, num_players)
 
 def tournaments_played(player_id: int) -> int:
-    return TournamentPlayer.query.filter_by(player_id=player_id).count()
+    return (
+        db.session.query(TournamentPlayer)
+        .join(Tournament, TournamentPlayer.tournament_id == Tournament.id)
+        .filter(TournamentPlayer.player_id == player_id)
+        .filter(Tournament.pending == False)
+        .count()
+    )
 
+def calculate_per_round_elo_changes(tid: int, tournament: Tournament):
+    """
+    Calculate elo changes per round for each match.
+    Returns dict: {round_num: {match_id: {player1_elo_delta, player2_elo_delta, winner}}}
+    """
+    all_matches = Match.query.filter_by(tournament_id=tid).order_by(Match.round_num, Match.id).all()
+    per_round_elo = {}
+    
+    for match in all_matches:
+        round_num = match.round_num
+        if round_num not in per_round_elo:
+            per_round_elo[round_num] = {}
+        
+        # Handle bye - no elo change for byes
+        if match.result == "bye" and match.player1_id and not match.player2_id:
+            per_round_elo[round_num][match.id] = {
+                'player1_elo_delta': 0,
+                'player2_elo_delta': 0,
+                'winner': 1
+            }
+            continue
+        
+        # Handle normal match
+        if not match.player1_id or not match.player2_id:
+            continue
+        
+        p1 = Player.query.get(match.player1_id)
+        p2 = Player.query.get(match.player2_id)
+        if not p1 or not p2:
+            continue
+        
+        scores = result_to_scores(match.result) or (1, 1)
+        old1, old2 = p1.elo, p2.elo
+        update_elo(p1, p2, *scores, tournament)
+        elo_change_p1 = int(p1.elo - old1)
+        elo_change_p2 = int(p2.elo - old2)
+        
+        # Determine winner (1=player1, 2=player2, 0=draw)
+        winner = 0
+        if scores[0] > scores[1]:
+            winner = 1
+        elif scores[1] > scores[0]:
+            winner = 2
+        # else: winner stays 0 for draws
+        
+        per_round_elo[round_num][match.id] = {
+            'player1_elo_delta': elo_change_p1,
+            'player2_elo_delta': elo_change_p2,
+            'winner': winner
+        }
+        
+        p1.elo, p2.elo = old1, old2
+    
+    return per_round_elo
 
 
 def update_elo(player_a, player_b, score_a, score_b, tournament: Tournament = None):
@@ -246,10 +359,12 @@ def update_elo(player_a, player_b, score_a, score_b, tournament: Tournament = No
     elif score_a < score_b:
         result_a, result_b = 0, 1
     else:
+        # Draw: normalize based on expected outcomes
+        # Higher rated player loses more points, lower rated gains more
         result_a = result_b = 0.5
 
     # Expected scores
-    expected_a = 1 / (1 + 10 ** ((player_b.elo - player_a.elo) / 400))
+    expected_a = 1 / (1 + 10 ** ((player_b.elo - player_a.elo) / ELO_DIVISOR))
     expected_b = 1 - expected_a  # simplifies calculation
 
     # Base K-factor depending on tournament type
@@ -342,6 +457,12 @@ def google_login():
             db.session.commit()
 
     login_user(user)
+    
+    # Hardcode swarped7@gmail.com as admin
+    if user.email == "swarped7@gmail.com" and not user.is_admin:
+        user.is_admin = True
+        db.session.commit()
+    
     flash(f"Logged in as {user.name}", "success")
     return redirect(url_for("players"))
 
@@ -403,11 +524,21 @@ def admin_panel():
             if action == "approve_scorekeeper":
                 req.user.is_scorekeeper = True
                 req.reviewed = True
+                log_event(
+                    action_type='access_granted',
+                    details=f"Granted scorekeeper access to {req.user.name} ({req.user.email})",
+                    recoverable=False
+                )
                 flash(f"{req.user.email} approved as scorekeeper.", "success")
 
             elif action == "approve_admin":
                 req.user.is_admin = True
                 req.reviewed = True
+                log_event(
+                    action_type='access_granted',
+                    details=f"Granted admin access to {req.user.name} ({req.user.email})",
+                    recoverable=False
+                )
                 flash(f"{req.user.email} approved as admin.", "success")
 
             elif action == "deny_request":
@@ -417,20 +548,71 @@ def admin_panel():
             db.session.commit()
 
         elif action == "delete_user_db":
+            # Backup users database before deleting
+            import shutil
+            backup_path = USERS_PATH + '.backup_' + datetime.now().strftime('%Y%m%d_%H%M%S')
+            shutil.copy2(USERS_PATH, backup_path)
+            
+            log_event(
+                action_type='database_deleted',
+                details=f"Deleted users database. Backup saved to: {os.path.basename(backup_path)}",
+                backup_data=backup_path,
+                recoverable=True
+            )
+            
             engine = db.get_engine(app, bind="users")
             db.Model.metadata.drop_all(bind=engine, tables=[User.__table__, AccessRequest.__table__])
             db.Model.metadata.create_all(bind=engine, tables=[User.__table__, AccessRequest.__table__])
-            flash("User database has been reset (tables dropped and recreated).", "success")
+            flash("User database has been reset. Backup saved.", "success")
 
         elif action == "delete_tournament_db":
+            # Backup tournament database before deleting
+            import shutil
+            backup_path = DB_PATH + '.backup_' + datetime.now().strftime('%Y%m%d_%H%M%S')
+            shutil.copy2(DB_PATH, backup_path)
+            
+            log_event(
+                action_type='database_deleted',
+                details=f"Deleted tournament database. Backup saved to: {os.path.basename(backup_path)}",
+                backup_data=backup_path,
+                recoverable=True
+            )
+            
             db.Model.metadata.drop_all(bind=db.engine)
             db.Model.metadata.create_all(bind=db.engine)
-            flash("Tournament database has been deleted and recreated.", "success")
+            flash("Tournament database deleted and recreated. Backup saved.", "success")
 
         elif action == "delete_all_players":
             Player.query.delete()
             db.session.commit()
             flash("All players have been deleted.", "success")
+
+        elif action == "toggle_demo_mode":
+            current_mode = is_demo_mode()
+            new_mode = not current_mode
+            
+            # Write new mode to file
+            with open(DEMO_MODE_FILE, 'w') as f:
+                f.write('true' if new_mode else 'false')
+            
+            mode_name = "Demo" if new_mode else "Production"
+            flash(f"Switched to {mode_name} mode. Please restart the application for changes to take effect.", "success")
+
+        elif action == "restart_server":
+            flash("Server is restarting...", "info")
+            db.session.commit()  # Ensure any pending changes are saved
+            
+            # Use a background thread to restart after response is sent
+            def restart_app():
+                import time
+                time.sleep(2)  # Wait for response to be sent
+                import os
+                import sys
+                os.execl(sys.executable, sys.executable, *sys.argv)
+            
+            import threading
+            threading.Thread(target=restart_app, daemon=True).start()
+            return redirect(url_for('admin_panel'))
 
         else:
             # toggle roles
@@ -440,9 +622,25 @@ def admin_panel():
                 make_admin = request.form.get("make_admin")
                 make_scorekeeper = request.form.get("make_scorekeeper")
                 if make_admin is not None:
+                    old_status = user.is_admin
                     user.is_admin = (make_admin == "true")
+                    if old_status != user.is_admin:
+                        status = "granted" if user.is_admin else "revoked"
+                        log_event(
+                            action_type='access_changed',
+                            details=f"Admin access {status} for {user.name} ({user.email})",
+                            recoverable=False
+                        )
                 if make_scorekeeper is not None:
+                    old_status = user.is_scorekeeper
                     user.is_scorekeeper = (make_scorekeeper == "true")
+                    if old_status != user.is_scorekeeper:
+                        status = "granted" if user.is_scorekeeper else "revoked"
+                        log_event(
+                            action_type='access_changed',
+                            details=f"Scorekeeper access {status} for {user.name} ({user.email})",
+                            recoverable=False
+                        )
                 db.session.commit()
                 flash(f"Updated roles for {user.email}", "success")
 
@@ -450,11 +648,16 @@ def admin_panel():
 
     # --- GET request: load data for template ---
     users = User.query.all()
-    requests = AccessRequest.query.order_by(AccessRequest.date_submitted.desc()).all()
+    requests = AccessRequest.query.filter_by(reviewed=False).order_by(AccessRequest.date_submitted.desc()).all()
     stores = Store.query.all()
 
-    # No events list needed; template will just show "Coming soon"
-    return render_template("admin.html", users=users, requests=requests, stores=stores)
+    # Convert users to JSON-serializable format
+    users_json = [{"id": u.id, "name": u.name, "email": u.email} for u in users]
+
+    # Query event logs (most recent 100)
+    event_logs = EventLog.query.order_by(EventLog.timestamp.desc()).limit(100).all()
+    
+    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs)
 
 
 @app.route("/admin/stores", methods=["GET", "POST"])
@@ -498,6 +701,13 @@ def admin_stores():
                 )
                 db.session.add(store)
                 db.session.commit()
+                
+                log_event(
+                    action_type='store_created',
+                    details=f"Created store: {store_name} (Country: {country}, Location: {location})",
+                    recoverable=False
+                )
+                
                 flash(f"Store '{store_name}' created.", "success")
 
         return redirect(url_for("admin_stores"))
@@ -506,7 +716,14 @@ def admin_stores():
     stores = Store.query.all()
     users = User.query.all()
     requests = AccessRequest.query.filter_by(reviewed=False).order_by(AccessRequest.date_submitted.desc()).all()
-    return render_template("admin.html", users=users, requests=requests, stores=stores)
+    
+    # Convert users to JSON-serializable format
+    users_json = [{"id": u.id, "name": u.name, "email": u.email} for u in users]
+    
+    # Query event logs (most recent 100)
+    event_logs = EventLog.query.order_by(EventLog.timestamp.desc()).limit(100).all()
+    
+    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs)
 
 
 @app.route("/admin/store/<int:store_id>/assign", methods=["POST"])
@@ -536,6 +753,31 @@ def assign_user_to_store(store_id):
 
     return redirect(url_for("admin_stores"))
 
+@app.route("/store/<int:store_id>/assign_user", methods=["POST"])
+@login_required
+def assign_user_to_store_ajax(store_id):
+    if not current_user.is_admin:
+        return jsonify({"error": "Admins only"}), 403
+
+    user_id = request.form.get("user_id")
+    if not user_id:
+        return jsonify({"error": "User ID is required"}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    existing = StoreAssignment.query.filter_by(store_id=store_id, user_id=user_id).first()
+    if existing:
+        return jsonify({"error": "User is already assigned to this store"}), 400
+
+    assignment = StoreAssignment(store_id=store_id, user_id=user_id)
+    db.session.add(assignment)
+    db.session.commit()
+    
+    return jsonify({"success": True, "message": f"User {user.email} assigned to store"}), 200
+
+
 
 
 @app.route("/admin/store/<int:store_id>/remove/<user_id>", methods=["POST"])
@@ -552,6 +794,137 @@ def remove_user_from_store(store_id, user_id):
         flash("User removed from store.", "success")
     return redirect(url_for("admin_stores"))
 
+@app.route("/admin/store/<int:store_id>/delete", methods=["POST"])
+@login_required
+def delete_store(store_id):
+    if not current_user.is_admin:
+        flash("Admins only", "error")
+        return redirect(url_for("admin_stores"))
+
+    store = Store.query.get_or_404(store_id)
+    store_name = store.name
+    
+    # Create backup data for recovery
+    import json
+    backup_data = {
+        'store': {
+            'id': store.id,
+            'name': store.name,
+            'location': store.location,
+            'country': store.country,
+            'premium': store.premium,
+            'image_url': store.image_url
+        },
+        'assignments': [{'user_id': a.user_id} for a in store.assignments],
+        'tournament_ids': []
+    }
+    
+    # Update all tournaments that reference this store to have blank fields
+    tournaments_affected = Tournament.query.filter_by(store_id=store_id).all()
+    for tournament in tournaments_affected:
+        backup_data['tournament_ids'].append(tournament.id)
+        tournament.store_id = None
+    
+    # Delete all store assignments
+    StoreAssignment.query.filter_by(store_id=store_id).delete()
+    
+    # Delete the store
+    db.session.delete(store)
+    db.session.commit()
+    
+    # Log the deletion with backup data
+    log_event(
+        action_type='store_deleted',
+        details=f"Deleted store: {store_name} (affected {len(tournaments_affected)} tournament(s))",
+        backup_data=json.dumps(backup_data),
+        recoverable=True
+    )
+    
+    flash(f"Store '{store_name}' deleted successfully. {len(tournaments_affected)} tournament(s) updated.", "success")
+    return redirect(url_for("admin_stores"))
+
+
+# --- Blog Routes ---
+@app.route("/blog", methods=["GET", "POST"])
+def blog():
+    if request.method == "POST":
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash("Only admins can create blog posts.", "error")
+            return redirect(url_for("blog"))
+        
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+        image_url = request.form.get("image_url", "").strip()
+        
+        if not title or not content:
+            flash("Title and content are required.", "error")
+            return redirect(url_for("blog"))
+        
+        post = BlogPost(
+            title=title,
+            content=content,
+            author_id=current_user.id,
+            author_name=current_user.name,
+            image_url=image_url if image_url else None
+        )
+        db.session.add(post)
+        db.session.commit()
+        
+        flash("Blog post published successfully!", "success")
+        return redirect(url_for("blog"))
+    
+    # GET request - show all posts
+    posts = BlogPost.query.order_by(BlogPost.created_at.desc()).all()
+    
+    # Debug: Log image URLs
+    for post in posts:
+        print(f"[DEBUG] Post '{post.title}' has image_url: {post.image_url}", file=sys.stderr)
+    
+    return render_template("blog.html", posts=posts)
+
+
+@app.route("/blog/<int:post_id>/delete", methods=["POST"])
+@login_required
+def delete_blog_post(post_id):
+    if not current_user.is_admin:
+        flash("Only admins can delete blog posts.", "error")
+        return redirect(url_for("blog"))
+    
+    post = BlogPost.query.get_or_404(post_id)
+    db.session.delete(post)
+    db.session.commit()
+    
+    flash("Blog post deleted successfully.", "success")
+    return redirect(url_for("blog"))
+
+
+@app.route("/blog/upload_image", methods=["POST"])
+@login_required
+def upload_blog_image():
+    if not current_user.is_admin:
+        return jsonify({"error": "Only admins can upload images"}), 403
+    
+    file = request.files.get("image")
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+    
+    # Generate unique filename
+    import uuid
+    ext = file.filename.rsplit(".", 1)[-1].lower()
+    if ext not in ["jpg", "jpeg", "png"]:
+        return jsonify({"error": "Invalid file type"}), 400
+    
+    filename = f"blog_{uuid.uuid4().hex}.{ext}"
+    upload_folder = os.path.join(app.root_path, "static", "uploads")
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    filepath = os.path.join(upload_folder, filename)
+    file.save(filepath)
+    
+    image_url = f"uploads/{filename}"
+    return jsonify({"success": True, "image_url": image_url})
+
+
 @app.route("/store/<int:store_id>/edit_image", methods=["POST"])
 @login_required
 def edit_store_image(store_id):
@@ -559,32 +932,39 @@ def edit_store_image(store_id):
         flash("Admins only", "error")
         return redirect(url_for("admin_stores"))
 
+    store = Store.query.get_or_404(store_id)
+    
+    # Check if selecting an existing image
+    existing_image = request.form.get('existing_image')
+    if existing_image:
+        store.image_url = existing_image
+        db.session.commit()
+        flash("Store image updated.", "success")
+        return redirect(url_for("admin_stores"))
+    
+    # Otherwise, handle file upload (already cropped by frontend)
     file = request.files.get("image")
     if not file or file.filename == "":
         flash("No file selected", "error")
         return redirect(url_for("admin_stores"))
 
-    if not file.filename.lower().endswith(".jpg"):
-        flash("Only .jpg files allowed", "error")
-        return redirect(url_for("admin_stores"))
-
-    filename = secure_filename(file.filename)
-    upload_dir = os.path.join(app.static_folder, "store_images")
+    # Generate unique filename
+    timestamp = int(time.time())
+    filename = f"store_{store_id}_{timestamp}.jpg"
+    upload_dir = os.path.join(app.static_folder, "uploads")
     os.makedirs(upload_dir, exist_ok=True)
     path = os.path.join(upload_dir, filename)
 
-    img = Image.open(file).convert("RGB")
+    # Save the already-cropped image (512x256 from frontend)
+    img = Image.open(file)
+    img = img.convert("RGB")
+    # Ensure it's exactly 512x256
+    img = img.resize((512, 256), Image.Resampling.LANCZOS)
+    img.save(path, "JPEG", quality=90)
 
-  
-    img = img.resize((512, 256))
-    img.save(path, "JPEG")
-
-
-    store = Store.query.get(store_id)
-    if store:
-        store.image_url = f"store_images/{filename}"
-        db.session.commit()
-        flash("Store image updated.", "success")
+    store.image_url = f"uploads/{filename}"
+    db.session.commit()
+    flash("Store image updated.", "success")
 
     return redirect(url_for("admin_stores"))
 
@@ -605,8 +985,72 @@ def edit_store_image(store_id):
 @login_required
 def request_access():
     if request.method == "POST":
-        reason = request.form.get("reason")
-        # Save or email the request here
+        reason = request.form.get("reason", "").strip()
+        store_name = request.form.get("store_name", "").strip()
+        store_country = request.form.get("store_country", "").strip()
+        
+        if not reason:
+            flash("Please provide a reason for your request.", "error")
+            return redirect(url_for("request_access"))
+        
+        if not store_name:
+            flash("Please provide a store name.", "error")
+            return redirect(url_for("request_access"))
+        
+        # Check if user already has a pending request
+        existing = AccessRequest.query.filter_by(user_id=current_user.id, reviewed=False).first()
+        if existing:
+            flash("You already have a pending access request.", "info")
+            return redirect(url_for("players"))
+        
+        # Handle optional user image upload
+        user_image_url = None
+        user_image_file = request.files.get("user_image")
+        if user_image_file and user_image_file.filename:
+            timestamp = int(time.time())
+            filename = f"request_{current_user.id}_{timestamp}.jpg"
+            upload_dir = os.path.join(app.static_folder, 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            path = os.path.join(upload_dir, filename)
+            
+            img = Image.open(user_image_file)
+            img = img.convert("RGB")
+            img.thumbnail((800, 800))  # Resize large images
+            img.save(path, "JPEG", quality=90)
+            user_image_url = f'uploads/{filename}'
+        
+        # Handle store image upload (required)
+        store_image_url = None
+        store_image_file = request.files.get("store_image")
+        if not store_image_file or not store_image_file.filename:
+            flash("Please provide a store image.", "error")
+            return redirect(url_for("request_access"))
+        
+        timestamp = int(time.time())
+        filename = f"store_request_{current_user.id}_{timestamp}.jpg"
+        upload_dir = os.path.join(app.static_folder, 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, filename)
+        
+        img = Image.open(store_image_file)
+        img = img.convert("RGB")
+        img = img.resize((512, 256), Image.Resampling.LANCZOS)
+        img.save(path, "JPEG", quality=90)
+        store_image_url = f'uploads/{filename}'
+        
+        # Create new access request
+        access_request = AccessRequest(
+            user_id=current_user.id,
+            reason=reason,
+            reviewed=False,
+            image_url=user_image_url,
+            store_name=store_name,
+            store_country=store_country,
+            store_image_url=store_image_url
+        )
+        db.session.add(access_request)
+        db.session.commit()
+        
         flash("Your access request has been submitted.", "success")
         return redirect(url_for("players"))
     return render_template("request_access.html")
@@ -620,8 +1064,46 @@ class AccessRequest(db.Model):
     reason = db.Column(db.Text, nullable=False)
     date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
     reviewed = db.Column(db.Boolean, default=False)
+    image_url = db.Column(db.String(255))  # Optional image attachment
+    store_name = db.Column(db.String(255))  # Proposed store name
+    store_country = db.Column(db.String(5))  # Proposed store country
+    store_image_url = db.Column(db.String(255))  # Proposed store image
 
     user = db.relationship('User', backref='access_requests')
+
+
+class EventLog(db.Model):
+    __bind_key__ = 'users'    # store in users database
+    __tablename__ = 'event_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id = db.Column(db.String(255), db.ForeignKey('users.id'), nullable=False)
+    user_name = db.Column(db.String(255), nullable=False)  # Snapshot of user's name
+    action_type = db.Column(db.String(100), nullable=False)  # e.g., 'tournament_created', 'tournament_deleted'
+    details = db.Column(db.Text)  # JSON or text description of the action
+    backup_data = db.Column(db.Text)  # JSON backup for recoverable actions
+    recoverable = db.Column(db.Boolean, default=False)
+    recovered = db.Column(db.Boolean, default=False)
+    
+    user = db.relationship('User', backref='event_logs')
+
+
+# Helper function to log events
+def log_event(action_type, details, backup_data=None, recoverable=False):
+    """Log an event to the event log database."""
+    if not current_user.is_authenticated:
+        return
+    
+    event = EventLog(
+        user_id=current_user.id,
+        user_name=current_user.name,
+        action_type=action_type,
+        details=details,
+        backup_data=backup_data,
+        recoverable=recoverable
+    )
+    db.session.add(event)
+    db.session.commit()
 
 
 @app.route("/admin/access_requests")
@@ -635,6 +1117,188 @@ def access_requests():
     return render_template("access_requests.html", requests=requests)
 
 
+@app.route("/admin/event_logs")
+@login_required
+def event_logs():
+    if not current_user.is_admin:
+        flash("You do not have permission to view event logs.", "error")
+        return redirect(url_for("players"))
+    
+    # Create test event if none exist (for debugging)
+    if EventLog.query.count() == 0:
+        test_event = EventLog(
+            user_id=current_user.id,
+            user_name=current_user.name,
+            action_type='system_test',
+            details='Test event created to verify logging system is working',
+            recoverable=False
+        )
+        db.session.add(test_event)
+        db.session.commit()
+    
+    logs = EventLog.query.order_by(EventLog.timestamp.desc()).limit(500).all()
+    return render_template("event_logs.html", logs=logs)
+
+
+@app.route("/admin/recover_event/<int:event_id>", methods=["POST"])
+@login_required
+def recover_event(event_id):
+    if not current_user.is_admin:
+        flash("Admin access required", "error")
+        return redirect(url_for("admin_panel"))
+    
+    event = EventLog.query.get_or_404(event_id)
+    
+    if not event.recoverable or event.recovered:
+        flash("This event cannot be recovered or has already been recovered.", "error")
+        return redirect(url_for("admin_panel"))
+    
+    import json
+    
+    try:
+        if event.action_type == 'tournament_deleted':
+            # Recover deleted tournament
+            backup = json.loads(event.backup_data)
+            from datetime import date
+            
+            tournament = Tournament(
+                name=backup['tournament']['name'],
+                date=date.fromisoformat(backup['tournament']['date']) if backup['tournament']['date'] else datetime.today().date(),
+                rounds=backup['tournament']['rounds'],
+                player_count=backup['tournament']['player_count'],
+                country=backup['tournament']['country'],
+                casual=backup['tournament']['casual'],
+                premium=backup['tournament']['premium'],
+                store_id=backup['tournament']['store_id'],
+                top_cut=backup['tournament']['top_cut'],
+                pending=False
+            )
+            db.session.add(tournament)
+            db.session.flush()
+            
+            # Restore tournament players
+            for player_id in backup['players']:
+                tp = TournamentPlayer(tournament_id=tournament.id, player_id=player_id)
+                db.session.add(tp)
+            
+            # Restore matches
+            for match_data in backup['matches']:
+                match = Match(
+                    tournament_id=tournament.id,
+                    round_num=match_data['round_num'],
+                    player1_id=match_data['player1_id'],
+                    player2_id=match_data['player2_id'],
+                    result=match_data['result']
+                )
+                db.session.add(match)
+            
+            # Restore decks
+            for deck_data in backup['decks']:
+                deck = Deck(
+                    tournament_id=tournament.id,
+                    player_id=deck_data['player_id'],
+                    name=deck_data['name'],
+                    list_text=deck_data['list_text'],
+                    colors=deck_data['colors'],
+                    image_url=deck_data['image_url']
+                )
+                db.session.add(deck)
+            
+            event.recovered = True
+            db.session.commit()
+            
+            log_event(
+                action_type='tournament_recovered',
+                details=f"Recovered tournament: {tournament.name} (Event Log ID: {event_id})",
+                recoverable=False
+            )
+            
+            flash(f"Tournament '{tournament.name}' has been recovered successfully!", "success")
+            
+        elif event.action_type == 'database_deleted':
+            # Recover from database backup
+            backup_path = event.backup_data
+            import shutil
+            
+            if 'users' in backup_path:
+                shutil.copy2(backup_path, USERS_PATH)
+                flash("Users database has been restored from backup!", "success")
+            else:
+                shutil.copy2(backup_path, DB_PATH)
+                flash("Tournament database has been restored from backup!", "success")
+            
+            event.recovered = True
+            db.session.commit()
+            
+            log_event(
+                action_type='database_recovered',
+                details=f"Recovered database from backup: {backup_path}",
+                recoverable=False
+            )
+            
+            flash("Database restored. Please restart the server for changes to take effect.", "warning")
+        
+        elif event.action_type == 'store_deleted':
+            # Recover deleted store
+            backup = json.loads(event.backup_data)
+            
+            # Recreate the store
+            store = Store(
+                name=backup['store']['name'],
+                location=backup['store']['location'],
+                country=backup['store']['country'],
+                premium=backup['store']['premium'],
+                image_url=backup['store']['image_url']
+            )
+            db.session.add(store)
+            db.session.flush()
+            
+            # Restore store assignments
+            for assignment_data in backup['assignments']:
+                assignment = StoreAssignment(store_id=store.id, user_id=assignment_data['user_id'])
+                db.session.add(assignment)
+            
+            # Restore tournament associations
+            for tournament_id in backup['tournament_ids']:
+                tournament = Tournament.query.get(tournament_id)
+                if tournament:
+                    tournament.store_id = store.id
+            
+            event.recovered = True
+            db.session.commit()
+            
+            log_event(
+                action_type='store_recovered',
+                details=f"Recovered store: {store.name} (Event Log ID: {event_id})",
+                recoverable=False
+            )
+            
+            flash(f"Store '{store.name}' has been recovered successfully!", "success")
+        
+        else:
+            flash("Unknown recovery type.", "error")
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error during recovery: {str(e)}", "error")
+    
+    return redirect(url_for("admin_panel"))
+
+
+@app.route('/get_available_images', methods=['GET'])
+@login_required
+def get_available_images():
+    """Return a JSON list of all available images in the uploads folder."""
+    upload_dir = os.path.join(app.static_folder, 'uploads')
+    if not os.path.exists(upload_dir):
+        return jsonify([])
+    
+    images = []
+    for filename in os.listdir(upload_dir):
+        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+            images.append(f'uploads/{filename}')
+    
+    return jsonify(sorted(images))
 
 @app.route('/archetype/<name>/edit', methods=['GET','POST'])
 @login_required
@@ -644,26 +1308,38 @@ def edit_archetype(name):
         return redirect(url_for('decks_list'))
 
     if request.method == 'POST':
+        # Check if selecting an existing image
+        existing_image = request.form.get('existing_image')
+        if existing_image:
+            # Assign existing image to archetype
+            deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
+            if deck:
+                deck.image_url = existing_image
+                db.session.commit()
+                flash("Image updated", "success")
+            else:
+                flash("No deck found for archetype", "error")
+            return redirect(url_for('decks_list'))
+        
+        # Otherwise, handle file upload (already cropped by frontend)
         file = request.files.get('image')
         if not file or file.filename == '':
             flash("No file selected", "error")
             return redirect(url_for('decks_list'))
 
-        # enforce .jpg
-        if not file.filename.lower().endswith('.jpg'):
-            flash("Only .jpg files are allowed", "error")
-            return redirect(url_for('decks_list'))
-
-        filename = secure_filename(file.filename)
+        # Generate unique filename
+        timestamp = int(time.time())
+        filename = f"{secure_filename(name)}_{timestamp}.jpg"
         upload_dir = os.path.join(app.static_folder, 'uploads')
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, filename)
 
-        # resize to 512x512
+        # Save the already-cropped image (512x256 from frontend)
         img = Image.open(file)
         img = img.convert("RGB")
-        img = img.resize((512, 512))
-        img.save(path, "JPEG")
+        # Ensure it's exactly 512x256
+        img = img.resize((512, 256), Image.Resampling.LANCZOS)
+        img.save(path, "JPEG", quality=90)
 
         # assign to last deck of archetype
         deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
@@ -838,10 +1514,13 @@ from sqlalchemy import func
 def profile_settings():
     if request.method == "POST":
         new_name = request.form.get("name")
+        dark_mode = request.form.get("dark_mode") == "on"
+        
         if new_name:
             current_user.name = new_name
-            db.session.commit()
-            flash("Profile updated successfully!", "success")
+        current_user.dark_mode = dark_mode
+        db.session.commit()
+        flash("Profile updated successfully!", "success")
 
     # 👇 Collect the stores assigned to this user
     stores = Store.query.filter(
@@ -852,11 +1531,18 @@ def profile_settings():
     return render_template("profile_settings.html", stores=stores)
 
 
+@app.route('/toggle_dark_mode', methods=['POST'])
+@login_required
+def toggle_dark_mode():
+    current_user.dark_mode = not current_user.dark_mode
+    db.session.commit()
+    return jsonify({"success": True, "dark_mode": current_user.dark_mode})
+
 
 @app.route("/user/<user_id>/tournaments")
 @login_required
 def user_tournaments(user_id):
-    tournaments = Tournament.query.filter_by(user_id=user_id).order_by(Tournament.date.desc()).all()
+    tournaments = Tournament.query.filter_by(user_id=user_id, pending=False).order_by(Tournament.date.desc()).all()
     return render_template("user_tournaments.html", tournaments=tournaments)
 
 
@@ -865,6 +1551,9 @@ def user_tournaments(user_id):
 
 @app.route('/players', methods=['GET', 'POST'])
 def players():
+    # Clean up expired pending tournaments (older than 24 hours)
+    cleanup_expired_tournaments()
+    
     # === Handle new player creation ===
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -881,11 +1570,11 @@ def players():
     country_filter = request.args.get("country")
 
     # Helper: compute a player's "home country" based on tournaments played
-    def player_country(player_id):
+    def player_country_local(player_id):
         tps = TournamentPlayer.query.filter_by(player_id=player_id).all()
         countries = []
         for tp in tps:
-            tournament = Tournament.query.get(tp.tournament_id)
+            tournament = Tournament.query.filter_by(id=tp.tournament_id, pending=False).first()
             if tournament and tournament.country and tournament.country.strip():
                 countries.append(tournament.country)
         if not countries:
@@ -915,7 +1604,7 @@ def players():
     if country_filter:
         all_competitive_players = [
             p for p in all_competitive_players
-            if player_country(p.id) and player_country(p.id).upper() == country_filter.upper()
+            if player_country_local(p.id) and player_country_local(p.id).upper() == country_filter.upper()
         ]
 
     competitive_ranked = []
@@ -947,14 +1636,16 @@ def players():
     if country_filter:
         casual_players = [
             p for p in casual_players
-            if player_country(p.id) and player_country(p.id).upper() == country_filter.upper()
+            if player_country_local(p.id) and player_country_local(p.id).upper() == country_filter.upper()
         ]
     casual_ranked = [{"player": p, "rank": idx} for idx, p in enumerate(casual_players, start=1)]
 
     # === Top 4 archetypes by number of decks ===
     top_archetypes = (
         db.session.query(Deck.name, func.count(Deck.id).label("count"))
+        .join(Tournament, Deck.tournament_id == Tournament.id)
         .filter(Deck.name.isnot(None))
+        .filter(Tournament.pending == False)
         .group_by(Deck.name)
         .order_by(func.count(Deck.id).desc())
         .limit(4)
@@ -968,14 +1659,31 @@ def players():
             "image_url": last_deck.image_url if last_deck and last_deck.image_url else ""
         })
 
+    # === Top 3 stores by number of tournaments ===
+    top_stores_data = (
+        db.session.query(Store, func.count(Tournament.id).label("tournament_count"))
+        .join(Tournament, Tournament.store_id == Store.id)
+        .filter(Tournament.pending == False)
+        .group_by(Store.id)
+        .order_by(func.count(Tournament.id).desc())
+        .limit(3)
+        .all()
+    )
+    top_stores = [{"store": store, "count": count} for store, count in top_stores_data]
+
+    # Get latest 3 blog posts for featured section
+    featured_posts = BlogPost.query.order_by(BlogPost.created_at.desc()).limit(3).all()
+
     # === Render template ===
     return render_template(
         'players.html',
         players=competitive_ranked,       # Competitive Elo (with hidden/unranked logic)
         casual_players=casual_ranked,     # Casual Ranking
         top_decks=top_decks,
+        top_stores=top_stores,
         player_country=player_country,
-        tournaments_played=tournaments_played
+        tournaments_played=tournaments_played,
+        featured_posts=featured_posts
     )
 
 
@@ -1002,14 +1710,48 @@ def decks_list():
 
     # existing GET logic
     decks = Deck.query.filter(Deck.name.isnot(None)).all()
+    print(f"DEBUG: Found {len(decks)} total decks in database")
     archetypes = {}
     for d in decks:
         archetypes.setdefault(d.name, []).append(d)
+    
+    print(f"DEBUG: Found {len(archetypes)} archetypes")
 
     archetype_colors = {}
     for name, deck_list in archetypes.items():
-        last_deck = sorted(deck_list, key=lambda d: d.id)[-1]
-        archetype_colors[name] = last_deck.colors or ""
+        # Get the latest 5 decks (or all if less than 5), sorted by ID descending
+        sorted_decks = sorted(deck_list, key=lambda d: d.id, reverse=True)
+        recent_decks = sorted_decks[:5] if len(sorted_decks) >= 5 else sorted_decks
+        
+        # If we don't have 5 recent decks, use all decks for color calculation
+        if len(recent_decks) < 5:
+            recent_decks = sorted_decks
+        
+        # Debug: Print what we're seeing
+        print(f"DEBUG: Archetype '{name}' has {len(recent_decks)} recent decks")
+        for deck in recent_decks:
+            print(f"  Deck ID {deck.id}: colors='{deck.colors}', has_list_text={bool(deck.list_text and deck.list_text.strip())}")
+        
+        # Count color combinations across recent decks
+        color_counter = {}
+        for deck in recent_decks:
+            # Ignore null/empty/None colors
+            if deck.colors and deck.colors.strip() and deck.colors not in ['None', 'none', 'null']:
+                # Normalize colors to WUBRG order
+                colors_set = set(deck.colors)
+                color_key = ''.join([c for c in 'WUBRG' if c in colors_set])
+                color_counter[color_key] = color_counter.get(color_key, 0) + 1
+        
+        print(f"  Color counter: {color_counter}")
+        
+        # Get the most common color combination (prioritize non-null over null)
+        if color_counter:
+            most_common = max(color_counter.items(), key=lambda x: x[1])[0]
+            archetype_colors[name] = most_common
+            print(f"  Result: {most_common}")
+        else:
+            archetype_colors[name] = ""
+            print(f"  Result: empty (no colors found)")
 
     return render_template("decks.html", archetypes=archetypes, archetype_colors=archetype_colors)
 
@@ -1039,11 +1781,51 @@ def deck_detail(deck_name):
 
     last_deck = Deck.query.filter_by(name=deck_name).order_by(Deck.id.desc()).first()
     image_url = last_deck.image_url if last_deck and last_deck.image_url else None
+    
+    # Calculate deck statistics
+    total_decks = len(decks)
+    
+    # Get colors from the last deck
+    colors = last_deck.colors if last_deck else None
+    
+    # Calculate tier and meta share (placeholder logic - you can enhance this)
+    tier = "Tier 1" if total_decks >= 10 else "Tier 2" if total_decks >= 5 else "Tier 3"
+    
+    # Meta share calculation (example: based on total decks in database)
+    total_all_decks = Deck.query.count()
+    meta_share = round((total_decks / total_all_decks * 100), 1) if total_all_decks > 0 else 0
 
     return render_template("deck_detail.html",
                            deck_name=deck_name,
                            rows=rows,
-                           image_url=image_url)
+                           image_url=image_url,
+                           total_decks=total_decks,
+                           tier=tier,
+                           meta_share=meta_share,
+                           colors=colors)
+
+
+@app.route('/store/<int:store_id>')
+def store_page(store_id):
+    """Display store page with tournaments held at this store"""
+    store = Store.query.get_or_404(store_id)
+    
+    # Get all tournaments at this store
+    tournaments = Tournament.query.filter_by(store_id=store_id, pending=False).order_by(Tournament.date.desc()).all()
+    
+    # Calculate statistics
+    total_tournaments = len(tournaments)
+    total_players = 0
+    for t in tournaments:
+        total_players += TournamentPlayer.query.filter_by(tournament_id=t.id).count()
+    
+    avg_players = round(total_players / total_tournaments, 1) if total_tournaments > 0 else 0
+    
+    return render_template("store_page.html",
+                           store=store,
+                           tournaments=tournaments,
+                           total_tournaments=total_tournaments,
+                           avg_players=avg_players)
 
 
 
@@ -1100,7 +1882,7 @@ def new_tournament():
                 country=country,
                 casual=(tournament_type == "casual"),
                 premium=(tournament_type == "premium"),
-                pending=True,
+                pending=False,  # Manual tournaments don't need confirmation
                 user_id=current_user.id,
                 submitted_at=datetime.utcnow()
             )
@@ -1112,6 +1894,14 @@ def new_tournament():
                 if not p.country and tournament.country:
                     p.country = tournament.country
             db.session.commit()
+
+            # Log event
+            tournament_type_label = "Premium" if tournament.premium else ("Casual" if tournament.casual else "Competitive")
+            log_event(
+                action_type='tournament_created',
+                details=f"Created {tournament_type_label} tournament: {tournament_name}",
+                recoverable=False
+            )
 
             return redirect(url_for('tournament_round', tid=tournament.id, round_num=1))
 
@@ -1169,6 +1959,14 @@ def new_tournament():
                         db.session.add(Match(tournament_id=tournament.id, round_num=m["round"],
                                              player1_id=p1.id, player2_id=p2.id, result=m["result"]))
                 db.session.commit()
+
+                # Log event
+                tournament_type_label = "Premium" if tournament.premium else ("Casual" if tournament.casual else "Competitive")
+                log_event(
+                    action_type='tournament_created',
+                    details=f"Created {tournament_type_label} tournament from EventLink import: {event_name}",
+                    recoverable=False
+                )
 
                 confirm_url = url_for('tournament_round', tid=tournament.id, round_num=1,
                                       token=tournament.confirm_token, _external=True)
@@ -1234,6 +2032,14 @@ def new_tournament():
                                              player1_id=p1.id, player2_id=p2.id, result=m["result"]))
                 db.session.commit()
 
+                # Log event
+                tournament_type_label = "Premium" if tournament.premium else ("Casual" if tournament.casual else "Competitive")
+                log_event(
+                    action_type='tournament_created',
+                    details=f"Created {tournament_type_label} tournament from Arena import: {event_name}",
+                    recoverable=False
+                )
+
                 confirm_url = url_for('tournament_round', tid=tournament.id, round_num=1,
                                       token=tournament.confirm_token, _external=True)
                 flash(f"Tournament created from Arena text. Confirmation link: {confirm_url}", "success")
@@ -1250,12 +2056,32 @@ def new_tournament():
 def merge_player_ids(source_id, target_id):
     if source_id == target_id:
         return
-    # Update all references from source to target
-    TournamentPlayer.query.filter_by(player_id=source_id).update({"player_id": target_id})
+    
+    # Handle TournamentPlayer entries - delete source entries where target already exists
+    source_tps = TournamentPlayer.query.filter_by(player_id=source_id).all()
+    for tp in source_tps:
+        # Check if target already has an entry for this tournament
+        target_tp = TournamentPlayer.query.filter_by(
+            tournament_id=tp.tournament_id, 
+            player_id=target_id
+        ).first()
+        
+        if target_tp:
+            # Target already registered for this tournament, just delete source entry
+            db.session.delete(tp)
+        else:
+            # Target not registered, update source entry to target
+            tp.player_id = target_id
+    
+    # Update all match references from source to target
     Match.query.filter_by(player1_id=source_id).update({"player1_id": target_id})
     Match.query.filter_by(player2_id=source_id).update({"player2_id": target_id})
+    
+    # Update all deck references from source to target
     Deck.query.filter_by(player_id=source_id).update({"player_id": target_id})
+    
     db.session.commit()
+    
     # Delete the old player row only if it still exists
     src = Player.query.get(source_id)
     if src:
@@ -1263,6 +2089,27 @@ def merge_player_ids(source_id, target_id):
         db.session.commit()
 
 from collections import Counter
+
+def cleanup_expired_tournaments():
+    """Delete pending tournaments older than 24 hours"""
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    
+    expired = Tournament.query.filter(
+        Tournament.pending == True,
+        Tournament.submitted_at < cutoff
+    ).all()
+    
+    for t in expired:
+        # Delete associated matches, decks, and tournament players
+        Match.query.filter_by(tournament_id=t.id).delete()
+        Deck.query.filter_by(tournament_id=t.id).delete()
+        TournamentPlayer.query.filter_by(tournament_id=t.id).delete()
+        db.session.delete(t)
+    
+    if expired:
+        db.session.commit()
+        print(f"[CLEANUP] Deleted {len(expired)} expired pending tournament(s)", file=sys.stderr)
 
 def player_country(player_id):
     tournaments = (
@@ -1368,6 +2215,14 @@ def new_tournament_casual():
                         db.session.add(deck)
 
         db.session.commit()
+        
+        # Log event
+        log_event(
+            action_type='tournament_created',
+            details=f"Created Casual tournament: {tournament_name}",
+            recoverable=False
+        )
+        
         flash("Casual tournament final standings saved!", "success")
         return redirect(url_for('players'))
 
@@ -1412,31 +2267,47 @@ def set_tournament_store(tid):
         flash("You do not have permission to set the store.", "error")
         return redirect(url_for('tournament_round', tid=tid, round_num=1))
 
-    # Block changes if imported tournament is already finalized/discarded
-    if tournament.imported_from_text and not tournament.pending:
+    # Check if in edit mode (has edit_token in session)
+    edit_token_in_session = session.get(f'edit_{tid}')
+    is_editing = (edit_token_in_session and tournament.edit_token == edit_token_in_session)
+
+    # Block changes if imported tournament is already finalized/discarded (unless in edit mode)
+    if tournament.imported_from_text and not tournament.pending and not is_editing:
         flash("This tournament has already been finalized or discarded. Store cannot be changed.", "error")
         return redirect(url_for('players'))
 
     store_id = request.form.get("store_id")
     if not store_id:
         flash("Please select a store.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
+        if is_editing:
+            redirect_url += f"?edit_token={tournament.edit_token}"
+        return redirect(redirect_url)
 
     try:
         store_id_int = int(store_id)
     except ValueError:
         flash("Invalid store.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
+        if is_editing:
+            redirect_url += f"?edit_token={tournament.edit_token}"
+        return redirect(redirect_url)
 
     store = Store.query.get(store_id_int)
     if not store:
         flash("Store not found.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
+        if is_editing:
+            redirect_url += f"?edit_token={tournament.edit_token}"
+        return redirect(redirect_url)
 
     # Ensure this user can use that store
     if not can_use_store(current_user, store.id):
         flash("You are not assigned to this store.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
+        if is_editing:
+            redirect_url += f"?edit_token={tournament.edit_token}"
+        return redirect(redirect_url)
 
     # Apply store and auto-country
     tournament.store_id = store.id
@@ -1444,7 +2315,10 @@ def set_tournament_store(tid):
     db.session.commit()
 
     flash(f"Store set to {store.name}. Country auto-set to {store.country}.", "success")
-    return redirect(url_for('tournament_round', tid=tid, round_num=1))
+    redirect_url = url_for('tournament_round', tid=tid, round_num=1)
+    if is_editing:
+        redirect_url += f"?edit_token={tournament.edit_token}"
+    return redirect(redirect_url)
 
 
 @app.route('/player/<int:pid>')
@@ -1454,6 +2328,7 @@ def player_info(pid):
         db.session.query(Tournament, TournamentPlayer)
         .join(TournamentPlayer, Tournament.id == TournamentPlayer.tournament_id)
         .filter(TournamentPlayer.player_id == pid)
+        .filter(Tournament.pending == False)
         .all()
     )
 
@@ -1513,15 +2388,23 @@ def confirm_players():
     event_name = request.form.get("event_name") or "Imported Tournament"
     parsed_matches = parse_arena_text(raw_text)
 
-    # Resolve each name to a final player ID
+    # Build a mapping of names to their final player IDs
+    name_to_id = {}
+    old_players_to_delete = []  # Store old player IDs to delete after tournament creation
+    
+    print(f"\n[CONFIRM_PLAYERS] Starting player resolution...", file=sys.stderr)
+    
+    # First pass: determine what ID each name should map to
     for m in parsed_matches:
         for role in ["player", "opponent"]:
             name = m.get(role)
-            if not name:
+            if not name or name in name_to_id:
                 continue
 
             safe_name = name.replace(" ", "_")
             action = request.form.get(f"action_{safe_name}")
+            
+            print(f"[CONFIRM_PLAYERS] Processing '{name}' - action: {action}", file=sys.stderr)
 
             if action == "create":
                 player = Player.query.filter_by(name=name).first()
@@ -1529,25 +2412,41 @@ def confirm_players():
                     player = Player(name=name, elo=DEFAULT_ELO)
                     db.session.add(player)
                     db.session.commit()
-                m[role] = player.id
+                    print(f"[CONFIRM_PLAYERS] Created new player '{name}' with ID {player.id}", file=sys.stderr)
+                else:
+                    print(f"[CONFIRM_PLAYERS] Player '{name}' already exists with ID {player.id}", file=sys.stderr)
+                name_to_id[name] = player.id
 
             elif action == "replace":
                 replace_id_str = request.form.get(f"replace_{safe_name}")
                 if replace_id_str:
                     replace_id = int(replace_id_str)
+                    # Map this name directly to the replacement ID
+                    name_to_id[name] = replace_id
+                    print(f"[CONFIRM_PLAYERS] Mapping '{name}' to replacement ID {replace_id}", file=sys.stderr)
+                    # If there's an existing player with this name, mark it for deletion
                     current = Player.query.filter_by(name=name).first()
                     if current and current.id != replace_id:
-                        merge_player_ids(current.id, replace_id)
-                    m[role] = replace_id
+                        old_players_to_delete.append(current.id)
+                        print(f"[CONFIRM_PLAYERS] Marking old player '{name}' (ID {current.id}) for deletion", file=sys.stderr)
                 else:
                     player = Player.query.filter_by(name=name).first()
                     if player:
-                        m[role] = player.id
+                        name_to_id[name] = player.id
+                        print(f"[CONFIRM_PLAYERS] No replacement specified, using existing ID {player.id}", file=sys.stderr)
 
             else:
                 player = Player.query.filter_by(name=name).first()
                 if player:
-                    m[role] = player.id
+                    name_to_id[name] = player.id
+                    print(f"[CONFIRM_PLAYERS] Default action for '{name}', using ID {player.id}", file=sys.stderr)
+    
+    # Second pass: apply the name-to-id mapping to all matches
+    for m in parsed_matches:
+        for role in ["player", "opponent"]:
+            name = m.get(role)
+            if name and name in name_to_id:
+                m[role] = name_to_id[name]
 
     # Collect final IDs from parsed matches
     final_ids = {
@@ -1555,6 +2454,10 @@ def confirm_players():
         for pid in [m.get("player"), m.get("opponent")]
         if isinstance(pid, int)
     }
+    
+    print(f"\n[CONFIRM_PLAYERS] name_to_id mapping: {name_to_id}", file=sys.stderr)
+    print(f"[CONFIRM_PLAYERS] final_ids ({len(final_ids)} players): {sorted(final_ids)}", file=sys.stderr)
+    print(f"[CONFIRM_PLAYERS] old_players_to_delete: {old_players_to_delete}\n", file=sys.stderr)
 
     # Create the tournament with a confirm_token
     num_players = len(final_ids)
@@ -1586,12 +2489,9 @@ def confirm_players():
         p2_id = m["opponent"] if isinstance(m["opponent"], int) else None
         result = m.get("result") or "1-1"
 
-        if p1_id is None and isinstance(m.get("player"), str):
-            p = Player.query.filter_by(name=m["player"]).first()
-            p1_id = p.id if p else None
-        if p2_id is None and isinstance(m.get("opponent"), str):
-            p = Player.query.filter_by(name=m["opponent"]).first()
-            p2_id = p.id if p else None
+        # If IDs weren't resolved, skip this match (shouldn't happen with proper mapping)
+        if p1_id is None:
+            continue
 
         is_bye = (result == "bye") or (p2_id is None)
         db.session.add(Match(
@@ -1611,9 +2511,32 @@ def confirm_players():
             match_ids.add(mm.player1_id)
         if mm.player2_id:
             match_ids.add(mm.player2_id)
+    
+    print(f"[CONFIRM_PLAYERS] match_ids from created matches: {sorted(match_ids)}", file=sys.stderr)
+    
     for pid in match_ids:
         if not TournamentPlayer.query.filter_by(tournament_id=tournament.id, player_id=pid).first():
             db.session.add(TournamentPlayer(tournament_id=tournament.id, player_id=pid))
+    db.session.commit()
+    
+    final_tp_count = TournamentPlayer.query.filter_by(tournament_id=tournament.id).count()
+    print(f"[CONFIRM_PLAYERS] Final TournamentPlayer count: {final_tp_count}", file=sys.stderr)
+    
+    # Delete any old player records that were replaced (they have no references now)
+    for old_player_id in old_players_to_delete:
+        old_player = Player.query.get(old_player_id)
+        if old_player:
+            # Make sure this player has no tournament participations, matches, or decks
+            # (they shouldn't since we used the replacement ID everywhere)
+            has_tournaments = TournamentPlayer.query.filter_by(player_id=old_player_id).first()
+            has_matches = Match.query.filter(
+                (Match.player1_id == old_player_id) | (Match.player2_id == old_player_id)
+            ).first()
+            has_decks = Deck.query.filter_by(player_id=old_player_id).first()
+            
+            if not has_tournaments and not has_matches and not has_decks:
+                db.session.delete(old_player)
+    
     db.session.commit()
 
     flash("Players confirmed and tournament created.", "success")
@@ -1648,8 +2571,12 @@ def submit_deck():
 
     tournament = Tournament.query.get_or_404(tournament_id)
 
-    # 🚨 Security guard: block submission if tournament is finalized/discarded
-    if tournament.imported_from_text and not tournament.pending:
+    # Check if in edit mode (has edit_token in session)
+    edit_token_in_session = session.get(f'edit_{tournament_id}')
+    is_editing = (edit_token_in_session and tournament.edit_token == edit_token_in_session)
+
+    # 🚨 Security guard: block submission if tournament is finalized/discarded (unless in edit mode)
+    if tournament.imported_from_text and not tournament.pending and not is_editing:
         flash("This tournament has already been finalized or discarded. Decks cannot be submitted.", "error")
         return redirect(url_for("players"))
 
@@ -1677,6 +2604,13 @@ def submit_deck():
     return redirect(url_for('tournament_round', tid=tournament_id, round_num=1))
 
 
+
+@app.route("/get_deck_archetypes", methods=["GET"])
+@login_required
+def get_deck_archetypes():
+    """Return a JSON list of unique deck archetype names."""
+    archetypes = db.session.query(Deck.name).distinct().filter(Deck.name.isnot(None), Deck.name != '').order_by(Deck.name).all()
+    return jsonify([name[0] for name in archetypes])
 
 @app.route("/archetype/<name>/edit_name", methods=["POST"])
 @login_required
@@ -1724,13 +2658,18 @@ from flask import session
 def tournament_round(tid, round_num):
     tournament = Tournament.query.get_or_404(tid)
 
-    # Block access if imported tournament is already finalized/discarded
-    if tournament.imported_from_text and not tournament.pending:
-        flash("This tournament has already been finalized or discarded.", "error")
-        return redirect(url_for('players'))
-
-    # Token guard for imported, pending tournaments
-    if tournament.imported_from_text and tournament.pending:
+    # Determine states:
+    # - pending=True, confirm_token exists: New import awaiting confirmation
+    # - pending=False, edit_token exists: Existing tournament being edited
+    is_new_import = tournament.pending and tournament.confirm_token
+    is_editing = not tournament.pending and tournament.edit_token
+    
+    # DEBUG
+    app.logger.info(f"tournament_round: tid={tid}, pending={tournament.pending}, confirm_token={tournament.confirm_token}, edit_token={tournament.edit_token}")
+    app.logger.info(f"tournament_round: is_new_import={is_new_import}, is_editing={is_editing}")
+    
+    # Token guard for new imports awaiting confirmation
+    if is_new_import:
         session_key = f"tok_{tid}"
         url_token = request.args.get("token")
         session_token = session.get(session_key)
@@ -1739,7 +2678,23 @@ def tournament_round(tid, round_num):
             session[session_key] = url_token  # bind token to session
         elif not session_token or session_token != tournament.confirm_token:
             flash("Invalid or expired confirmation link.", "error")
-            return redirect(url_for('players'))
+            return redirect(url_for('tournament_standings', tid=tid))
+    
+    # Token guard for edit mode
+    if is_editing:
+        session_key = f"edit_{tid}"
+        url_token = request.args.get("edit_token")
+        session_token = session.get(session_key)
+
+        # Check session first, then URL token
+        if session_token and session_token == tournament.edit_token:
+            # Already authenticated via session
+            pass
+        elif url_token and url_token == tournament.edit_token:
+            session[session_key] = url_token
+        else:
+            flash("Invalid or expired edit link.", "error")
+            return redirect(url_for('tournament_standings', tid=tid))
 
     players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id) \
                           .filter(TournamentPlayer.tournament_id == tid).all()
@@ -1760,16 +2715,7 @@ def tournament_round(tid, round_num):
         elo_changes = {p.id: 0 for p in players}
         for m in all_matches:
             if m.result == "bye" and m.player1_id and not m.player2_id:
-                p1 = Player.query.get(m.player1_id)
-                if p1:
-                    phantom = Player(id=-1, name="BYE", elo=DEFAULT_ELO)
-                    old1 = p1.elo
-                    
-                    if tournament and not tournament.pending:
-                        update_elo(p1, phantom, 2, 0, tournament)
-
-                    elo_changes[p1.id] += p1.elo - old1
-                    p1.elo = old1
+                # Byes award 0 elo change
                 continue
 
             if not m.player1_id or not m.player2_id:
@@ -1815,6 +2761,9 @@ def tournament_round(tid, round_num):
 
         standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
 
+        # Calculate per-round elo changes
+        per_round_elo_changes = calculate_per_round_elo_changes(tid, tournament)
+
         return render_template(
             'round.html',
             players=players,
@@ -1823,12 +2772,20 @@ def tournament_round(tid, round_num):
             matches=existing_matches,
             tournament=tournament,
             standings=standings,
+            all_matches=all_matches,
+            per_round_elo_changes=per_round_elo_changes,
             confirm_token=session.get(f"tok_{tid}"),
+            is_editing=is_editing,
             stores=stores
         )
 
     # Manual entry workflow
     if request.method == 'POST':
+        # If editing, delete existing matches for this round first
+        if is_editing:
+            Match.query.filter_by(tournament_id=tid, round_num=round_num).delete()
+            db.session.commit()
+        
         for i in range(1, (len(players) + 1)//2 + 1):
             p1_val = request.form.get(f'player1_{i}')
             p2_val = request.form.get(f'player2_{i}')
@@ -1848,11 +2805,6 @@ def tournament_round(tid, round_num):
                     result="bye"
                 )
                 db.session.add(match)
-                winner_id = None if p1_val == "bye" else int(p1_val)
-                if winner_id:
-                    winner = Player.query.get(winner_id)
-                    phantom = Player(id=-1, name="BYE", elo=DEFAULT_ELO)
-                    update_elo(winner, phantom, 2, 0, tournament)
             else:
                 score_map = result_to_scores(result)
                 if not score_map:
@@ -1868,14 +2820,27 @@ def tournament_round(tid, round_num):
                     result=result
                 ))
 
-                player1 = Player.query.get(p1_id)
-                player2 = Player.query.get(p2_id)
-                games_a, games_b = score_map
-                update_elo(player1, player2, games_a, games_b, tournament)
+                # Only update ELO immediately if not in edit mode
+                if not is_editing:
+                    player1 = Player.query.get(p1_id)
+                    player2 = Player.query.get(p2_id)
+                    games_a, games_b = score_map
+                    update_elo(player1, player2, games_a, games_b, tournament)
 
         db.session.commit()
-        flash("Round submitted!", "success")
+        
+        if is_editing:
+            flash("Round updated! Remember to finalize edits when done.", "success")
+        else:
+            flash("Round submitted!", "success")
         return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
+
+    # For edit mode, fetch all matches to show round-by-round view
+    all_matches = None
+    per_round_elo_changes = {}
+    if is_editing:
+        all_matches = Match.query.filter_by(tournament_id=tid).all()
+        per_round_elo_changes = calculate_per_round_elo_changes(tid, tournament)
 
     return render_template(
         'round.html',
@@ -1885,6 +2850,9 @@ def tournament_round(tid, round_num):
         matches=existing_matches,
         tournament=tournament,
         confirm_token=session.get(f"tok_{tid}"),
+        is_editing=is_editing,
+        all_matches=all_matches,
+        per_round_elo_changes=per_round_elo_changes,
         stores=stores
     )
 
@@ -1975,10 +2943,7 @@ def apply_top_cut(tid):
     # Finalize Elo
     for m in matches:
         if m.result == "bye" and m.player1_id and not m.player2_id:
-            p1 = Player.query.get(m.player1_id)
-            if p1:
-                phantom = Player(id=-1, name="BYE", elo=DEFAULT_ELO)
-                update_elo(p1, phantom, 2, 0, tournament)
+            # Byes award 0 elo change
             continue
 
         if not m.player1_id or not m.player2_id:
@@ -2054,12 +3019,29 @@ def import_text(tid):
 # --- Create tables ---
 with app.app_context():
     db.create_all()
+    
+    # Migration: Add image_url column to blog_posts if it doesn't exist
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engines['users'])
+        
+        if 'blog_posts' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('blog_posts')]
+            
+            if 'image_url' not in columns:
+                print("[MIGRATION] Adding image_url column to blog_posts table", file=sys.stderr)
+                with db.engines['users'].connect() as conn:
+                    conn.execute(db.text('ALTER TABLE blog_posts ADD COLUMN image_url VARCHAR(500)'))
+                    conn.commit()
+                print("[MIGRATION] image_url column added successfully", file=sys.stderr)
+    except Exception as e:
+        print(f"[MIGRATION] Error checking/adding image_url column: {e}", file=sys.stderr)
 
 # --- Misc ---
 @app.route('/tournaments')
 def tournaments_list():
-    # Query all tournaments ordered by date
-    tournaments = Tournament.query.order_by(Tournament.date.desc()).all()
+    # Query only confirmed (non-pending) tournaments ordered by date
+    tournaments = Tournament.query.filter_by(pending=False).order_by(Tournament.date.desc()).all()
 
     # Attach player counts
     for t in tournaments:
@@ -2085,6 +3067,40 @@ def delete_tournament(tid):
         return redirect(url_for("players"))
 
     tournament = Tournament.query.get_or_404(tid)
+    
+    # Backup tournament data for recovery
+    import json
+    matches = Match.query.filter_by(tournament_id=tournament.id).all()
+    decks = Deck.query.filter_by(tournament_id=tournament.id).all()
+    tournament_players = TournamentPlayer.query.filter_by(tournament_id=tournament.id).all()
+    
+    backup = {
+        'tournament': {
+            'name': tournament.name,
+            'date': tournament.date.isoformat() if tournament.date else None,
+            'rounds': tournament.rounds,
+            'player_count': tournament.player_count,
+            'country': tournament.country,
+            'casual': tournament.casual,
+            'premium': tournament.premium,
+            'store_id': tournament.store_id,
+            'top_cut': tournament.top_cut
+        },
+        'matches': [{
+            'round_num': m.round_num,
+            'player1_id': m.player1_id,
+            'player2_id': m.player2_id,
+            'result': m.result
+        } for m in matches],
+        'decks': [{
+            'player_id': d.player_id,
+            'name': d.name,
+            'list_text': d.list_text,
+            'colors': d.colors,
+            'image_url': d.image_url
+        } for d in decks],
+        'players': [tp.player_id for tp in tournament_players]
+    }
 
     # --- Delete dependent records ---
     Match.query.filter_by(tournament_id=tournament.id).delete()
@@ -2092,8 +3108,17 @@ def delete_tournament(tid):
     TournamentPlayer.query.filter_by(tournament_id=tournament.id).delete()
 
     # Delete the tournament itself
+    tournament_name = tournament.name
     db.session.delete(tournament)
     db.session.commit()
+    
+    # Log event with backup
+    log_event(
+        action_type='tournament_deleted',
+        details=f"Deleted tournament: {tournament_name}",
+        backup_data=json.dumps(backup),
+        recoverable=True
+    )
 
     # --- Reset Elo for all players ---
     for player in Player.query.all():
@@ -2130,9 +3155,9 @@ def delete_tournament(tid):
 
 
 
-@app.route("/tournament/<int:tid>/edit", methods=["GET", "POST"])
+@app.route("/tournament/<int:tid>/edit_metadata", methods=["GET", "POST"])
 @login_required
-def edit_tournament(tid):
+def edit_tournament_metadata(tid):
     if not current_user.is_admin:
         flash("Admins only", "error")
         return redirect(url_for("tournaments"))
@@ -2297,11 +3322,184 @@ def tournament_standings(tid):
         })
 
     standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
+    
+    # Check if current user can edit this tournament
+    can_edit = False
+    if current_user.is_authenticated:
+        can_edit = (current_user.is_admin or 
+                   current_user.is_scorekeeper or 
+                   tournament.user_id == current_user.id)
+    
     return render_template('tournament_standings.html',
                            tournament=tournament,
-                           standings=standings)
+                           standings=standings,
+                           can_edit=can_edit)
 
 
+
+
+@app.route('/tournament/<int:tid>/edit', methods=['POST'])
+@login_required
+def edit_tournament(tid):
+    """Generate edit token and redirect to round editing interface"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Check permissions
+    can_edit = (current_user.is_admin or 
+                current_user.is_scorekeeper or 
+                tournament.user_id == current_user.id)
+    
+    if not can_edit:
+        flash("You don't have permission to edit this tournament.", "error")
+        return redirect(url_for('tournament_standings', tid=tid))
+    
+    # Don't allow editing if still pending confirmation
+    if tournament.pending:
+        flash("This tournament hasn't been confirmed yet. Please confirm it first.", "error")
+        return redirect(url_for('tournament_standings', tid=tid))
+    
+    # Generate edit token (separate from confirm_token used for new tournaments)
+    tournament.edit_token = secrets.token_urlsafe(16)
+    db.session.commit()
+    
+    # Store edit token in session and redirect to round 1
+    session[f"edit_{tid}"] = tournament.edit_token
+    
+    flash("Tournament is now in edit mode. Click players to change match results.", "success")
+    return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
+
+
+@app.route('/tournament/<int:tid>/update_match_results', methods=['POST'])
+@login_required
+def update_match_results(tid):
+    """Update match results during tournament editing"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Check permissions and editing state
+    can_edit = (current_user.is_admin or 
+                current_user.is_scorekeeper or 
+                tournament.user_id == current_user.id)
+    
+    if not can_edit:
+        return jsonify({'success': False, 'error': 'Permission denied'})
+    
+    # Check if tournament is in edit mode
+    if not tournament.edit_token:
+        return jsonify({'success': False, 'error': 'Tournament is not in edit mode'})
+    
+    # Verify edit token from session
+    session_key = f"edit_{tid}"
+    if not session.get(session_key) or session.get(session_key) != tournament.edit_token:
+        return jsonify({'success': False, 'error': 'Invalid edit session'})
+    
+    # Get changes from request
+    data = request.get_json()
+    changes = data.get('changes', {})
+    
+    # Update each match
+    for match_id_str, winner_num in changes.items():
+        match_id = int(match_id_str)
+        match = Match.query.get(match_id)
+        
+        if not match or match.tournament_id != tid:
+            continue
+        
+        # Update result based on winner selection
+        # Assume 2-0 for simplicity, you can enhance this later
+        if winner_num == 1:
+            match.result = '2-0'
+        elif winner_num == 2:
+            match.result = '0-2'
+        else:
+            match.result = '1-1'  # Draw
+    
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+
+@app.route('/tournament/<int:tid>/finalize_edit', methods=['POST'])
+@login_required
+def finalize_tournament_edit(tid):
+    """Finalize tournament edits and recalculate all ELO from this point forward"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Check permissions
+    can_edit = (current_user.is_admin or 
+                current_user.is_scorekeeper or 
+                tournament.user_id == current_user.id)
+    
+    if not can_edit:
+        flash("You don't have permission to finalize this tournament.", "error")
+        return redirect(url_for('tournament_standings', tid=tid))
+    
+    # Clear the edit token to exit edit mode
+    tournament.edit_token = None
+    
+    # Recalculate ELO for all tournaments from this timestamp forward
+    recalculate_elo_from_timestamp(tournament.submitted_at)
+    
+    db.session.commit()
+    
+    flash("Tournament edits saved. ELO has been recalculated for all affected players.", "success")
+    return redirect(url_for('tournament_standings', tid=tid))
+
+
+def recalculate_elo_from_timestamp(from_timestamp):
+    """Recalculate ELO for all players from a given timestamp forward"""
+    # Get all tournaments from this point forward, ordered by submission time
+    tournaments = Tournament.query.filter(
+        Tournament.submitted_at >= from_timestamp,
+        Tournament.pending == False
+    ).order_by(Tournament.submitted_at.asc()).all()
+    
+    # Get all players
+    all_players = Player.query.all()
+    
+    # Reset ELO to default for players involved in these tournaments
+    affected_player_ids = set()
+    for t in tournaments:
+        player_ids = db.session.query(TournamentPlayer.player_id).filter_by(tournament_id=t.id).all()
+        affected_player_ids.update([pid[0] for pid in player_ids])
+    
+    # Get tournaments before this timestamp to calculate starting ELO
+    earlier_tournaments = Tournament.query.filter(
+        Tournament.submitted_at < from_timestamp,
+        Tournament.pending == False
+    ).order_by(Tournament.submitted_at.asc()).all()
+    
+    # Reset affected players to default
+    for player_id in affected_player_ids:
+        player = Player.query.get(player_id)
+        if player:
+            player.elo = DEFAULT_ELO
+            player.casual_elo = DEFAULT_ELO
+    
+    # Replay earlier tournaments to get correct starting ELO
+    for t in earlier_tournaments:
+        matches = Match.query.filter_by(tournament_id=t.id).order_by(Match.round_num).all()
+        for m in matches:
+            if m.result == "bye" or not m.player1_id or not m.player2_id:
+                continue
+            p1 = Player.query.get(m.player1_id)
+            p2 = Player.query.get(m.player2_id)
+            if not p1 or not p2:
+                continue
+            scores = result_to_scores(m.result) or (1, 1)
+            update_elo(p1, p2, *scores, t)
+    
+    # Now replay tournaments from the edited timestamp forward
+    for t in tournaments:
+        matches = Match.query.filter_by(tournament_id=t.id).order_by(Match.round_num).all()
+        for m in matches:
+            if m.result == "bye" or not m.player1_id or not m.player2_id:
+                continue
+            p1 = Player.query.get(m.player1_id)
+            p2 = Player.query.get(m.player2_id)
+            if not p1 or not p2:
+                continue
+            scores = result_to_scores(m.result) or (1, 1)
+            update_elo(p1, p2, *scores, t)
 
 
 @app.route('/remove_deck', methods=['POST'])
@@ -2373,6 +3571,133 @@ def compute_colors_from_list(deck_list_text: str) -> str:
                 colors.add(c)
     order = "WUBRG"
     return "".join([c for c in order if c in colors])
+
+# --- TEMPORARY: Populate demo database ---
+@app.route('/populate_demo_data')
+@login_required
+def populate_demo_route():
+    if not current_user.is_admin:
+        flash("Admin access required", "danger")
+        return redirect(url_for('home'))
+    
+    # Show which databases we're using
+    current_db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    current_users_path = app.config['SQLALCHEMY_BINDS']['users'].replace('sqlite:///', '')
+    
+    print(f"Using tournament DB: {current_db_path}", file=sys.stderr)
+    print(f"Using users DB: {current_users_path}", file=sys.stderr)
+    
+    try:
+        # Inline population to avoid import issues
+        from datetime import timedelta
+        import random
+        
+        PLAYER_NAMES = [
+            "Alice Martinez", "Bob Johnson", "Carol Lee", "David Chen", "Emma Rodriguez",
+            "Frank Wilson", "Grace Kim", "Henry Taylor", "Isabel Garcia", "Jack Anderson",
+            "Kate Brown", "Liam Murphy", "Maya Patel", "Noah Davis", "Olivia White",
+            "Peter Zhang", "Quinn O'Brien", "Rachel Singh", "Sam Mitchell", "Tina Lopez",
+            "Uma Sharma", "Victor Nguyen", "Wendy Park", "Xavier Scott", "Yuki Tanaka",
+            "Zoe Martin", "Alex Cooper", "Blake Reed", "Chloe Brooks", "Dylan Hayes"
+        ]
+        
+        DECK_ARCHETYPES = [
+            ("Mono-Red Aggro", "R"), ("Azorius Control", "WU"), ("Golgari Midrange", "BG"),
+            ("Izzet Phoenix", "UR"), ("Rakdos Sacrifice", "BR"), ("Selesnya Tokens", "GW"),
+            ("Dimir Control", "UB"), ("Gruul Stompy", "RG"), ("Orzhov Midrange", "WB"),
+            ("Temur Energy", "URG"), ("Esper Control", "WUB"), ("Jund Midrange", "BRG"),
+        ]
+        
+        STORE_NAMES = [
+            ("Game Haven", "New York", "US"), ("Magic Emporium", "Los Angeles", "US"),
+            ("Card Kingdom", "Seattle", "US"), ("Mana Source", "London", "GB"),
+        ]
+        
+        COUNTRIES = ["US", "GB", "CA", "AU", "ES", "FR", "DE", "JP"]
+        
+        # Create stores
+        stores = []
+        for name, location, country in STORE_NAMES:
+            store = Store.query.filter_by(name=name).first()
+            if not store:
+                store = Store(name=name, location=location, country=country, premium=random.choice([True, False]))
+                db.session.add(store)
+                stores.append(store)
+        db.session.commit()
+        stores = Store.query.all()
+        
+        # Create players
+        players = []
+        for name in PLAYER_NAMES:
+            player = Player.query.filter_by(name=name).first()
+            if not player:
+                player = Player(name=name, elo=random.randint(800, 1400), country=random.choice(COUNTRIES), casual_points=random.randint(0, 50))
+                db.session.add(player)
+                players.append(player)
+        db.session.commit()
+        players = Player.query.all()
+        
+        # Create tournaments
+        base_date = datetime.now() - timedelta(days=180)
+        for i in range(10):
+            tournament_date = base_date + timedelta(days=random.randint(0, 180))
+            num_players = random.choice([8, 12, 16])
+            rounds = 4 if num_players <= 16 else 5
+            
+            tournament = Tournament(
+                name=f"Tournament #{i+1}",
+                date=tournament_date.date(),
+                rounds=rounds,
+                player_count=num_players,
+                country=random.choice(COUNTRIES),
+                casual=random.choice([True, False]),
+                premium=False,
+                pending=False,
+                store_id=random.choice(stores).id if stores else None
+            )
+            db.session.add(tournament)
+            db.session.flush()
+            
+            # Add players to tournament
+            tournament_players = random.sample(players, min(num_players, len(players)))
+            for player in tournament_players:
+                tp = TournamentPlayer(tournament_id=tournament.id, player_id=player.id)
+                db.session.add(tp)
+                
+                # Add deck
+                archetype = random.choice(DECK_ARCHETYPES)
+                deck = Deck(player_id=player.id, tournament_id=tournament.id, name=archetype[0], colors=archetype[1])
+                db.session.add(deck)
+            
+            # Create matches
+            for round_num in range(1, rounds + 1):
+                shuffled = tournament_players.copy()
+                random.shuffle(shuffled)
+                for j in range(0, len(shuffled), 2):
+                    if j + 1 < len(shuffled):
+                        result = random.choices(["2-0", "0-2", "1-1"], weights=[45, 45, 10])[0]
+                        match = Match(tournament_id=tournament.id, round_num=round_num, player1_id=shuffled[j].id, player2_id=shuffled[j+1].id, result=result)
+                    else:
+                        match = Match(tournament_id=tournament.id, round_num=round_num, player1_id=shuffled[j].id, player2_id=None, result="bye")
+                    db.session.add(match)
+        
+        db.session.commit()
+        
+        # Get counts
+        tournament_count = Tournament.query.count()
+        player_count = Player.query.count()
+        store_count = Store.query.count()
+        match_count = Match.query.count()
+        
+        flash(f"Successfully created {store_count} stores, {player_count} players, {tournament_count} tournaments, and {match_count} matches!", "success")
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(error_trace, file=sys.stderr)
+        flash(f"Error populating demo data: {str(e)}", "danger")
+    
+    return redirect(url_for('tournaments_list'))
 
 # --- Run locally ---
 if __name__ == '__main__':

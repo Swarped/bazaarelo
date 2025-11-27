@@ -5,22 +5,83 @@
   <title>{{ deck_name }} Decks</title>
   <style>
     .deck-header {
-  width: 100%;
-  height: 200px;              /* taller banner (increase from 200px) */
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.deck-header h1 {
-  color: #fff;                /* white text */
-  font-size: 4rem;            /* bigger text */
-  font-weight: bold;
-  text-shadow: 3px 3px 6px rgba(0,0,0,0.9); /* strong black shadow for readability */
-  margin: 0;
-}
+      width: 100%;
+      height: 300px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .deck-info-panel {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      background: linear-gradient(to left, rgba(0,0,0,0.92) 60%, rgba(0,0,0,0.85) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 2rem 3rem 2rem 6rem;
+      color: white;
+      animation: slideInFromRight 0.8s ease-out;
+      clip-path: polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%);
+      text-align: right;
+    }
+    
+    @keyframes slideInFromRight {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+    
+    .deck-info-panel h1 {
+      font-size: 2.5rem;
+      margin: 0 0 1.5rem 0;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    
+    .deck-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    
+    .stat-label {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    
+    .mana-icon {
+      width: 20px;
+      height: 20px;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+    
+    .deck-colors {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
 
     .deck-detail-page { font-family: Arial, sans-serif; max-width: 1000px; margin: 2rem auto; }
     table { width:100%; border-collapse: collapse; }
@@ -29,28 +90,320 @@
     tr:nth-child(even) { background-color:#f9f9f9; }
     tr.clickable-row { transition: background-color 140ms ease, color 140ms ease; }
     tr.clickable-row:hover { background:#007bff; color:white; cursor:pointer; }
-    .mana-icon { width:20px; height:20px; vertical-align:middle; margin:0 2px; }
-    .modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
-    .modal-content { background:#fff; margin:5% auto; padding:20px; border-radius:6px; width:900px; max-width:95%; display:flex; gap:2rem; }
-    .modal-left, .modal-right { flex:1; }
-    .modal-left h4, .modal-right h4 { margin-top:0; }
-    ul.card-list { list-style:none; padding:0; margin:0; }
-    ul.card-list li { padding:.3rem; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
-    ul.card-list li:hover { background-color:#e0e0e0; }
-    .modal-right img { max-width:250px; border:1px solid #ccc; border-radius:4px; display:none; }
-    .close { float:right; font-size:1.2rem; cursor:pointer; }
     .colors-cell { text-align:right; }
+    
+    /* Enhanced Deck Modal Styles */
+    .modal { 
+      display: none; 
+      position: fixed; 
+      z-index: 1000; 
+      left: 0; 
+      top: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+    }
+    
+    .modal-content-deck { 
+      background: #fff; 
+      margin: 2vh auto; 
+      padding: 0;
+      border-radius: 12px; 
+      width: 95%; 
+      max-width: 1400px;
+      height: 96vh;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .modal-content-deck h3 {
+      margin: 0;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      color: white;
+      font-size: 1.4rem;
+      border-bottom: 3px solid #3d8b40;
+      position: relative;
+      flex-shrink: 0;
+    }
+    
+    .close { 
+      position: absolute;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2.5rem;
+      cursor: pointer;
+      color: white;
+      line-height: 1;
+      opacity: 0.95;
+      transition: opacity 0.2s, transform 0.2s;
+      font-weight: 300;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .close:hover {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.15);
+    }
+    
+    .deck-modal-panels {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+    
+    .deck-panel {
+      display: flex;
+      flex-direction: column;
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow: hidden;
+      min-height: 0;
+    }
+    
+    .deck-panel h4 {
+      margin: 0 0 1rem 0;
+      color: #333;
+      font-size: 1.1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #4CAF50;
+    }
+    
+    .deck-panel-left {
+      flex: 1.2;
+    }
+    
+    .deck-panel-middle {
+      flex: 0.8;
+    }
+    
+    .deck-panel-right {
+      flex: 1;
+      background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    }
+    
+    .card-list-enhanced {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex: 1;
+    }
+    
+    .card-list-enhanced li {
+      padding: 0.35rem 0.5rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 4px;
+      margin-bottom: 0.1rem;
+      transition: all 0.2s ease;
+      background: white;
+      border: 1px solid #e0e0e0;
+      font-size: 0.9rem;
+      word-break: break-word;
+      overflow: hidden;
+    }
+    
+    .card-list-enhanced li:hover {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border-color: #2196F3;
+      transform: translateX(4px);
+    }
+    
+    .card-list-enhanced li.selected {
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      color: white;
+      border-color: #3d8b40;
+      font-weight: 500;
+    }
+    
+    .card-name-text {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 0.5rem;
+    }
+    
+    .card-mana-cost {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    
+    .card-info-panel {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 0;
+    }
+    
+    .card-image-container {
+      flex: 0 0 auto;
+      text-align: center;
+      background: white;
+      border-radius: 8px;
+      padding: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-height: 45%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .card-image-container img {
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      max-height: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: block;
+      margin: 0 auto;
+      visibility: visible;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+    
+    .card-image-container img.loaded {
+      opacity: 1;
+    }
+    
+    .card-details {
+      flex: 1;
+      overflow-y: auto;
+      background: white;
+      border-radius: 8px;
+      padding: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-height: 0;
+    }
+    
+    .card-details h4 {
+      margin: 0 0 0.75rem 0;
+      color: #333;
+      font-size: 1.1rem;
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 0.4rem;
+    }
+    
+    .card-detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.7rem 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .card-detail-row:last-child {
+      border-bottom: none;
+    }
+    
+    .detail-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #666;
+      font-size: 0.95rem;
+    }
+    
+    .detail-label .material-icons {
+      font-size: 18px;
+      color: #4CAF50;
+    }
+    
+    .detail-value {
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .legality-legal {
+      color: #4CAF50;
+      font-weight: bold;
+    }
+    
+    .legality-not_legal {
+      color: #f44336;
+      font-weight: bold;
+    }
+    
+    .legality-restricted {
+      color: #ff9800;
+      font-weight: bold;
+    }
+    
+    .legality-banned {
+      color: #d32f2f;
+      font-weight: bold;
+    }
   </style>
 <div class="deck-detail-page"></div>
-    {% if image_url %}
+  {% if image_url %}
   <div class="deck-header" style="background-image: url({{ url_for("static", filename=image_url) }});">
-    <h1>{{ deck_name }} Decks</h1>
+    <div class="deck-info-panel">
+      <h1>{{ deck_name }}</h1>
+      <div class="deck-stats">
+        <div class="stat-item">
+          <div class="stat-label">Total Decks</div>
+          <div class="stat-value">{{ total_decks }}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Tier</div>
+          <div class="stat-value">{{ tier }}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Meta Share</div>
+          <div class="stat-value">{{ meta_share }}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Colors</div>
+          <div class="stat-value">
+            {% if colors %}
+              {% for color in colors %}
+                {% if color == 'W' %}
+                  <img src="https://svgs.scryfall.io/card-symbols/W.svg" class="mana-icon" alt="White">
+                {% elif color == 'U' %}
+                  <img src="https://svgs.scryfall.io/card-symbols/U.svg" class="mana-icon" alt="Blue">
+                {% elif color == 'B' %}
+                  <img src="https://svgs.scryfall.io/card-symbols/B.svg" class="mana-icon" alt="Black">
+                {% elif color == 'R' %}
+                  <img src="https://svgs.scryfall.io/card-symbols/R.svg" class="mana-icon" alt="Red">
+                {% elif color == 'G' %}
+                  <img src="https://svgs.scryfall.io/card-symbols/G.svg" class="mana-icon" alt="Green">
+                {% elif color == 'C' %}
+                  <img src="https://svgs.scryfall.io/card-symbols/C.svg" class="mana-icon" alt="Colorless">
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              N/A
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   {% else %}
   <h1>{{ deck_name }} Decks</h1>
   {% endif %}
   <table>
-    <tr><th>Player</th><th>Tournament</th><th>Date</th><th>Rank</th><th>Colors</th></tr>
+    <tr><th>Player</th><th>Tournament</th><th>Date</th><th>Rank</th><th>Colors</th><th>Est. Price</th></tr>
     {% for r in rows %}
 <tr class="clickable-row"
     data-player-name='{{ (r.player.name if r.player else "")|tojson }}'
@@ -61,6 +414,7 @@
   <td>{% if r.tournament %}{{ r.tournament.date }}{% else %}–{% endif %}</td>
   <td>{% if r.rank %}{{ r.rank }}{% else %}–{% endif %}</td>
   <td class="colors-cell"></td>
+  <td class="price-cell">Calculating...</td>
 </tr>
 
     {% endfor %}
@@ -68,28 +422,65 @@
 
   <!-- Deck Modal -->
   <div id="deckModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-left">
+    <div class="modal-content-deck">
+      <h3 id="deckModalTitle">
+        Deck
         <span class="close" onclick="closeDeckModal()">&times;</span>
-        <h3 id="deckModalTitle">Deck</h3>
-        <h4>Main Deck</h4>
-        <ul id="mainDeck" class="card-list"></ul>
-      </div>
-      <div class="modal-middle">
-        <h4>Sideboard</h4>
-        <ul id="sideboard" class="card-list"></ul>
-      </div>
-      <div class="modal-right">
-        <img id="cardPreview" src="" alt="Card preview">
+      </h3>
+      
+      <div class="deck-modal-panels">
+        <!-- Left Panel: Main Deck -->
+        <div class="deck-panel deck-panel-left">
+          <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">layers</i> Main Deck</h4>
+          <ul id="mainDeck" class="card-list-enhanced"></ul>
+        </div>
+        
+        <!-- Middle Panel: Sideboard -->
+        <div class="deck-panel deck-panel-middle">
+          <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">inventory_2</i> Sideboard</h4>
+          <ul id="sideboard" class="card-list-enhanced"></ul>
+        </div>
+        
+        <!-- Right Panel: Card Info -->
+        <div class="deck-panel deck-panel-right">
+          <div id="cardInfoPanel" class="card-info-panel">
+            <div class="card-image-container">
+              <img id="cardPreview" src="" alt="Select a card">
+            </div>
+            <div id="cardDetails" class="card-details">
+              <h4 id="cardName">Select a card</h4>
+              <div class="card-detail-row">
+                <span class="detail-label"><i class="material-icons">attach_money</i> Price:</span>
+                <span id="cardPrice" class="detail-value">–</span>
+              </div>
+              <div class="card-detail-row">
+                <span class="detail-label"><i class="material-icons">star</i> CMC:</span>
+                <span id="cardCmc" class="detail-value">–</span>
+              </div>
+              <div class="card-detail-row">
+                <span class="detail-label"><i class="material-icons">library_books</i> Type:</span>
+                <span id="cardType" class="detail-value">–</span>
+              </div>
+              <div class="card-detail-row">
+                <span class="detail-label"><i class="material-icons">collections</i> Editions:</span>
+                <span id="cardEditions" class="detail-value">Loading...</span>
+              </div>
+              <div class="card-detail-row">
+                <span class="detail-label"><i class="material-icons">gavel</i> Legality:</span>
+                <span id="cardLegality" class="detail-value">–</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     function openDeckModal(row) {
-const playerName = JSON.parse(row.dataset.playerName || '""');
-const deckName   = JSON.parse(row.dataset.deckName || '""');
-const deckList   = JSON.parse(row.dataset.deckList || '""');
+      const playerName = JSON.parse(row.dataset.playerName || '""');
+      const deckName   = JSON.parse(row.dataset.deckName || '""');
+      const deckList   = JSON.parse(row.dataset.deckList || '""');
 
       if (!deckName) return;
 
@@ -100,7 +491,7 @@ const deckList   = JSON.parse(row.dataset.deckList || '""');
       const sideboard = document.getElementById('sideboard');
       mainDeck.innerHTML = "";
       sideboard.innerHTML = "";
-      document.getElementById('cardPreview').style.display = "none";
+      resetCardPanel();
 
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
       let inSideboard = false;
@@ -116,49 +507,168 @@ const deckList   = JSON.parse(row.dataset.deckList || '""');
         if (!name) return;
 
         const li = document.createElement('li');
-        li.textContent = count + " " + name;
+        const cardNameSpan = document.createElement('span');
+        cardNameSpan.className = 'card-name-text';
+        cardNameSpan.textContent = count + " " + name;
+        li.appendChild(cardNameSpan);
 
         fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
           .then(res => res.json())
           .then(card => {
             if (card.mana_cost) {
               const manaSpan = document.createElement('span');
-              manaSpan.innerHTML = " " + renderManaCost(card.mana_cost);
+              manaSpan.className = 'card-mana-cost';
+              manaSpan.innerHTML = renderManaCost(card.mana_cost);
               li.appendChild(manaSpan);
             }
-            li.addEventListener('mouseenter', () => {
-              let imgUrl = "";
-              if (card.image_uris?.normal) {
-                imgUrl = card.image_uris.normal;
-              } else if (card.card_faces?.[0]?.image_uris?.normal) {
-                imgUrl = card.card_faces[0].image_uris.normal;
-              }
-              const preview = document.getElementById('cardPreview');
-              if (imgUrl) {
-                preview.src = imgUrl;
-                preview.style.display = "block";
-              } else {
-                preview.src = "";
-                preview.style.display = "none";
-              }
+            
+            li.addEventListener('click', () => {
+              document.querySelectorAll('.card-list-enhanced li').forEach(el => el.classList.remove('selected'));
+              li.classList.add('selected');
+              displayCardInfo(card);
             });
-          });
+          })
+          .catch(err => console.error("Scryfall fetch error", err));
 
         (inSideboard ? sideboard : mainDeck).appendChild(li);
       });
+    }
+
+    function resetCardPanel() {
+      document.getElementById('cardPreview').src = '';
+      document.getElementById('cardName').textContent = 'Select a card';
+      document.getElementById('cardPrice').textContent = '–';
+      document.getElementById('cardCmc').textContent = '–';
+      document.getElementById('cardType').textContent = '–';
+      document.getElementById('cardEditions').textContent = '–';
+      document.getElementById('cardLegality').textContent = '–';
+    }
+
+    function displayCardInfo(card) {
+      console.log('Displaying card:', card.name);
+      
+      // Reset image animation
+      const preview = document.getElementById('cardPreview');
+      preview.classList.remove('loaded');
+      
+      // Fetch all printings to find oldest and cheapest
+      fetch(`https://api.scryfall.com/cards/search?q=!"`+encodeURIComponent(card.name)+`" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
+        .then(res => res.json())
+        .then(data => {
+          const editions = data.data || [];
+          
+          // Get oldest card image (first in the sorted list)
+          let imgUrl = "";
+          if (editions.length > 0) {
+            const oldestCard = editions[0];
+            if (oldestCard.image_uris?.normal) {
+              imgUrl = oldestCard.image_uris.normal;
+            } else if (oldestCard.card_faces?.[0]?.image_uris?.normal) {
+              imgUrl = oldestCard.card_faces[0].image_uris.normal;
+            }
+          }
+          
+          console.log('Image URL (oldest):', imgUrl);
+          
+          const preview = document.getElementById('cardPreview');
+          if (imgUrl) {
+            preview.classList.remove('loaded');
+            preview.src = imgUrl;
+            preview.style.display = 'block';
+            preview.onload = () => preview.classList.add('loaded');
+          } else {
+            preview.src = '';
+            preview.style.display = 'none';
+            preview.classList.remove('loaded');
+          }
+          
+          // Find cheapest price across all printings
+          let cheapestPrice = null;
+          editions.forEach(edition => {
+            const usd = parseFloat(edition.prices?.usd);
+            const usdFoil = parseFloat(edition.prices?.usd_foil);
+            
+            if (!isNaN(usd) && usd > 0) {
+              if (cheapestPrice === null || usd < cheapestPrice) {
+                cheapestPrice = usd;
+              }
+            }
+            if (!isNaN(usdFoil) && usdFoil > 0) {
+              if (cheapestPrice === null || usdFoil < cheapestPrice) {
+                cheapestPrice = usdFoil;
+              }
+            }
+          });
+          
+          // Display price
+          document.getElementById('cardPrice').textContent = cheapestPrice !== null ? `$${cheapestPrice.toFixed(2)}` : 'N/A';
+          
+          // Display edition count
+          const editionCount = editions.length;
+          const recentSets = editions.slice(0, 3).map(c => c.set_name).join(', ');
+          document.getElementById('cardEditions').textContent = 
+            editionCount > 3 ? `${editionCount} editions (${recentSets}...)` : 
+            editionCount > 0 ? recentSets : 'N/A';
+        })
+        .catch(() => {
+          // Fallback to original card data if editions fetch fails
+          let imgUrl = "";
+          if (card.image_uris?.normal) {
+            imgUrl = card.image_uris.normal;
+          } else if (card.card_faces?.[0]?.image_uris?.normal) {
+            imgUrl = card.card_faces[0].image_uris.normal;
+          }
+          
+          const preview = document.getElementById('cardPreview');
+          if (imgUrl) {
+            preview.classList.remove('loaded');
+            preview.src = imgUrl;
+            preview.style.display = 'block';
+            preview.onload = () => preview.classList.add('loaded');
+          }
+          
+          const price = card.prices?.usd || card.prices?.usd_foil;
+          document.getElementById('cardPrice').textContent = price ? `$${price}` : 'N/A';
+          document.getElementById('cardEditions').textContent = 'N/A';
+        });
+      
+      // Display card name
+      document.getElementById('cardName').textContent = card.name;
+      
+      // Display CMC
+      document.getElementById('cardCmc').textContent = card.cmc !== undefined ? card.cmc : '–';
+      
+      // Display type
+      document.getElementById('cardType').textContent = card.type_line || '–';
+      
+      // Display legality (Premodern)
+      const legality = card.legalities?.premodern || 'unknown';
+      const legalityEl = document.getElementById('cardLegality');
+      legalityEl.textContent = legality.charAt(0).toUpperCase() + legality.slice(1);
+      legalityEl.className = 'detail-value legality-' + legality;
     }
 
     function closeDeckModal() {
       document.getElementById('deckModal').style.display = 'none';
       document.getElementById('mainDeck').innerHTML = "";
       document.getElementById('sideboard').innerHTML = "";
-      const preview = document.getElementById('cardPreview');
-      preview.src = "";
-      preview.style.display = "none";
+      resetCardPanel();
+    }
+
+    window.onclick = function(event) {
+      if (event.target == document.getElementById('deckModal')) {
+        closeDeckModal();
+      }
     }
 
     document.querySelectorAll('tr.clickable-row').forEach(row => {
       row.addEventListener('click', () => openDeckModal(row));
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openDeckModal(row);
+        }
+      });
     });
 
     let symbolMap = {};
@@ -173,6 +683,7 @@ const deckList   = JSON.parse(row.dataset.deckList || '""');
           if (deckListRaw) {
             const deckList = JSON.parse(deckListRaw || '""');
             computeDeckColors(deckList, row);
+            computeDeckPrice(deckList, row);
           }
         });
       });
@@ -199,7 +710,9 @@ const deckList   = JSON.parse(row.dataset.deckList || '""');
         return fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
           .then(res => res.json())
           .then(card => {
-            (card.color_identity || []).forEach(c => colors.add(c));
+            if (card.color_identity) {
+              card.color_identity.forEach(c => colors.add(c));
+            }
           });
       });
 
@@ -216,6 +729,54 @@ const deckList   = JSON.parse(row.dataset.deckList || '""');
               }
             }
           });
+        }
+      });
+    }
+
+    function computeDeckPrice(deckList, row) {
+      let totalPrice = 0;
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      const promises = lines.map(line => {
+        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+        const parts = line.trim().split(/\s+/, 2);
+        const count = parseInt(parts[0]) || 0;
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name || count === 0) return Promise.resolve();
+        
+        // Fetch all printings to find cheapest price
+        return fetch(`https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
+          .then(res => res.json())
+          .then(data => {
+            const editions = data.data || [];
+            let cheapestPrice = null;
+            
+            editions.forEach(edition => {
+              const usd = parseFloat(edition.prices?.usd);
+              const usdFoil = parseFloat(edition.prices?.usd_foil);
+              
+              if (!isNaN(usd) && usd > 0) {
+                if (cheapestPrice === null || usd < cheapestPrice) {
+                  cheapestPrice = usd;
+                }
+              }
+              if (!isNaN(usdFoil) && usdFoil > 0) {
+                if (cheapestPrice === null || usdFoil < cheapestPrice) {
+                  cheapestPrice = usdFoil;
+                }
+              }
+            });
+            
+            if (cheapestPrice !== null) {
+              totalPrice += cheapestPrice * count;
+            }
+          })
+          .catch(() => {}); // Ignore errors for individual cards
+      });
+
+      Promise.all(promises).then(() => {
+        const cell = row.querySelector(".price-cell");
+        if (cell) {
+          cell.textContent = totalPrice > 0 ? `$${totalPrice.toFixed(2)}` : 'N/A';
         }
       });
     }

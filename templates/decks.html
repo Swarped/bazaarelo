@@ -7,6 +7,7 @@
 
   <meta charset="utf-8">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 <style>
   .decks-page {
     font-family: Arial, sans-serif;
@@ -100,7 +101,7 @@ td.archetype-cell {
 
 /* --- Image column --- */
 th:first-child, td:first-child {
-  width: 240px;   /* wider column */
+  width: 160px;   /* reduced width for smaller rows */
   padding: 0;
   text-align: center;
   vertical-align: middle;
@@ -109,7 +110,7 @@ th:first-child, td:first-child {
 .image-wrapper {
   position: relative;
   width: 100%;
-  height: 80px;   /* fixed row height for images */
+  aspect-ratio: 2 / 1;  /* 2:1 aspect ratio */
   overflow: hidden;
 }
 
@@ -185,6 +186,127 @@ th:first-child, td:first-child {
 
   form { margin-top: 1rem; }
   input[type="file"] { margin-bottom: 1rem; }
+
+  /* Image Modal Styles */
+  .image-modal-content {
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 1rem;
+  }
+
+  .modal-tab {
+    flex: 1;
+    padding: 0.75rem;
+    background: #f0f0f0;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+  }
+
+  .modal-tab.active {
+    background: #4CAF50;
+    color: white;
+    font-weight: bold;
+  }
+
+  .modal-tab:hover:not(.active) {
+    background: #e0e0e0;
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  .image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+
+  .gallery-item {
+    position: relative;
+    cursor: pointer;
+    border: 3px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: all 0.2s;
+    aspect-ratio: 2/1;
+  }
+
+  .gallery-item:hover {
+    border-color: #4CAF50;
+    transform: scale(1.05);
+  }
+
+  .gallery-item.selected {
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  }
+
+  .gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cropper-container-wrapper {
+    max-height: 500px;
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  #imageToCrop {
+    max-width: 100%;
+    display: block;
+  }
+
+  .crop-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .crop-btn {
+    padding: 0.5rem 1rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .crop-btn:hover {
+    background: #0056b3;
+  }
+
+  .crop-info {
+    font-size: 0.85rem;
+    color: #666;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
   button {
     padding: .5rem 1rem;
     background: #007bff;
@@ -207,6 +329,7 @@ th:first-child, td:first-child {
   <th>Tier</th>
   <th>Count</th>
   <th>Colors</th>
+  <th>Avg. Price</th>
   {% if current_user.is_authenticated and current_user.is_admin %}
   <th>Actions</th>
 {% endif %}
@@ -216,7 +339,9 @@ th:first-child, td:first-child {
     {% set last_deck = decks[-1] %}
     <tr class="clickable-row"
         data-href="{{ url_for('deck_detail', deck_name=name) }}"
-        data-colors='{{ archetype_colors[name]|tojson if archetype_colors and name in archetype_colors else "" }}'>
+        data-colors='{{ archetype_colors[name]|tojson if archetype_colors and name in archetype_colors else "" }}'
+        data-deck-lists='{{ decks[-5:]|map(attribute="list_text")|list|tojson }}'
+        data-deck-list='{{ (last_deck.list_text if last_deck.list_text else "")|tojson }}'>
       <td>
 <div class="image-wrapper">
   {% if last_deck.image_url %}
@@ -239,6 +364,7 @@ th:first-child, td:first-child {
 </td>
 <td class="count-cell">{{ decks|length }}</td>
 <td class="colors-cell"></td>
+<td class="price-cell">Calculating...</td>
 {% if current_user.is_authenticated and current_user.is_admin %}
 <td>
   <button class="btn btn-primary edit-name-btn" data-archetype="{{ name }}">Edit Name</button>
@@ -264,13 +390,45 @@ th:first-child, td:first-child {
 
   <!-- Upload Modal -->
   <div id="uploadModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content image-modal-content">
       <span class="close" onclick="closeModal()">&times;</span>
-      <h3 id="modalTitle">Upload Image</h3>
-      <form id="uploadForm" method="POST" enctype="multipart/form-data">
-        <input type="file" name="image" accept=".jpg" required>
-        <button type="submit">Save Image</button>
-      </form>
+      <h3 id="modalTitle">Select or Upload Image</h3>
+      
+      <div class="modal-tabs">
+        <button class="modal-tab active" onclick="switchTab('upload')">Upload New</button>
+        <button class="modal-tab" onclick="switchTab('select')">Select Existing</button>
+      </div>
+
+      <!-- Upload Tab -->
+      <div id="uploadTab" class="tab-content active">
+        <input type="file" id="imageInput" accept="image/jpeg,image/jpg,image/png" style="margin-bottom: 1rem;">
+        <div class="cropper-container-wrapper" id="cropperWrapper" style="display: none;">
+          <img id="imageToCrop" />
+          <div class="crop-controls">
+            <button type="button" class="crop-btn" onclick="cropImage('zoom', 0.1)">🔍 Zoom In</button>
+            <button type="button" class="crop-btn" onclick="cropImage('zoom', -0.1)">🔍 Zoom Out</button>
+            <button type="button" class="crop-btn" onclick="cropImage('move', -10, 0)">← Move</button>
+            <button type="button" class="crop-btn" onclick="cropImage('move', 10, 0)">Move →</button>
+            <button type="button" class="crop-btn" onclick="cropImage('move', 0, -10)">↑ Move</button>
+            <button type="button" class="crop-btn" onclick="cropImage('move', 0, 10)">Move ↓</button>
+            <button type="button" class="crop-btn" onclick="cropImage('reset')">↺ Reset</button>
+          </div>
+          <div class="crop-info">
+            Target size: 512x256px (2:1 ratio)
+          </div>
+        </div>
+      </div>
+
+      <!-- Select Tab -->
+      <div id="selectTab" class="tab-content">
+        <p style="margin-bottom: 1rem; color: #666;">Click an image to select it:</p>
+        <div id="imageGallery" class="image-gallery"></div>
+      </div>
+
+      <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveSelectedImage()" id="saveImageBtn">Save Image</button>
+      </div>
     </div>
   </div>
 
@@ -290,7 +448,205 @@ th:first-child, td:first-child {
 
 
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
   <script>
+    let cropper = null;
+    let currentArchetype = null;
+    let selectedExistingImage = null;
+    let availableImages = [];
+
+    // Load available images
+    async function loadAvailableImages() {
+      try {
+        const response = await fetch("{{ url_for('get_available_images') }}");
+        availableImages = await response.json();
+        renderImageGallery();
+      } catch (error) {
+        console.error('Error loading images:', error);
+        availableImages = [];
+      }
+    }
+
+    // Render image gallery
+    function renderImageGallery() {
+      const gallery = document.getElementById('imageGallery');
+      gallery.innerHTML = '';
+      
+      if (availableImages.length === 0) {
+        gallery.innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No images available</p>';
+        return;
+      }
+
+      availableImages.forEach(imagePath => {
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        item.innerHTML = `<img src="/static/${imagePath}" alt="Image">`;
+        item.onclick = () => selectExistingImage(imagePath, item);
+        gallery.appendChild(item);
+      });
+    }
+
+    // Select existing image
+    function selectExistingImage(imagePath, element) {
+      selectedExistingImage = imagePath;
+      document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+      element.classList.add('selected');
+    }
+
+    // Switch tabs
+    function switchTab(tabName) {
+      // Update tab buttons
+      document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(tabName + 'Tab').classList.add('active');
+
+      // Reset selections
+      if (tabName === 'upload') {
+        selectedExistingImage = null;
+        document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+      }
+    }
+
+    // Handle file input
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAvailableImages();
+
+      const imageInput = document.getElementById('imageInput');
+      if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              const image = document.getElementById('imageToCrop');
+              image.src = event.target.result;
+              document.getElementById('cropperWrapper').style.display = 'block';
+              
+              // Destroy previous cropper if exists
+              if (cropper) {
+                cropper.destroy();
+              }
+
+              // Initialize cropper
+              cropper = new Cropper(image, {
+                aspectRatio: 2 / 1,  // 512x256 = 2:1
+                viewMode: 2,
+                autoCropArea: 1,
+                responsive: true,
+                guides: true,
+                center: true,
+                highlight: true,
+                cropBoxResizable: true,
+                cropBoxMovable: true,
+                toggleDragModeOnDblclick: false,
+              });
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+    });
+
+    // Crop controls
+    function cropImage(action, ...args) {
+      if (!cropper) return;
+      
+      switch(action) {
+        case 'zoom':
+          cropper.zoom(args[0]);
+          break;
+        case 'move':
+          cropper.move(args[0], args[1]);
+          break;
+        case 'reset':
+          cropper.reset();
+          break;
+      }
+    }
+
+    // Save selected/cropped image
+    async function saveSelectedImage() {
+      if (!currentArchetype) {
+        alert('No archetype selected');
+        return;
+      }
+
+      const activeTab = document.querySelector('.tab-content.active').id;
+      
+      if (activeTab === 'selectTab') {
+        // Save existing image selection
+        if (!selectedExistingImage) {
+          alert('Please select an image');
+          return;
+        }
+        
+        await saveExistingImage(selectedExistingImage);
+      } else {
+        // Save cropped image
+        if (!cropper) {
+          alert('Please select an image to upload');
+          return;
+        }
+        
+        await saveCroppedImage();
+      }
+    }
+
+    // Save existing image
+    async function saveExistingImage(imagePath) {
+      try {
+        const formData = new FormData();
+        formData.append('existing_image', imagePath);
+        
+        const response = await fetch(`/archetype/${encodeURIComponent(currentArchetype)}/edit`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          window.location.reload();
+        } else {
+          alert('Error saving image');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error saving image');
+      }
+    }
+
+    // Save cropped image
+    async function saveCroppedImage() {
+      try {
+        const canvas = cropper.getCroppedCanvas({
+          width: 512,
+          height: 256,
+          imageSmoothingQuality: 'high'
+        });
+        
+        canvas.toBlob(async (blob) => {
+          const formData = new FormData();
+          formData.append('image', blob, 'cropped.jpg');
+          
+          const response = await fetch(`/archetype/${encodeURIComponent(currentArchetype)}/edit`, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            window.location.reload();
+          } else {
+            alert('Error saving image');
+          }
+        }, 'image/jpeg', 0.9);
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error saving image');
+      }
+    }
+
     // Make rows clickable
     document.querySelectorAll('tr.clickable-row').forEach(row=>{
       row.addEventListener('click', e=>{
@@ -306,15 +662,38 @@ th:first-child, td:first-child {
       btn.addEventListener('click', e=>{
         e.stopPropagation();
         const archetype = btn.getAttribute('data-archetype');
-        document.getElementById('modalTitle').textContent = "Upload Image for " + archetype;
-        const form = document.getElementById('uploadForm');
-        form.action = "/archetype/" + encodeURIComponent(archetype) + "/edit";
+        currentArchetype = archetype;
+        document.getElementById('modalTitle').textContent = "Select or Upload Image for " + archetype;
+        
+        // Reset modal state
+        switchTab('upload');
+        document.getElementById('imageInput').value = '';
+        document.getElementById('cropperWrapper').style.display = 'none';
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+        selectedExistingImage = null;
+        document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+        
+        // Set first tab as active
+        document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.modal-tab')[0].classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById('uploadTab').classList.add('active');
+        
         document.getElementById('uploadModal').style.display = 'block';
       });
     });
 
     function closeModal() {
       document.getElementById('uploadModal').style.display = 'none';
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+      currentArchetype = null;
+      selectedExistingImage = null;
     }
 
     // Edit Name button opens modal
@@ -340,24 +719,129 @@ th:first-child, td:first-child {
       .then(data => {
         data.data.forEach(sym => { symbolMap[sym.symbol] = sym.svg_uri; });
         document.querySelectorAll('tr.clickable-row').forEach(row => {
-          const colorsRaw = row.dataset.colors;
-          if (!colorsRaw) return;
-          const colors = JSON.parse(colorsRaw || '""');
-          const cell = row.querySelector(".colors-cell");
-          if (cell) {
-            cell.innerHTML = "";
-            ["W","U","B","R","G"].forEach(c => {
-              if (colors.includes(c)) {
-                const token = `{${c}}`;
-                const uri = symbolMap[token];
-                if (uri) {
-                  cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
-                }
-              }
-            });
+          const deckListRaw = row.dataset.deckList;
+          const deckListsRaw = row.dataset.deckLists;
+          if (deckListRaw) {
+            const deckList = JSON.parse(deckListRaw || '""');
+            if (deckList && deckList.trim()) {
+              computeDeckColors(deckList, row);
+            }
+          }
+          if (deckListsRaw) {
+            const deckLists = JSON.parse(deckListsRaw || '[]');
+            if (deckLists && deckLists.length > 0) {
+              computeAverageDeckPrice(deckLists, row);
+            }
           }
         });
       });
+
+    function computeDeckColors(deckList, row) {
+      const colors = new Set();
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      const promises = lines.map(line => {
+        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+        const parts = line.trim().split(/\s+/, 2);
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name) return Promise.resolve();
+        return fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+          .then(res => res.json())
+          .then(card => {
+            if (card.color_identity) {
+              card.color_identity.forEach(c => colors.add(c));
+            }
+          })
+          .catch(() => {}); // Ignore errors for individual cards
+      });
+
+      Promise.all(promises).then(() => {
+        const cell = row.querySelector(".colors-cell");
+        if (cell) {
+          cell.innerHTML = "";
+          ["W","U","B","R","G"].forEach(c => {
+            if (colors.has(c)) {
+              const token = `{${c}}`;
+              const uri = symbolMap[token];
+              if (uri) {
+                cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
+              }
+            }
+          });
+        }
+      });
+    }
+
+    function computeAverageDeckPrice(deckLists, row) {
+      const deckPrices = [];
+      
+      // Calculate price for each deck
+      const deckPromises = deckLists.map(deckList => {
+        if (!deckList || !deckList.trim()) {
+          return Promise.resolve(null);
+        }
+        
+        return computeSingleDeckPrice(deckList);
+      });
+      
+      Promise.all(deckPromises).then(prices => {
+        const validPrices = prices.filter(p => p !== null && p > 0);
+        const cell = row.querySelector(".price-cell");
+        
+        if (cell && validPrices.length > 0) {
+          const avgPrice = validPrices.reduce((sum, p) => sum + p, 0) / validPrices.length;
+          cell.textContent = `$${Math.round(avgPrice)}`;
+        } else if (cell) {
+          cell.textContent = 'N/A';
+        }
+      });
+    }
+
+    function computeSingleDeckPrice(deckList) {
+      return new Promise((resolve) => {
+        let totalPrice = 0;
+        const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+        const promises = lines.map(line => {
+          if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+          const parts = line.trim().split(/\s+/, 2);
+          const count = parseInt(parts[0]) || 0;
+          const name = line.trim().substring(parts[0].length).trim();
+          if (!name || count === 0) return Promise.resolve();
+          
+          // Fetch all printings to find cheapest price
+          return fetch(`https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
+            .then(res => res.json())
+            .then(data => {
+              const editions = data.data || [];
+              let cheapestPrice = null;
+              
+              editions.forEach(edition => {
+                const usd = parseFloat(edition.prices?.usd);
+                const usdFoil = parseFloat(edition.prices?.usd_foil);
+                
+                if (!isNaN(usd) && usd > 0) {
+                  if (cheapestPrice === null || usd < cheapestPrice) {
+                    cheapestPrice = usd;
+                  }
+                }
+                if (!isNaN(usdFoil) && usdFoil > 0) {
+                  if (cheapestPrice === null || usdFoil < cheapestPrice) {
+                    cheapestPrice = usdFoil;
+                  }
+                }
+              });
+              
+              if (cheapestPrice !== null) {
+                totalPrice += cheapestPrice * count;
+              }
+            })
+            .catch(() => {}); // Ignore errors for individual cards
+        });
+
+        Promise.all(promises).then(() => {
+          resolve(totalPrice > 0 ? totalPrice : null);
+        });
+      });
+    }
   </script>
 
 {% endblock %}

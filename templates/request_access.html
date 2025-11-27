@@ -3,26 +3,143 @@
 {% block title %}Request Access{% endblock %}
 
 {% block content %}
-  <h1>Request Access</h1>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  .request-form {
+    max-width: 800px;
+    margin: 2rem auto;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+  }
+  .form-group input[type="text"],
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  .form-group textarea {
+    min-height: 150px;
+    resize: vertical;
+  }
+  .form-group input[type="file"] {
+    padding: 0.5rem;
+  }
+  .form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e9ecef;
+  }
+  .form-section:last-of-type {
+    border-bottom: none;
+  }
+  .form-section h3 {
+    color: #495057;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .required {
+    color: #d9534f;
+  }
+  .help-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+  }
+  .btn-submit {
+    background: #4CAF50;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .btn-submit:hover {
+    background: #45a049;
+  }
+</style>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        {% if category == 'error' %}
-          <div class="flash-error">{{ message }}</div>
-        {% elif category == 'success' %}
-          <div class="flash-success">{{ message }}</div>
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+  <div class="request-form">
+    <h1>Request Scorekeeper Access</h1>
+    <p style="color: #6c757d; margin-bottom: 2rem;">Please fill out all required fields to submit your access request.</p>
 
-  <form method="POST" action="{{ url_for('request_access') }}" style="margin-top:1rem;">
-    <label for="reason">Please explain why you need access:</label><br>
-    <textarea id="reason" name="reason" rows="6" style="width:100%; margin-top:0.5rem;" required></textarea>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% if category == 'error' %}
+            <div class="flash-error" style="padding: 1rem; background: #f8d7da; color: #721c24; border-radius: 4px; margin-bottom: 1rem;">{{ message }}</div>
+          {% elif category == 'success' %}
+            <div class="flash-success" style="padding: 1rem; background: #d4edda; color: #155724; border-radius: 4px; margin-bottom: 1rem;">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-    <button type="submit" class="btn-primary" style="margin-top:1rem;">
-      <i class="material-icons">send</i> Submit Request
-    </button>
-  </form>
+    <form method="POST" action="{{ url_for('request_access') }}" enctype="multipart/form-data">
+      
+      <!-- User Information Section -->
+      <div class="form-section">
+        <h3><span class="material-icons">person</span> Your Information</h3>
+        
+        <div class="form-group">
+          <label for="reason">Why do you need scorekeeper access? <span class="required">*</span></label>
+          <textarea id="reason" name="reason" required placeholder="Explain your experience with Magic: The Gathering tournaments, why you want to be a scorekeeper, etc."></textarea>
+          <div class="help-text">Provide as much detail as possible to help us review your request.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="user_image">Profile/Identification Image (Optional)</label>
+          <input type="file" id="user_image" name="user_image" accept="image/jpeg,image/jpg,image/png">
+          <div class="help-text">Upload a profile picture or ID photo (optional).</div>
+        </div>
+      </div>
+
+      <!-- Store Information Section -->
+      <div class="form-section">
+        <h3><span class="material-icons">store</span> Store Information</h3>
+        
+        <div class="form-group">
+          <label for="store_name">Store Name <span class="required">*</span></label>
+          <input type="text" id="store_name" name="store_name" required placeholder="e.g., Magic Kingdom Games">
+          <div class="help-text">Enter the name of the game store where you'll be running tournaments.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="store_country">Country Code <span class="required">*</span></label>
+          <input type="text" id="store_country" name="store_country" required placeholder="US" maxlength="2" style="text-transform: uppercase; max-width: 100px;">
+          <div class="help-text">Two-letter country code (e.g., US, ES, UK).</div>
+        </div>
+
+        <div class="form-group">
+          <label for="store_image">Store Image (512x256px) <span class="required">*</span></label>
+          <input type="file" id="store_image" name="store_image" accept="image/jpeg,image/jpg,image/png" required>
+          <div class="help-text">Upload an image of the store logo or storefront. Will be resized to 512x256px.</div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">
+        <span class="material-icons">send</span>
+        Submit Request
+      </button>
+    </form>
+  </div>
 {% endblock %}

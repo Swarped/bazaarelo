@@ -1,0 +1,4 @@
+﻿endif %}
+    </div><div id="events" class="admin-section">
+  <h2>Events & Logs</h2>
+  <p>Coming soon: here we’ll display system events, audit logs,

@@ -122,10 +122,12 @@
           <td>
             <!-- Toggle switch defaults to "Create New" -->
             <label class="switch">
-              <input type="checkbox" name="action_{{ safe_name }}" value="create" checked onchange="toggleReplace(this, '{{ safe_name }}')">
+              <input type="checkbox" id="toggle_{{ safe_name }}" checked onchange="toggleReplace(this, '{{ safe_name }}')">
               <span class="slider"></span>
             </label>
             <span id="label_{{ safe_name }}" class="switch-label">Create New</span>
+            <!-- Hidden field to track the action -->
+            <input type="hidden" name="action_{{ safe_name }}" id="action_{{ safe_name }}" value="create">
           </td>
           <td>
             <select name="replace_{{ safe_name }}" id="replace_{{ safe_name }}" style="display:none;">
@@ -149,15 +151,16 @@
     function toggleReplace(checkbox, safeName) {
       const label = document.getElementById("label_" + safeName);
       const select = document.getElementById("replace_" + safeName);
+      const actionField = document.getElementById("action_" + safeName);
 
       if (checkbox.checked) {
         label.textContent = "Create New";
         select.style.display = "none";
-        checkbox.value = "create";
+        actionField.value = "create";
       } else {
         label.textContent = "Replace";
         select.style.display = "inline-block";
-        checkbox.value = "replace";
+        actionField.value = "replace";
       }
     }
   </script>
