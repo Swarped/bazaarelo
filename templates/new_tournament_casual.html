@@ -1,7 +1,7 @@
 
   {% extends "base.html" %}
 
-{% block title %}Create New Casual Tournament{% endblock %}
+{% block title %}{% if is_editing %}Edit{% else %}Create New{% endif %} Casual Tournament{% endblock %}
 
 {% block content %}
 
@@ -220,13 +220,184 @@ th { background: #f0f0f0; }
 .modal-content input, .modal-content textarea { width: 100%; margin-bottom: 1rem; padding: .5rem;
                                                 border: 1px solid #ccc; border-radius: 4px; }
 .close { float: right; font-size: 1.2rem; cursor: pointer; }
+
+/* Enhanced Store Selector */
+.store-selector-wrapper {
+  position: relative;
+}
+
+.store-select-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.store-select-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.store-select-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.store-select-placeholder {
+  width: 32px;
+  height: 32px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 1rem;
+}
+
+.store-select-button:hover {
+  border-color: #4CAF50;
+}
+
+.store-select-button.active {
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.store-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 400px;
+  overflow-y: auto;
+  background: white;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  margin-top: 0.25rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+
+.store-dropdown.active {
+  display: block;
+}
+
+.store-option {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.store-option:last-child {
+  border-bottom: none;
+}
+
+.store-option:hover {
+  background: #f8f9fa;
+}
+
+.store-option.selected {
+  background: #e8f5e9;
+}
+
+.store-option-image {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  margin-right: 1rem;
+  border-radius: 4px;
+}
+
+.store-option-placeholder {
+  width: 40px;
+  height: 40px;
+  margin-right: 1rem;
+  background: #e0e0e0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 1.2rem;
+}
+
+.store-option-text {
+  flex: 1;
+}
+
+.store-option-name {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.store-option-location {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+/* Dark mode store selector */
+html.dark-mode .store-select-button {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+html.dark-mode .store-dropdown {
+  background: #2a2a2a;
+  border-color: #4CAF50;
+}
+
+html.dark-mode .store-option {
+  border-bottom-color: #333;
+}
+
+html.dark-mode .store-option:hover {
+  background: #333;
+}
+
+html.dark-mode .store-option.selected {
+  background: #1e3a1e;
+}
+
+html.dark-mode .store-option-name {
+  color: #e0e0e0;
+}
+
+html.dark-mode .store-option-location {
+  color: #aaa;
+}
+
+html.dark-mode .store-option-placeholder,
+html.dark-mode .store-select-placeholder {
+  background: #444;
+}
     </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
 
 <div class="new-tournament-casual-page"></div>
   <div class="content-wrapper">
-    <h1>Create New Casual Tournament (Final Standings)</h1>
+    <h1>{% if is_editing %}Edit{% else %}Create New{% endif %} Casual Tournament (Final Standings)</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -240,11 +411,11 @@ th { background: #f0f0f0; }
       <div class="form-row">
         <label>
           Tournament Name <span style="color:#d9534f">*</span><br>
-          <input type="text" name="tournament_name" required>
+          <input type="text" name="tournament_name" value="{% if tournament %}{{ tournament.name }}{% endif %}" required>
         </label>
         <label>
           Date <span style="color:#d9534f">*</span><br>
-          <input type="date" name="date" required>
+          <input type="date" name="date" value="{% if tournament %}{{ tournament.date }}{% endif %}" required>
         </label>
       </div>
 <div style="display:flex; gap:2rem;">
@@ -264,35 +435,50 @@ th { background: #f0f0f0; }
         <h3>Top Cut</h3>
         <div class="option-group">
           <label class="option">
-            <input type="radio" name="top_cut" value="4">
+            <input type="radio" name="top_cut" value="4" {% if tournament and tournament.top_cut == 4 %}checked{% endif %}>
             <span>TOP 4</span>
           </label>
           <label class="option">
-            <input type="radio" name="top_cut" value="8">
+            <input type="radio" name="top_cut" value="8" {% if tournament and tournament.top_cut == 8 %}checked{% elif not tournament %}checked{% endif %}>
             <span>TOP 8</span>
           </label>
           <label class="option">
-            <input type="radio" name="top_cut" value="16">
+            <input type="radio" name="top_cut" value="16" {% if tournament and tournament.top_cut == 16 %}checked{% endif %}>
             <span>TOP 16</span>
           </label>
           <label class="option">
-            <input type="radio" name="top_cut" value="32">
+            <input type="radio" name="top_cut" value="32" {% if tournament and tournament.top_cut == 32 %}checked{% endif %}>
             <span>TOP 32</span>
           </label>
         </div>
       </div>
 
       <div class="side-panel">
-        <h3>Country</h3>
-        <div class="custom-select">
-          <select id="countrySelect" name="country" required>
-            <option value="">-- Select Country --</option>
-            <option value="AR">Argentina</option>
-            <option value="BR">Brazil</option>
-            <option value="CL">Chile</option>
-            <option value="US">United States</option>
-            <option value="ES">Spain</option>
-          </select>
+        <h3>Store</h3>
+        <div class="store-selector-wrapper">
+          <button type="button" class="store-select-button" id="storeSelectBtn">
+            <div class="store-select-content">
+              <div id="storeSelectImage"></div>
+              <span id="storeSelectText">Select a store...</span>
+            </div>
+            <span>▼</span>
+          </button>
+          <input type="hidden" id="storeSelect" name="store_id" value="{{ tournament.store_id if tournament and tournament.store_id else '' }}">
+          <div class="store-dropdown" id="storeDropdown">
+            {% for store in stores %}
+              <div class="store-option" data-store-id="{{ store.id }}" data-store-name="{{ store.name }}" data-store-location="{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}">
+                {% if store.image_url %}
+                  <img src="{{ url_for('static', filename=store.image_url) }}" class="store-option-image" alt="{{ store.name }}">
+                {% else %}
+                  <div class="store-option-placeholder">🏪</div>
+                {% endif %}
+                <div class="store-option-text">
+                  <div class="store-option-name">{{ store.name }}</div>
+                  <div class="store-option-location">{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>
@@ -305,7 +491,7 @@ th { background: #f0f0f0; }
           <div class="controls">
             <button type="button" onclick="stepNumber('playerCount', 1)">▲</button>
           </div>
-          <input type="text" name="player_count" id="playerCount" value="0" min="1" />
+          <input type="text" name="player_count" id="playerCount" value="{% if tournament %}{{ tournament.player_count or 0 }}{% else %}0{% endif %}" min="1" />
           <div class="controls">
             <button type="button" onclick="stepNumber('playerCount', -1)">▼</button>
           </div>
@@ -318,7 +504,7 @@ th { background: #f0f0f0; }
           <div class="controls">
             <button type="button" onclick="stepNumber('roundCount', 1)">▲</button>
           </div>
-          <input type="text" name="rounds" id="roundCount" value="0" min="1" />
+          <input type="text" name="rounds" id="roundCount" value="{% if tournament %}{{ tournament.rounds or 0 }}{% else %}0{% endif %}" min="1" />
           <div class="controls">
             <button type="button" onclick="stepNumber('roundCount', -1)">▼</button>
           </div>
@@ -328,7 +514,17 @@ th { background: #f0f0f0; }
   </div>
 </div>
 
-<button type="submit" class="btn-submit">Save Final Standings</button>
+<!-- Hidden fields to track old player rankings for point removal -->
+{% if is_editing and players_with_decks %}
+  {% for i in range(1, (tournament.top_cut or 0) + 1) %}
+    {% set player_data = players_with_decks[i-1] if i <= players_with_decks|length else None %}
+    {% if player_data %}
+      <input type="hidden" name="old_player_{{ i }}" value="{{ player_data.player_id }}">
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+<button type="submit" class="btn-submit">{% if is_editing %}Save Changes{% else %}Save Final Standings{% endif %}</button>
 </form>
 
     <div id="deckModal" class="modal">
@@ -345,6 +541,11 @@ th { background: #f0f0f0; }
       </div>
     </div>
     <script>
+
+// Pre-load existing tournament data in edit mode
+const isEditing = {{ 'true' if is_editing else 'false' }};
+const existingPlayers = {{ players_with_decks | tojson if players_with_decks else '[]' }};
+const initialTopCut = {{ tournament.top_cut if tournament and tournament.top_cut else 0 }};
 
 function stepNumber(id, step) {
   const input = document.getElementById(id);
@@ -414,19 +615,27 @@ function renderStandings(topCut) {
   table.innerHTML = '<tr><th>Rank</th><th>Player</th><th>Deck</th></tr>';
   for (let i = 1; i <= topCut; i++) {
     const row = document.createElement('tr');
+    
+    // Get existing player data if in edit mode
+    const playerData = isEditing && existingPlayers[i-1] ? existingPlayers[i-1] : null;
+    const playerName = playerData ? playerData.player_name : '';
+    const deckName = playerData ? playerData.deck_name : '';
+    const deckList = playerData ? playerData.deck_list : '';
+    
 row.innerHTML = `
   <td>${i}</td>
   <td>
-    <input type="text" name="player_${i}" class="player-input" placeholder="Type player name" tabindex="${i}">
+    <input type="text" name="player_${i}" class="player-input" placeholder="Type player name" value="${playerName}" tabindex="${i}">
   </td>
   <td>
     <div class="deck-buttons">
       <button type="button" class="btn-deck" data-rank="${i}" onclick="openDeckModal(this)" tabindex="-1">
-        <i class="material-icons">add</i> Add
+        <i class="material-icons">${deckName ? 'edit' : 'add'}</i> ${deckName ? 'Edit' : 'Add'}
       </button>
+      ${deckName ? `<button type="button" class="btn-deck" onclick="removeDeck(${i})" tabindex="-1"><i class="material-icons">delete</i> Delete</button>` : ''}
     </div>
-    <input type="hidden" name="deck_name_${i}" id="deckName_${i}" tabindex="-1">
-    <input type="hidden" name="deck_list_${i}" id="deckList_${i}" tabindex="-1">
+    <input type="hidden" name="deck_name_${i}" id="deckName_${i}" value="${deckName}" tabindex="-1">
+    <input type="hidden" name="deck_list_${i}" id="deckList_${i}" value="${deckList}" tabindex="-1">
   </td>
 `;
 
@@ -441,6 +650,14 @@ document.querySelectorAll("input[name='top_cut']").forEach(radio => {
     renderStandings(parseInt(radio.value, 10));
   });
 });
+
+// Auto-render standings on page load
+if (isEditing && initialTopCut > 0) {
+  renderStandings(initialTopCut);
+} else if (!isEditing) {
+  // Default to TOP 8 for new tournaments
+  renderStandings(8);
+}
 
 let currentRank = null;
 function openDeckModal(button) {
@@ -510,6 +727,88 @@ document.addEventListener('keydown', function(e) {
     e.preventDefault();
   }
 });
+
+// Store Selector
+function initStoreSelector() {
+  const button = document.getElementById('storeSelectBtn');
+  const buttonText = document.getElementById('storeSelectText');
+  const buttonImage = document.getElementById('storeSelectImage');
+  const dropdown = document.getElementById('storeDropdown');
+  const hiddenInput = document.getElementById('storeSelect');
+  const wrapper = document.querySelector('.store-selector-wrapper');
+  const options = dropdown.querySelectorAll('.store-option');
+  
+  let selectedStoreId = hiddenInput.value;
+  
+  // Show selected store in button
+  function updateButtonText() {
+    if (selectedStoreId) {
+      const selectedOption = dropdown.querySelector(`[data-store-id="${selectedStoreId}"]`);
+      if (selectedOption) {
+        buttonText.textContent = selectedOption.dataset.storeName;
+        
+        // Update image
+        const imgElement = selectedOption.querySelector('.store-option-image');
+        const placeholderElement = selectedOption.querySelector('.store-option-placeholder');
+        
+        if (imgElement) {
+          buttonImage.innerHTML = `<img src="${imgElement.src}" class="store-select-image" alt="${selectedOption.dataset.storeName}">`;
+        } else if (placeholderElement) {
+          buttonImage.innerHTML = '<div class="store-select-placeholder">🏪</div>';
+        }
+        
+        // Mark as selected
+        options.forEach(opt => opt.classList.remove('selected'));
+        selectedOption.classList.add('selected');
+      }
+    } else {
+      buttonText.textContent = 'Select a store...';
+      buttonImage.innerHTML = '';
+    }
+  }
+  
+  // Initialize
+  updateButtonText();
+  
+  // Toggle dropdown on button click
+  button.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const isActive = dropdown.classList.contains('active');
+    dropdown.classList.toggle('active');
+    button.classList.toggle('active', !isActive);
+  });
+  
+  // Select option on click
+  options.forEach(option => {
+    option.addEventListener('click', function() {
+      selectedStoreId = this.dataset.storeId;
+      hiddenInput.value = selectedStoreId;
+      buttonText.textContent = this.dataset.storeName;
+      dropdown.classList.remove('active');
+      button.classList.remove('active');
+      
+      // Mark as selected
+      options.forEach(opt => opt.classList.remove('selected'));
+      this.classList.add('selected');
+      
+      // Update button image
+      updateButtonText();
+    });
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (wrapper && !wrapper.contains(e.target)) {
+      dropdown.classList.remove('active');
+      button.classList.remove('active');
+    }
+  });
+}
+
+// Initialize store selector if it exists
+if (document.getElementById('storeSelectBtn')) {
+  initStoreSelector();
+}
     </script>
     </div>
  

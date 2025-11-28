@@ -1,0 +1,337 @@
+<!-- Deck View Modal -->
+<div id="deckModal" class="modal">
+  <div class="modal-content-deck">
+    <h3 id="deckModalTitle">
+      Deck
+      <span class="close" onclick="closeDeckModal()">&times;</span>
+    </h3>
+    
+    <div class="deck-modal-panels">
+      <!-- Left Panel: Main Deck -->
+      <div class="deck-panel deck-panel-left">
+        <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">layers</i> Main Deck</h4>
+        <ul id="mainDeck" class="card-list-enhanced"></ul>
+      </div>
+      
+      <!-- Middle Panel: Sideboard -->
+      <div class="deck-panel deck-panel-middle">
+        <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">inventory_2</i> Sideboard</h4>
+        <ul id="sideboard" class="card-list-enhanced"></ul>
+      </div>
+      
+      <!-- Right Panel: Card Info -->
+      <div class="deck-panel deck-panel-right">
+        <div id="cardInfoPanel" class="card-info-panel">
+          <div class="card-image-container">
+            <img id="cardPreview" src="" alt="Select a card" style="display: none;">
+          </div>
+          <div id="cardDetails" class="card-details">
+            <h4 id="cardName">Select a card</h4>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">attach_money</i> Price:</span>
+              <span id="cardPrice" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">star</i> CMC:</span>
+              <span id="cardCmc" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">library_books</i> Type:</span>
+              <span id="cardType" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">gavel</i> Legality:</span>
+              <span id="cardLegality" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row oracle-text-row">
+              <span class="detail-label"><i class="material-icons">description</i> Oracle Text:</span>
+            </div>
+            <div class="oracle-text-content">
+              <span id="cardOracleText" class="detail-value">–</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let firstCardInDeck = null;
+  let currentImageLoadId = 0; // Track image load requests to prevent race conditions
+  let hasAutoSelected = false; // Track if we've already auto-selected a card
+
+  function openDeckModal(row) {
+    const playerName = JSON.parse(row.dataset.playerName || '""');
+    const deckName   = JSON.parse(row.dataset.deckName || '""');
+    const deckList   = JSON.parse(row.dataset.deckList || '""');
+
+    if (!deckName) return;
+
+    document.getElementById('deckModal').style.display = 'block';
+    document.getElementById('deckModalTitle').textContent = deckName + " (" + playerName + ")";
+
+    const mainDeck = document.getElementById('mainDeck');
+    const sideboard = document.getElementById('sideboard');
+    mainDeck.innerHTML = "";
+    sideboard.innerHTML = "";
+    resetCardPanel();
+    firstCardInDeck = null;
+    hasAutoSelected = false; // Reset auto-select flag for new modal open
+
+    const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+    let inSideboard = false;
+
+    lines.forEach(line => {
+      if (/^sideboard/i.test(line.trim())) {
+        inSideboard = true;
+        return;
+      }
+      const parts = line.trim().split(/\s+/, 2);
+      const count = parts[0];
+      const name = line.trim().substring(count.length).trim();
+
+      if (!name) return;
+
+      const li = document.createElement('li');
+      const cardNameSpan = document.createElement('span');
+      cardNameSpan.className = 'card-name-text';
+      cardNameSpan.textContent = count + " " + name;
+      li.appendChild(cardNameSpan);
+
+      // Capture the current sideboard state for this specific card
+      const isInSideboard = inSideboard;
+
+      fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+        .then(res => res.json())
+        .then(card => {
+          if (card.mana_cost) {
+            const manaSpan = document.createElement('span');
+            manaSpan.className = 'card-mana-cost';
+            manaSpan.innerHTML = renderManaCost(card.mana_cost);
+            li.appendChild(manaSpan);
+          }
+          
+          li.addEventListener('click', () => {
+            document.querySelectorAll('.card-list-enhanced li').forEach(el => el.classList.remove('selected'));
+            li.classList.add('selected');
+            displayCardInfo(card);
+          });
+
+          // Auto-select first card in main deck
+          if (!isInSideboard && !hasAutoSelected) {
+            hasAutoSelected = true; // Mark that we're auto-selecting
+            firstCardInDeck = li;
+            // Use longer timeout to ensure DOM is ready
+            setTimeout(() => {
+              li.classList.add('selected');
+              displayCardInfo(card);
+            }, 200);
+          }
+        })
+        .catch(err => console.error("Scryfall fetch error", err));
+
+      (inSideboard ? sideboard : mainDeck).appendChild(li);
+    });
+  }
+
+  function resetCardPanel() {
+    const preview = document.getElementById('cardPreview');
+    preview.src = '';
+    preview.style.display = 'none';
+    preview.style.opacity = '0';
+    document.getElementById('cardName').textContent = 'Select a card';
+    document.getElementById('cardPrice').textContent = '–';
+    document.getElementById('cardCmc').textContent = '–';
+    document.getElementById('cardType').textContent = '–';
+    document.getElementById('cardOracleText').innerHTML = '–';
+    document.getElementById('cardLegality').textContent = '–';
+  }
+
+  function renderOracleText(text) {
+    if (!text || !symbolMap) return text;
+    
+    // Escape HTML first to prevent XSS
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // Replace mana symbols {X} with Scryfall SVG icons
+    return escaped.replace(/\{([^}]+)\}/g, (match, symbol) => {
+      const symbolKey = `{${symbol}}`;
+      const uri = symbolMap[symbolKey];
+      if (uri) {
+        return `<img src="${uri}" alt="${symbolKey}" class="mana-icon-inline" title="${symbolKey}">`;
+      }
+      return match;
+    });
+  }
+
+  function displayCardInfo(card) {
+    console.log('Displaying card:', card.name);
+    
+    // Increment load ID to invalidate previous requests
+    currentImageLoadId++;
+    const myLoadId = currentImageLoadId;
+    
+    // Get preview element
+    const preview = document.getElementById('cardPreview');
+    
+    // Check if we're currently showing an image (before fading out)
+    const wasVisible = preview.style.display === 'block' && preview.style.opacity === '1';
+    
+    // Fade out current image
+    preview.style.opacity = '0';
+    
+    // Fetch all printings to find oldest and cheapest
+    fetch(`https://api.scryfall.com/cards/search?q=!"`+encodeURIComponent(card.name)+`" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
+      .then(res => res.json())
+      .then(data => {
+        // Check if this request is still current
+        if (myLoadId !== currentImageLoadId) return;
+        
+        const editions = data.data || [];
+        
+        // Get oldest card image (first in the sorted list)
+        let imgUrl = "";
+        if (editions.length > 0) {
+          const oldestCard = editions[0];
+          if (oldestCard.image_uris?.normal) {
+            imgUrl = oldestCard.image_uris.normal;
+          } else if (oldestCard.card_faces?.[0]?.image_uris?.normal) {
+            imgUrl = oldestCard.card_faces[0].image_uris.normal;
+          }
+        }
+        
+        console.log('Image URL (oldest):', imgUrl);
+        
+        if (imgUrl && myLoadId === currentImageLoadId) {
+          // Preload image before doing anything
+          const tempImg = new Image();
+          tempImg.onload = () => {
+            // Double-check we're still on the same card
+            if (myLoadId !== currentImageLoadId) return;
+            
+            // Wait for fade-out to complete before changing the src
+            const fadeOutDelay = wasVisible ? 250 : 0;
+            setTimeout(() => {
+              if (myLoadId !== currentImageLoadId) return;
+              
+              // Change the image source while opacity is 0
+              preview.src = imgUrl;
+              preview.style.display = 'block';
+              
+              // Small delay to ensure the src change has taken effect, then fade in
+              setTimeout(() => {
+                if (myLoadId === currentImageLoadId) {
+                  preview.style.opacity = '1';
+                }
+              }, 20);
+            }, fadeOutDelay);
+          };
+          tempImg.src = imgUrl;
+        } else if (myLoadId === currentImageLoadId) {
+          preview.src = '';
+          preview.style.display = 'none';
+          preview.style.opacity = '0';
+        }
+        
+        // Find cheapest price across all printings
+        let cheapestPrice = null;
+        editions.forEach(edition => {
+          const usd = parseFloat(edition.prices?.usd);
+          const usdFoil = parseFloat(edition.prices?.usd_foil);
+          
+          if (!isNaN(usd) && usd > 0) {
+            if (cheapestPrice === null || usd < cheapestPrice) {
+              cheapestPrice = usd;
+            }
+          }
+          if (!isNaN(usdFoil) && usdFoil > 0) {
+            if (cheapestPrice === null || usdFoil < cheapestPrice) {
+              cheapestPrice = usdFoil;
+            }
+          }
+        });
+        
+        // Display price
+        document.getElementById('cardPrice').textContent = cheapestPrice !== null ? `$${cheapestPrice.toFixed(2)}` : 'N/A';
+      })
+      .catch(() => {
+        // Check if this request is still current
+        if (myLoadId !== currentImageLoadId) return;
+        
+        // Fallback to original card data if editions fetch fails
+        let imgUrl = "";
+        if (card.image_uris?.normal) {
+          imgUrl = card.image_uris.normal;
+        } else if (card.card_faces?.[0]?.image_uris?.normal) {
+          imgUrl = card.card_faces[0].image_uris.normal;
+        }
+        
+        if (imgUrl && myLoadId === currentImageLoadId) {
+          const tempImg = new Image();
+          tempImg.onload = () => {
+            if (myLoadId !== currentImageLoadId) return;
+            preview.src = imgUrl;
+            preview.style.display = 'block';
+            setTimeout(() => {
+              if (myLoadId === currentImageLoadId) {
+                preview.style.opacity = '1';
+              }
+            }, 50);
+          };
+          tempImg.src = imgUrl;
+        }
+        
+        const price = card.prices?.usd || card.prices?.usd_foil;
+        document.getElementById('cardPrice').textContent = price ? `$${price}` : 'N/A';
+      });
+    
+    // Display card name
+    document.getElementById('cardName').textContent = card.name;
+    
+    // Display CMC
+    document.getElementById('cardCmc').textContent = card.cmc !== undefined ? card.cmc : '–';
+    
+    // Display type
+    document.getElementById('cardType').textContent = card.type_line || '–';
+    
+    // Display oracle text
+    let oracleText = card.oracle_text || '–';
+    // Handle double-faced cards
+    if (!card.oracle_text && card.card_faces && card.card_faces.length > 0) {
+      oracleText = card.card_faces.map(face => 
+        `${face.name}: ${face.oracle_text || ''}`
+      ).join('\n\n');
+    }
+    
+    // Replace mana symbols with Scryfall icons
+    const oracleTextElement = document.getElementById('cardOracleText');
+    if (oracleText !== '–') {
+      oracleTextElement.innerHTML = renderOracleText(oracleText);
+    } else {
+      oracleTextElement.textContent = oracleText;
+    }
+    
+    // Display legality (Premodern)
+    const legality = card.legalities?.premodern || 'unknown';
+    const legalityEl = document.getElementById('cardLegality');
+    legalityEl.textContent = legality.charAt(0).toUpperCase() + legality.slice(1);
+    legalityEl.className = 'detail-value legality-' + legality;
+  }
+
+  function closeDeckModal() {
+    document.getElementById('deckModal').style.display = 'none';
+    document.getElementById('mainDeck').innerHTML = "";
+    document.getElementById('sideboard').innerHTML = "";
+    resetCardPanel();
+  }
+
+  window.onclick = function(event) {
+    if (event.target == document.getElementById('deckModal')) {
+      closeDeckModal();
+    }
+  }
+</script>

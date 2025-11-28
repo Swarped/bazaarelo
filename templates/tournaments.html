@@ -4,6 +4,7 @@
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <meta charset="utf-8">
     <title>Past Tournaments</title>
@@ -70,12 +71,29 @@ td.store-cell img {
         border-collapse: collapse;
         background: white;
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        position: relative;
+      }
+
+      #competitive-table,
+      #casual-table {
+        position: relative;
       }
 
       th, td {
         border: 1px solid #ddd;
         padding: 0.75rem;
         text-align: left;
+      }
+
+      /* Remove right border from Country column (last visible column) */
+      td:nth-last-child(2),
+      th:nth-last-child(2) {
+        border-right: 1px solid #ddd !important;
+      }
+
+      /* Action column has no borders at all */
+      .action-column {
+        border: none !important;
       }
 
       th {
@@ -159,6 +177,128 @@ td.store-cell img {
         font-size: 1.2rem;
         color: #2c3e50;
       }
+
+      .action-column {
+        background: white !important;
+        border: none !important;
+        padding: 0.5rem !important;
+        width: 80px;
+        box-shadow: none !important;
+      }
+
+      /* Make action column completely invisible - no borders, no background */
+      th.action-column,
+      td.action-column {
+        border-left: none !important;
+        border-right: none !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        box-shadow: none !important;
+      }
+
+      /* Ensure column matches page background always */
+      tr:nth-child(even) td.action-column,
+      tr.clickable-row:hover td.action-column {
+        background: white !important;
+        box-shadow: none !important;
+      }
+
+      /* Dark mode support - match dark mode page background */
+      html.dark-mode .action-column,
+      html.dark-mode tr:nth-child(even) td.action-column,
+      html.dark-mode tr.clickable-row:hover td.action-column {
+        background: #1a1a1a !important;
+        box-shadow: none;
+      }
+
+      html.dark-mode table {
+        background: #2a2a2a;
+        box-shadow: none;
+      }
+
+      html.dark-mode #competitive-table,
+      html.dark-mode #casual-table {
+        overflow: hidden;
+      }
+
+      html.dark-mode th {
+        background-color: #333;
+        color: #e0e0e0;
+      }
+
+      html.dark-mode td,
+      html.dark-mode th {
+        border-color: #444;
+      }
+
+      html.dark-mode tr:nth-child(even) {
+        background-color: #2d2d2d;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+      }
+
+      #competitive-table,
+      #casual-table {
+        position: relative;
+      }
+
+      #competitive-table table,
+      #casual-table table {
+        margin-right: 100px;
+      }
+
+      .icon-btn {
+        background: none;
+        border: 2px solid transparent;
+        padding: 0.5rem;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .icon-btn .material-icons {
+        font-size: 1.5rem;
+        color: #666;
+        transition: color 0.2s ease;
+      }
+
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+        .icon-btn {
+          border-color: #555;
+        }
+        
+        .icon-btn .material-icons {
+          color: #aaa;
+        }
+      }
+
+      .icon-btn:hover .material-icons {
+        transform: scale(1.1);
+      }
+
+      .edit-btn:hover {
+        background-color: rgba(76, 175, 80, 0.1);
+      }
+
+      .edit-btn:hover .material-icons {
+        color: #4CAF50;
+      }
+
+      .delete-btn:hover {
+        background-color: rgba(217, 83, 79, 0.1);
+      }
+
+      .delete-btn:hover .material-icons {
+        color: #d9534f;
+      }
     </style>
  <div class="tournaments-page"></div>
 
@@ -185,13 +325,11 @@ td.store-cell img {
   <th>Player Count</th>
   <th>Top Cut</th>
   <th>Country</th>
-    {% if current_user.is_authenticated and current_user.is_admin %}
-    <th>Actions</th>
-  {% endif %}
+  <th class="action-column"></th>
 </tr>
 
 {% for t in competitive_tournaments %}
-<tr class="clickable-row"
+<tr class="clickable-row tournament-row-wrapper"
     tabindex="0"
     role="link"
     aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
@@ -221,18 +359,23 @@ td.store-cell img {
     –
   {% endif %}
 </td>
-
-  {% if current_user.is_authenticated and current_user.is_admin %}
-  <td>
-<form method="POST" action="{{ url_for('delete_tournament', tid=t.id) }}"
-      onsubmit="return confirm('Delete {{ t.name }}?');">
-  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-</form>
-
-    <a href="{{ url_for('edit_tournament_metadata', tid=t.id) }}" class="btn btn-primary btn-sm">Edit</a>
-  </td>
+  <td class="action-column">
+  {% if current_user.is_authenticated and (current_user.is_admin or t.user_id == current_user.id) %}
+    <div class="action-buttons">
+      <form method="POST" action="{{ url_for('edit_tournament', tid=t.id) }}" style="display: inline;">
+        <button type="submit" class="icon-btn edit-btn" title="Edit Tournament">
+          <span class="material-icons">edit</span>
+        </button>
+      </form>
+      <form method="POST" action="{{ url_for('delete_tournament', tid=t.id) }}"
+            onsubmit="return confirm('Delete {{ t.name }}?');" style="display: inline;">
+        <button type="submit" class="icon-btn delete-btn" title="Delete Tournament">
+          <span class="material-icons">delete</span>
+        </button>
+      </form>
+    </div>
   {% endif %}
-
+  </td>
         </tr>
         {% endfor %}
       </table>
@@ -248,13 +391,11 @@ td.store-cell img {
   <th>Player Count</th>
   <th>Top Cut</th>
     <th>Country</th>
-    {% if current_user.is_authenticated and current_user.is_admin %}
-    <th>Actions</th>
-  {% endif %}
+  <th class="action-column"></th>
 </tr>
 
         {% for t in casual_tournaments %}
-        <tr class="clickable-row"
+        <tr class="clickable-row tournament-row-wrapper"
             tabindex="0"
             role="link"
             aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
@@ -271,18 +412,23 @@ td.store-cell img {
     –
   {% endif %}
 </td>
-
-  {% if current_user.is_authenticated and current_user.is_admin %}
-  <td>
-<form method="POST" action="{{ url_for('delete_tournament', tid=t.id) }}"
-      onsubmit="return confirm('Delete {{ t.name }}?');">
-  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-</form>
-
-    <a href="{{ url_for('edit_tournament_metadata', tid=t.id) }}" class="btn btn-primary btn-sm">Edit</a>
-  </td>
+  <td class="action-column">
+  {% if current_user.is_authenticated and (current_user.is_admin or t.user_id == current_user.id) %}
+    <div class="action-buttons">
+      <form method="POST" action="{{ url_for('edit_tournament', tid=t.id) }}" style="display: inline;">
+        <button type="submit" class="icon-btn edit-btn" title="Edit Tournament">
+          <span class="material-icons">edit</span>
+        </button>
+      </form>
+      <form method="POST" action="{{ url_for('delete_tournament', tid=t.id) }}"
+            onsubmit="return confirm('Delete {{ t.name }}?');" style="display: inline;">
+        <button type="submit" class="icon-btn delete-btn" title="Delete Tournament">
+          <span class="material-icons">delete</span>
+        </button>
+      </form>
+    </div>
   {% endif %}
-
+  </td>
         </tr>
         {% endfor %}
       </table>

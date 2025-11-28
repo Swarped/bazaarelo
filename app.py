@@ -2144,10 +2144,17 @@ def new_tournament_casual():
     if request.method == 'POST':
         tournament_name = request.form.get('tournament_name')
         date_str = request.form.get('date')
-        top_cut = int(request.form.get('top_cut') or 0)
+        top_cut = int(request.form.get('top_cut') or 8)
         player_count = int(request.form.get('player_count') or 0)
         rounds = int(request.form.get('rounds') or 0)
-        country = request.form.get("country")
+        store_id = request.form.get('store_id')
+        
+        # Get country from store if store is selected
+        country = None
+        if store_id:
+            store = Store.query.get(int(store_id))
+            if store:
+                country = store.country
 
         # Create the casual tournament
         tournament = Tournament(
@@ -2159,6 +2166,8 @@ def new_tournament_casual():
             top_cut=top_cut,
             player_count=player_count,
             country=country,
+            store_id=int(store_id) if store_id else None,
+            pending=False,  # Casual tournaments are immediately finalized
             user_id=current_user.id,
             submitted_at=datetime.utcnow()
         )
@@ -2226,7 +2235,180 @@ def new_tournament_casual():
         flash("Casual tournament final standings saved!", "success")
         return redirect(url_for('players'))
 
-    return render_template('new_tournament_casual.html')
+    # Build stores list for selector
+    stores = []
+    if current_user.is_authenticated:
+        if current_user.is_admin:
+            stores = Store.query.all()
+        else:
+            stores = stores_for_user(current_user)
+    
+    return render_template('new_tournament_casual.html', stores=stores)
+
+
+@app.route('/tournament/<int:tid>/edit_casual', methods=['GET', 'POST'])
+@login_required
+def edit_casual_tournament(tid):
+    """Edit an existing casual tournament"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Verify this is a casual tournament
+    if not tournament.casual:
+        flash("This is not a casual tournament.", "error")
+        return redirect(url_for('tournament_standings', tid=tid))
+    
+    # Check permissions
+    can_edit = (current_user.is_admin or tournament.user_id == current_user.id)
+    if not can_edit:
+        flash("You don't have permission to edit this tournament.", "error")
+        return redirect(url_for('tournament_standings', tid=tid))
+    
+    # Verify edit token
+    url_token = request.args.get('edit_token')
+    session_token = session.get(f'edit_{tid}')
+    
+    if url_token and url_token == tournament.edit_token:
+        session[f'edit_{tid}'] = url_token
+    elif not session_token or session_token != tournament.edit_token:
+        flash("Invalid or expired edit link.", "error")
+        return redirect(url_for('tournament_standings', tid=tid))
+    
+    if request.method == 'POST':
+        # Get existing players to remove old casual points
+        old_tournament_players = TournamentPlayer.query.filter_by(tournament_id=tid).all()
+        old_player_data = {}
+        
+        # Store old rankings and points
+        for tp in old_tournament_players:
+            player = Player.query.get(tp.player_id)
+            if player:
+                # Find player's old rank by checking decks
+                deck = Deck.query.filter_by(player_id=player.id, tournament_id=tid).first()
+                if deck:
+                    old_player_data[player.id] = player
+        
+        # Get old player count to calculate old points
+        old_player_count = tournament.player_count or len(old_tournament_players)
+        old_top_cut = tournament.top_cut or 0
+        
+        # Helper function to calculate points
+        def award_casual_points(num_players: int, rank: int) -> int:
+            if num_players < 9:
+                return 0
+            if 9 <= num_players <= 16:
+                if rank == 1: return 2
+                if rank == 2: return 1
+            elif 17 <= num_players <= 32:
+                if rank == 1: return 4
+                if rank == 2: return 3
+                if rank <= 4: return 2
+                if rank <= 8: return 1
+            elif num_players >= 33:
+                if rank == 1: return 8
+                if rank == 2: return 6
+                if rank <= 4: return 4
+                if rank <= 8: return 2
+            return 0
+        
+        # Remove old casual points for all players
+        for rank in range(1, old_top_cut + 1):
+            player_id = request.form.get(f"old_player_{rank}")
+            if player_id and int(player_id) in old_player_data:
+                player = old_player_data[int(player_id)]
+                old_pts = award_casual_points(old_player_count, rank)
+                if old_pts > 0:
+                    player.casual_points = max(0, (player.casual_points or 0) - old_pts)
+        
+        # Update tournament metadata
+        tournament.name = request.form.get('tournament_name')
+        tournament.date = datetime.strptime(request.form.get('date'), "%Y-%m-%d")
+        tournament.top_cut = int(request.form.get('top_cut') or 8)
+        tournament.player_count = int(request.form.get('player_count') or 0)
+        tournament.rounds = int(request.form.get('rounds') or 0)
+        store_id = request.form.get('store_id')
+        
+        # Update store and country
+        if store_id:
+            tournament.store_id = int(store_id)
+            store = Store.query.get(int(store_id))
+            if store:
+                tournament.country = store.country
+        else:
+            tournament.store_id = None
+        
+        # Delete old tournament players and decks
+        TournamentPlayer.query.filter_by(tournament_id=tid).delete()
+        Deck.query.filter_by(tournament_id=tid).delete()
+        
+        # Add new players and award new points
+        for rank in range(1, tournament.top_cut + 1):
+            player_name = request.form.get(f"player_{rank}", "").strip()
+            deck_name = html.escape(request.form.get(f"deck_name_{rank}", "").strip())
+            deck_list = html.escape(request.form.get(f"deck_list_{rank}", "").strip())
+            
+            if player_name:
+                player = ensure_player(player_name)
+                db.session.add(TournamentPlayer(tournament_id=tid, player_id=player.id))
+                
+                # Award new casual points
+                pts = award_casual_points(tournament.player_count, rank)
+                if pts > 0:
+                    player.casual_points = (player.casual_points or 0) + pts
+                
+                # Save deck if provided
+                if deck_name or deck_list:
+                    deck = Deck(
+                        player_id=player.id,
+                        tournament_id=tid,
+                        name=deck_name,
+                        list_text=deck_list
+                    )
+                    db.session.add(deck)
+        
+        # Clear edit token to finalize edits
+        tournament.edit_token = None
+        session.pop(f'edit_{tid}', None)
+        
+        db.session.commit()
+        
+        # Log event
+        log_event(
+            action_type='tournament_updated',
+            details=f"Updated Casual tournament: {tournament.name}",
+            recoverable=False
+        )
+        
+        flash("Casual tournament updated successfully!", "success")
+        return redirect(url_for('players'))
+    
+    # GET request: Load tournament data for editing
+    tournament_players = TournamentPlayer.query.filter_by(tournament_id=tid).all()
+    players_with_decks = []
+    
+    for tp in tournament_players:
+        player = Player.query.get(tp.player_id)
+        deck = Deck.query.filter_by(player_id=player.id, tournament_id=tid).first()
+        players_with_decks.append({
+            'player_id': player.id,
+            'player_name': player.name,
+            'deck_name': deck.name if deck else '',
+            'deck_list': deck.list_text if deck else ''
+        })
+    
+    # Build stores list for selector
+    stores = []
+    if current_user.is_authenticated:
+        if current_user.is_admin:
+            stores = Store.query.all()
+        else:
+            stores = stores_for_user(current_user)
+    
+    return render_template('new_tournament_casual.html', 
+                         tournament=tournament,
+                         players_with_decks=players_with_decks,
+                         is_editing=True,
+                         edit_token=tournament.edit_token,
+                         stores=stores)
 
 
 @app.route('/tournament/<int:tid>/set_country', methods=['POST'])
@@ -2234,28 +2416,62 @@ def new_tournament_casual():
 def set_tournament_country(tid):
     tournament = Tournament.query.get_or_404(tid)
 
-    # 🚨 Security guard: only admins or scorekeepers can change
+    # Only admins or scorekeepers can change
     if not (current_user.is_admin or current_user.is_scorekeeper):
         flash("You do not have permission to set the country.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
-
-    # 🚨 Block changes if tournament is already finalized/discarded
-    if tournament.imported_from_text and not tournament.pending:
-        flash("This tournament has already been finalized or discarded. Country cannot be changed.", "error")
         return redirect(url_for('players'))
 
-    # === Validate input ===
+    # Determine states
+    is_new_import = tournament.pending and tournament.confirm_token
+    is_editing = not tournament.pending and tournament.edit_token
+    is_manual_tournament = not tournament.imported_from_text
+    
+    # Verify token for new imports
+    if is_new_import:
+        session_key = f"tok_{tid}"
+        session_token = session.get(session_key)
+        if not session_token or session_token != tournament.confirm_token:
+            flash("Invalid or expired confirmation link.", "error")
+            return redirect(url_for('players'))
+    
+    # Verify token for edit mode
+    if is_editing:
+        session_key = f"edit_{tid}"
+        session_token = session.get(session_key)
+        if not session_token or session_token != tournament.edit_token:
+            flash("Invalid or expired edit link.", "error")
+            return redirect(url_for('players'))
+    
+    # Authorization for manual tournaments
+    if is_manual_tournament:
+        can_access = (current_user.is_admin or tournament.user_id == current_user.id)
+        if not can_access:
+            flash("You don't have permission to modify this tournament.", "error")
+            return redirect(url_for('players'))
+    
+    # Block access to finalized imported tournaments
+    if tournament.imported_from_text and not is_new_import and not is_editing:
+        flash("Country can only be changed during import confirmation or edit mode.", "error")
+        return redirect(url_for('players'))
+
+    # Validate input
     country = request.form.get("country")
     if not country:
         flash("Please select a country.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+        if is_new_import:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+        else:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
-    # === Apply change ===
+    # Apply change
     tournament.country = country
     db.session.commit()
 
     flash(f"Tournament country set to {country}.", "success")
-    return redirect(url_for('tournament_round', tid=tid, round_num=1))
+    if is_new_import:
+        return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+    else:
+        return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
 @app.route("/tournament/<int:tid>/set_store", methods=["POST"])
 @login_required
@@ -2265,49 +2481,74 @@ def set_tournament_store(tid):
     # Only admins or scorekeepers can change
     if not (current_user.is_admin or current_user.is_scorekeeper):
         flash("You do not have permission to set the store.", "error")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
-
-    # Check if in edit mode (has edit_token in session)
-    edit_token_in_session = session.get(f'edit_{tid}')
-    is_editing = (edit_token_in_session and tournament.edit_token == edit_token_in_session)
-
-    # Block changes if imported tournament is already finalized/discarded (unless in edit mode)
-    if tournament.imported_from_text and not tournament.pending and not is_editing:
-        flash("This tournament has already been finalized or discarded. Store cannot be changed.", "error")
         return redirect(url_for('players'))
 
+    # Determine states
+    is_new_import = tournament.pending and tournament.confirm_token
+    is_editing = not tournament.pending and tournament.edit_token
+    is_manual_tournament = not tournament.imported_from_text
+    
+    # Verify token for new imports
+    if is_new_import:
+        session_key = f"tok_{tid}"
+        session_token = session.get(session_key)
+        if not session_token or session_token != tournament.confirm_token:
+            flash("Invalid or expired confirmation link.", "error")
+            return redirect(url_for('players'))
+    
+    # Verify token for edit mode
+    if is_editing:
+        session_key = f"edit_{tid}"
+        session_token = session.get(session_key)
+        if not session_token or session_token != tournament.edit_token:
+            flash("Invalid or expired edit link.", "error")
+            return redirect(url_for('players'))
+    
+    # Authorization for manual tournaments
+    if is_manual_tournament:
+        can_access = (current_user.is_admin or tournament.user_id == current_user.id)
+        if not can_access:
+            flash("You don't have permission to modify this tournament.", "error")
+            return redirect(url_for('players'))
+    
+    # Block access to finalized imported tournaments
+    if tournament.imported_from_text and not is_new_import and not is_editing:
+        flash("Store can only be changed during import confirmation or edit mode.", "error")
+        return redirect(url_for('players'))
+
+    
     store_id = request.form.get("store_id")
     if not store_id:
         flash("Please select a store.", "error")
-        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
-        if is_editing:
-            redirect_url += f"?edit_token={tournament.edit_token}"
-        return redirect(redirect_url)
+        if is_new_import:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+        else:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
     try:
         store_id_int = int(store_id)
     except ValueError:
         flash("Invalid store.", "error")
-        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
-        if is_editing:
-            redirect_url += f"?edit_token={tournament.edit_token}"
-        return redirect(redirect_url)
+        if is_new_import:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+        else:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
     store = Store.query.get(store_id_int)
     if not store:
         flash("Store not found.", "error")
-        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
-        if is_editing:
-            redirect_url += f"?edit_token={tournament.edit_token}"
-        return redirect(redirect_url)
+        if is_new_import:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+        else:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
     # Ensure this user can use that store
     if not can_use_store(current_user, store.id):
         flash("You are not assigned to this store.", "error")
-        redirect_url = url_for('tournament_round', tid=tid, round_num=1)
-        if is_editing:
-            redirect_url += f"?edit_token={tournament.edit_token}"
-        return redirect(redirect_url)
+        if is_new_import:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+        else:
+            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
     # Apply store and auto-country
     tournament.store_id = store.id
@@ -2315,9 +2556,10 @@ def set_tournament_store(tid):
     db.session.commit()
 
     flash(f"Store set to {store.name}. Country auto-set to {store.country}.", "success")
-    redirect_url = url_for('tournament_round', tid=tid, round_num=1)
-    if is_editing:
-        redirect_url += f"?edit_token={tournament.edit_token}"
+    if is_new_import:
+        return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+    else:
+        return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
     return redirect(redirect_url)
 
 
@@ -2336,7 +2578,47 @@ def player_info(pid):
     top1 = top4 = top8 = 0
     for t, tp in tournaments:
         deck = Deck.query.filter_by(player_id=pid, tournament_id=t.id).first()
-        rank = getattr(tp, "rank", None)
+        
+        # Calculate player's rank in this tournament based on match results
+        rank = None
+        matches = Match.query.filter_by(tournament_id=t.id).all()
+        if matches:
+            # Get all players in tournament
+            tournament_players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id) \
+                                  .filter(TournamentPlayer.tournament_id == t.id).all()
+            
+            # Calculate standings
+            standings = []
+            for p in tournament_players:
+                wins = draws = losses = points = 0
+                for m in matches:
+                    if m.player1_id == p.id or m.player2_id == p.id:
+                        if m.result == "bye" and m.player1_id == p.id:
+                            wins += 1; points += 3
+                        elif m.result in ["2-0", "2-1", "1-0"] and m.player1_id == p.id:
+                            wins += 1; points += 3
+                        elif m.result in ["0-2", "1-2", "0-1"] and m.player2_id == p.id:
+                            wins += 1; points += 3
+                        elif m.result == "1-1":
+                            draws += 1; points += 1
+                        else:
+                            losses += 1
+                standings.append({
+                    "player_id": p.id,
+                    "wins": wins,
+                    "draws": draws,
+                    "losses": losses,
+                    "points": points
+                })
+            
+            # Sort by points, then wins
+            standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
+            
+            # Find player's rank
+            for idx, standing in enumerate(standings, 1):
+                if standing["player_id"] == pid:
+                    rank = idx
+                    break
 
         if rank and t.top_cut and rank <= t.top_cut:
             if rank == 1:
@@ -2661,12 +2943,14 @@ def tournament_round(tid, round_num):
     # Determine states:
     # - pending=True, confirm_token exists: New import awaiting confirmation
     # - pending=False, edit_token exists: Existing tournament being edited
+    # - imported_from_text=False: Regular manual tournament (needs creator/admin access)
     is_new_import = tournament.pending and tournament.confirm_token
     is_editing = not tournament.pending and tournament.edit_token
+    is_manual_tournament = not tournament.imported_from_text
     
     # DEBUG
     app.logger.info(f"tournament_round: tid={tid}, pending={tournament.pending}, confirm_token={tournament.confirm_token}, edit_token={tournament.edit_token}")
-    app.logger.info(f"tournament_round: is_new_import={is_new_import}, is_editing={is_editing}")
+    app.logger.info(f"tournament_round: is_new_import={is_new_import}, is_editing={is_editing}, is_manual={is_manual_tournament}")
     
     # Token guard for new imports awaiting confirmation
     if is_new_import:
@@ -2678,7 +2962,7 @@ def tournament_round(tid, round_num):
             session[session_key] = url_token  # bind token to session
         elif not session_token or session_token != tournament.confirm_token:
             flash("Invalid or expired confirmation link.", "error")
-            return redirect(url_for('tournament_standings', tid=tid))
+            return redirect(url_for('players'))
     
     # Token guard for edit mode
     if is_editing:
@@ -2694,7 +2978,33 @@ def tournament_round(tid, round_num):
             session[session_key] = url_token
         else:
             flash("Invalid or expired edit link.", "error")
+            return redirect(url_for('players'))
+        
+        # Redirect casual tournaments to their own edit page
+        if tournament.casual:
+            return redirect(url_for('edit_casual_tournament', tid=tid, edit_token=tournament.edit_token))
+    
+    # Authorization for manual tournaments (not imported)
+    if is_manual_tournament:
+        # Casual tournaments should use the casual edit/view page, not round view
+        if tournament.casual:
+            flash("Casual tournaments don't have round-by-round view.", "error")
             return redirect(url_for('tournament_standings', tid=tid))
+        
+        # Only the creator or admins can access
+        if not current_user.is_authenticated:
+            flash("You must be logged in to access this tournament.", "error")
+            return redirect(url_for('players'))
+        
+        can_access = (current_user.is_admin or tournament.user_id == current_user.id)
+        if not can_access:
+            flash("You don't have permission to access this tournament.", "error")
+            return redirect(url_for('players'))
+    
+    # Block unauthorized access to finalized imported tournaments (not in import/edit mode)
+    if tournament.imported_from_text and not is_new_import and not is_editing:
+        flash("This tournament has been finalized. View it from the tournaments page.", "error")
+        return redirect(url_for('players'))
 
     players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id) \
                           .filter(TournamentPlayer.tournament_id == tid).all()
@@ -3055,18 +3365,23 @@ def tournaments_list():
     return render_template(
         'tournaments.html',
         competitive_tournaments=competitive_tournaments,
-        casual_tournaments=casual_tournaments
+        casual_tournaments=casual_tournaments,
+        current_user=current_user
     )
 
 
 @app.route("/tournament/<int:tid>/delete", methods=["POST"])
 @login_required
 def delete_tournament(tid):
-    if not current_user.is_admin:
-        flash("Admins only", "error")
-        return redirect(url_for("players"))
-
     tournament = Tournament.query.get_or_404(tid)
+    
+    # Check permissions: admin or tournament creator only
+    can_delete = (current_user.is_admin or 
+                  tournament.user_id == current_user.id)
+    
+    if not can_delete:
+        flash("You don't have permission to delete this tournament.", "error")
+        return redirect(url_for("tournaments_list"))
     
     # Backup tournament data for recovery
     import json
@@ -3155,33 +3470,6 @@ def delete_tournament(tid):
 
 
 
-@app.route("/tournament/<int:tid>/edit_metadata", methods=["GET", "POST"])
-@login_required
-def edit_tournament_metadata(tid):
-    if not current_user.is_admin:
-        flash("Admins only", "error")
-        return redirect(url_for("tournaments"))
-
-    tournament = Tournament.query.get_or_404(tid)
-
-    if request.method == "POST":
-        tournament.name = request.form.get("name", tournament.name)
-        tournament.date = request.form.get("date", tournament.date)
-        tournament.rounds = request.form.get("rounds", tournament.rounds)
-        tournament.player_count = request.form.get("player_count", tournament.player_count)
-        tournament.top_cut = request.form.get("top_cut", tournament.top_cut)
-        tournament.country = request.form.get("country", tournament.country)
-        tournament.casual = bool(request.form.get("casual")) or tournament.casual
-        tournament.premium = bool(request.form.get("premium")) or tournament.premium
-        db.session.commit()
-        flash("Tournament updated.", "success")
-        return redirect(url_for("tournaments"))
-
-    return render_template("edit_tournament.html", tournament=tournament)
-
-
-
-
 @app.route('/delete_player/<int:pid>', methods=['POST'])
 @login_required
 def delete_player(pid):
@@ -3251,24 +3539,63 @@ def casual_final(tid):
         # Collect top cut players and their deck lists
         top_cut = int(request.form.get("top_cut"))
         tournament.top_cut = top_cut
-        db.session.commit()
+        
+        # Helper: award casual points based on rules
+        def award_casual_points_by_rank(num_players: int, rank: int) -> int:
+            if num_players < 9:
+                return 0
+            if 9 <= num_players <= 16:
+                if rank == 1: return 2
+                if rank == 2: return 1
+            elif 17 <= num_players <= 32:
+                if rank == 1: return 4
+                if rank == 2: return 3
+                if rank <= 4: return 2
+                if rank <= 8: return 1
+            elif num_players >= 33:
+                if rank == 1: return 8
+                if rank == 2: return 6
+                if rank <= 4: return 4
+                if rank <= 8: return 2
+            return 0
+        
+        # Get player count from tournament
+        players_in_tournament = TournamentPlayer.query.filter_by(tournament_id=tournament.id).count()
 
         for rank in range(1, top_cut+1):
             player_id = request.form.get(f"player_{rank}")
             deck_name = request.form.get(f"deck_name_{rank}")
             deck_list = request.form.get(f"deck_list_{rank}")
-            if player_id and deck_name and deck_list:
-                deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament.id).first()
-                if deck:
-                    deck.name = deck_name
-                    deck.list_text = deck_list
-                else:
-                    deck = Deck(player_id=player_id, tournament_id=tournament.id,
-                                name=deck_name, list_text=deck_list)
-                    db.session.add(deck)
+            if player_id:
+                player = Player.query.get(player_id)
+                if player:
+                    # Award casual points based on rank and player count
+                    pts = award_casual_points_by_rank(players_in_tournament, rank)
+                    if pts > 0:
+                        player.casual_points = (player.casual_points or 0) + pts
+                    
+                    # Save deck if provided
+                    if deck_name and deck_list:
+                        deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament.id).first()
+                        if deck:
+                            deck.name = deck_name
+                            deck.list_text = deck_list
+                        else:
+                            deck = Deck(player_id=player_id, tournament_id=tournament.id,
+                                        name=deck_name, list_text=deck_list)
+                            db.session.add(deck)
+        
         db.session.commit()
-        flash("Casual final standings saved!", "success")
-        return redirect(url_for('tournament_round', tid=tid, round_num=1))
+        
+        # Log event
+        log_event(
+            action_type='tournament_finalized',
+            details=f"Finalized Casual tournament: {tournament.name}",
+            recoverable=False
+        )
+        
+        flash("Casual tournament final standings saved!", "success")
+        return redirect(url_for('players'))
 
     players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id)\
                           .filter(TournamentPlayer.tournament_id == tid).all()
@@ -3327,13 +3654,18 @@ def tournament_standings(tid):
     can_edit = False
     if current_user.is_authenticated:
         can_edit = (current_user.is_admin or 
-                   current_user.is_scorekeeper or 
                    tournament.user_id == current_user.id)
+    
+    # Get the user who submitted the tournament
+    submitted_by = None
+    if tournament.user_id:
+        submitted_by = User.query.get(tournament.user_id)
     
     return render_template('tournament_standings.html',
                            tournament=tournament,
                            standings=standings,
-                           can_edit=can_edit)
+                           can_edit=can_edit,
+                           submitted_by=submitted_by)
 
 
 
@@ -3341,12 +3673,19 @@ def tournament_standings(tid):
 @app.route('/tournament/<int:tid>/edit', methods=['POST'])
 @login_required
 def edit_tournament(tid):
-    """Generate edit token and redirect to round editing interface"""
+    """Generate edit token and redirect to appropriate editing interface"""
     tournament = Tournament.query.get_or_404(tid)
+    
+    # DEBUG: Print tournament properties
+    print(f"\n=== EDIT TOURNAMENT DEBUG ===", file=sys.stderr)
+    print(f"Tournament ID: {tid}", file=sys.stderr)
+    print(f"  casual: {tournament.casual}", file=sys.stderr)
+    print(f"  imported_from_text: {tournament.imported_from_text}", file=sys.stderr)
+    print(f"  pending: {tournament.pending}", file=sys.stderr)
+    print(f"============================\n", file=sys.stderr)
     
     # Check permissions
     can_edit = (current_user.is_admin or 
-                current_user.is_scorekeeper or 
                 tournament.user_id == current_user.id)
     
     if not can_edit:
@@ -3362,11 +3701,27 @@ def edit_tournament(tid):
     tournament.edit_token = secrets.token_urlsafe(16)
     db.session.commit()
     
-    # Store edit token in session and redirect to round 1
+    # Store edit token in session
     session[f"edit_{tid}"] = tournament.edit_token
     
-    flash("Tournament is now in edit mode. Click players to change match results.", "success")
-    return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
+    # Redirect based on tournament type
+    # Manual tournaments should always be casual (manual competitive tournaments are deprecated)
+    if not tournament.imported_from_text:
+        # This is a manual tournament - should be casual
+        if not tournament.casual:
+            # Fix legacy data: mark as casual
+            print(f"WARNING: Tournament {tid} is manual but not marked casual - fixing", file=sys.stderr)
+            tournament.casual = True
+            db.session.commit()
+        
+        print(f"Redirecting to edit_casual_tournament", file=sys.stderr)
+        flash("Casual tournament is now in edit mode. Update the final standings.", "success")
+        return redirect(url_for('edit_casual_tournament', tid=tid, edit_token=tournament.edit_token))
+    else:
+        # This is an imported tournament - use round-by-round editing
+        print(f"Redirecting to tournament_round", file=sys.stderr)
+        flash("Tournament is now in edit mode. Click players to change match results.", "success")
+        return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
 
 
 @app.route('/tournament/<int:tid>/update_match_results', methods=['POST'])
@@ -3377,7 +3732,6 @@ def update_match_results(tid):
     
     # Check permissions and editing state
     can_edit = (current_user.is_admin or 
-                current_user.is_scorekeeper or 
                 tournament.user_id == current_user.id)
     
     if not can_edit:
@@ -3418,6 +3772,87 @@ def update_match_results(tid):
     return jsonify({'success': True})
 
 
+
+@app.route('/tournament/<int:tid>/update_metadata', methods=['POST'])
+def update_tournament_metadata(tid):
+    """Update tournament name and date during import confirmation, edit mode, or for manual tournaments"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Determine states
+    is_new_import = tournament.pending and tournament.confirm_token
+    is_editing = not tournament.pending and tournament.edit_token
+    is_manual_tournament = not tournament.imported_from_text
+    
+    # Check if any valid access mode
+    if not (is_new_import or is_editing or is_manual_tournament):
+        flash("Tournament metadata can only be updated during import confirmation or edit mode.", "error")
+        return redirect(url_for('players'))
+    
+    # Verify token for new imports
+    if is_new_import:
+        session_key = f"tok_{tid}"
+        session_token = session.get(session_key)
+        if not session_token or session_token != tournament.confirm_token:
+            flash("Invalid or expired confirmation link.", "error")
+            return redirect(url_for('players'))
+    
+    # Verify token for edit mode
+    if is_editing:
+        session_key = f"edit_{tid}"
+        session_token = session.get(session_key)
+        if not session_token or session_token != tournament.edit_token:
+            flash("Invalid or expired edit link.", "error")
+            return redirect(url_for('players'))
+    
+    # Authorization for manual tournaments
+    if is_manual_tournament:
+        if not current_user.is_authenticated:
+            flash("You must be logged in to update this tournament.", "error")
+            return redirect(url_for('players'))
+        
+        can_access = (current_user.is_admin or tournament.user_id == current_user.id)
+        if not can_access:
+            flash("You don't have permission to modify this tournament.", "error")
+            return redirect(url_for('players'))
+    
+    # Update tournament metadata
+    tournament_name = request.form.get('tournament_name', '').strip()
+    tournament_date = request.form.get('tournament_date', '').strip()
+    
+    if tournament_name:
+        tournament.name = tournament_name
+    
+    if tournament_date:
+        # Convert string date (YYYY-MM-DD) to Python date object
+        from datetime import datetime
+        try:
+            date_obj = datetime.strptime(tournament_date, '%Y-%m-%d').date()
+            tournament.date = date_obj
+        except ValueError:
+            flash("Invalid date format.", "error")
+            round_num = request.form.get('current_round', 1)
+            if is_new_import:
+                return redirect(url_for('tournament_round', tid=tid, round_num=round_num, token=tournament.confirm_token))
+            elif is_editing:
+                return redirect(url_for('tournament_round', tid=tid, round_num=round_num, edit_token=tournament.edit_token))
+            else:  # manual tournament
+                return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
+    
+    db.session.flush()
+    db.session.commit()
+    
+    flash("Tournament information updated successfully.", "success")
+    
+    # Redirect back to the current round view with appropriate token/mode
+    round_num = request.form.get('current_round', 1)
+    if is_new_import:
+        return redirect(url_for('tournament_round', tid=tid, round_num=round_num, token=tournament.confirm_token))
+    elif is_editing:
+        return redirect(url_for('tournament_round', tid=tid, round_num=round_num, edit_token=tournament.edit_token))
+    else:  # manual tournament
+        return redirect(url_for('tournament_round', tid=tid, round_num=round_num))
+
+
 @app.route('/tournament/<int:tid>/finalize_edit', methods=['POST'])
 @login_required
 def finalize_tournament_edit(tid):
@@ -3426,7 +3861,6 @@ def finalize_tournament_edit(tid):
     
     # Check permissions
     can_edit = (current_user.is_admin or 
-                current_user.is_scorekeeper or 
                 tournament.user_id == current_user.id)
     
     if not can_edit:

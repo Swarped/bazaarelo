@@ -15,14 +15,143 @@
     .elo { font-size: 2.5rem; font-weight: bold; color: #4CAF50; margin:1rem 0; }
     .stat { margin:.5rem 0; font-size:1rem; }
     .history { flex:1; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    
+    /* Toggle Container */
+    .toggle-container {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 60px;
+      background-color: #f2f2f2;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      margin-bottom: 0;
+    }
+    
+    html.dark-mode .toggle-container {
+      background-color: #2a2a2a;
+      border-color: #444;
+    }
+    
+    .toggle-container input {
+      display: none;
+    }
+    
+    .toggle-container label {
+      flex: 1;
+      text-align: center;
+      line-height: 60px;
+      cursor: pointer;
+      z-index: 2;
+      color: #666;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    html.dark-mode .toggle-container label {
+      color: #ccc;
+    }
+    
+    .toggle-container .toggle-slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      border-radius: 8px 0 0 0;
+      transition: transform 0.3s ease;
+      z-index: 1;
+      box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+    }
+    
+    .toggle-container input#decks:checked ~ .toggle-slider {
+      transform: translateX(100%);
+      border-radius: 0 8px 0 0;
+    }
+    
+    .toggle-container input#tournaments:checked ~ .toggle-slider {
+      border-radius: 8px 0 0 0;
+    }
+    
+    .toggle-container input#tournaments:checked + label,
+    .toggle-container input#decks:checked + label {
+      color: white;
+    }
+    
+    /* Panels Wrapper */
+    .panels-wrapper {
+      position: relative;
+      overflow: hidden;
+      background-color: #fff;
+    }
+    
+    html.dark-mode .panels-wrapper {
+      background-color: #1e1e1e;
+    }
+    
+    .table-panel {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+      min-height: 100%;
+    }
+    
+    .table-panel.active {
+      transform: translateX(0);
+      pointer-events: auto;
+      position: relative;
+    }
+    
+    #tournaments-table {
+      left: 0;
+      transform: translateX(0);
+    }
+    
+    #tournaments-table:not(.active) {
+      transform: translateX(-100%);
+    }
+    
+    #decks-table {
+      left: 0;
+      transform: translateX(100%);
+    }
+    
+    #decks-table.active {
+      transform: translateX(0);
+    }
+    
+    .table-panel h2 {
+      display: none;
+    }
+    
+    table { width: 100%; border-collapse: collapse; }
+    .table-panel table {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
     th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
     th { background: #f0f0f0; }
     tr:nth-child(even) { background-color: #f9f9f9; }
     tr.clickable-row { transition: background-color 140ms ease, color 140ms ease; }
     tr.clickable-row:hover { background-color: #007bff; color: white; cursor: pointer; }
+    tr.clickable-row:hover td { background-color: #007bff !important; color: white !important; }
+    html.dark-mode tr.clickable-row:hover { background-color: #007bff !important; color: white !important; }
+    html.dark-mode tr.clickable-row:hover td { background-color: #007bff !important; color: white !important; }
     .casual-tag { background:#eee; color:#333; padding:.2rem .5rem; border-radius:4px; font-size:.8rem; }
     .colors-cell { text-align: right; }
+    .price-cell { text-align: center; }
     .mana-icon { width:20px; height:20px; vertical-align:middle; margin:0 2px; }
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
     .modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 6px; width: 900px; max-width: 95%; display: flex; gap: 2rem; }
@@ -75,279 +204,168 @@
   </div>
 
 <div class="history">
-  <table>
-    <tr>
-      <th>Tournament</th>
-      <th>Date</th>
-      <th>Competitive/Casual</th>
-      <th>Deck</th>
-      <th>Colors</th>
-      <th>Position</th>
-      <th>Country</th>
-    </tr>
-    {% for h in history %}
-    <tr class="clickable-row"
-        data-player-name='{{ player.name|tojson }}'
-        data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
-        data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
-      <td>{{ h.tournament.name }}</td>
-      <td>{{ h.tournament.date }}</td>
-      <td>{% if h.tournament.casual %}<span class="casual-tag">Casual</span>{% else %}Competitive{% endif %}</td>
-      <td>{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
-      <td class="colors-cell"></td>
-      <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
-      <td>
-  {% if h.tournament.country %}
-    <span class="fi fi-{{ h.tournament.country|lower }}"></span>
-  {% else %}
-    –
-  {% endif %}
-</td>
+  <div class="toggle-container">
+    <input type="radio" id="tournaments" name="toggle" checked>
+    <label for="tournaments">Past Tournaments</label>
+    <input type="radio" id="decks" name="toggle">
+    <label for="decks">Decks</label>
+    <div class="toggle-slider"></div>
+  </div>
 
-    </tr>
-    {% endfor %}
-  </table>
-</div>
+  <div class="panels-wrapper">
+    <!-- Tournaments Table -->
+    <div id="tournaments-table" class="table-panel active">
+      <table>
+        <tr>
+          <th>Store</th>
+          <th>Tournament</th>
+          <th>Date</th>
+          <th>Competitive/Casual</th>
+          <th>Deck</th>
+          <th>Colors</th>
+          <th>Position</th>
+          <th>Country</th>
+        </tr>
+        {% for h in history %}
+        <tr class="clickable-row tournament-row"
+            data-tournament-id="{{ h.tournament.id }}"
+            data-player-name='{{ player.name|tojson }}'
+            data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
+            data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
+          <td style="padding: 0.25rem; width: 60px;">
+            {% if h.tournament.store and h.tournament.store.image_url %}
+              <img src="{{ url_for('static', filename=h.tournament.store.image_url) }}" 
+                   alt="{{ h.tournament.store.name }}" 
+                   style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; display: block;">
+            {% else %}
+              –
+            {% endif %}
+          </td>
+          <td>{{ h.tournament.name }}</td>
+          <td>{{ h.tournament.date }}</td>
+          <td>{% if h.tournament.casual %}<span class="casual-tag">Casual</span>{% else %}Competitive{% endif %}</td>
+          <td class="deck-cell">{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
+          <td class="colors-cell"></td>
+          <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
+          <td>
+            {% if h.tournament.country %}
+              <span class="fi fi-{{ h.tournament.country|lower }}"></span>
+            {% else %}
+              –
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
 
-
-<!-- Deck Modal -->
-<div id="deckModal" class="modal">
-  <div class="modal-content-deck">
-    <h3 id="deckModalTitle">
-      Deck
-      <span class="close" onclick="closeDeckModal()">&times;</span>
-    </h3>
-    
-    <div class="deck-modal-panels">
-      <!-- Left Panel: Main Deck -->
-      <div class="deck-panel deck-panel-left">
-        <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">layers</i> Main Deck</h4>
-        <ul id="mainDeck" class="card-list-enhanced"></ul>
-      </div>
-      
-      <!-- Middle Panel: Sideboard -->
-      <div class="deck-panel deck-panel-middle">
-        <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">inventory_2</i> Sideboard</h4>
-        <ul id="sideboard" class="card-list-enhanced"></ul>
-      </div>
-      
-      <!-- Right Panel: Card Info -->
-      <div class="deck-panel deck-panel-right">
-        <div id="cardInfoPanel" class="card-info-panel">
-          <div class="card-image-container">
-            <img id="cardPreview" src="" alt="Select a card">
-          </div>
-          <div id="cardDetails" class="card-details">
-            <h4 id="cardName">Select a card</h4>
-            <div class="card-detail-row">
-              <span class="detail-label"><i class="material-icons">attach_money</i> Price:</span>
-              <span id="cardPrice" class="detail-value">–</span>
-            </div>
-            <div class="card-detail-row">
-              <span class="detail-label"><i class="material-icons">star</i> CMC:</span>
-              <span id="cardCmc" class="detail-value">–</span>
-            </div>
-            <div class="card-detail-row">
-              <span class="detail-label"><i class="material-icons">library_books</i> Type:</span>
-              <span id="cardType" class="detail-value">–</span>
-            </div>
-            <div class="card-detail-row">
-              <span class="detail-label"><i class="material-icons">collections</i> Editions:</span>
-              <span id="cardEditions" class="detail-value">Loading...</span>
-            </div>
-            <div class="card-detail-row">
-              <span class="detail-label"><i class="material-icons">gavel</i> Legality:</span>
-              <span id="cardLegality" class="detail-value">–</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Decks Table -->
+    <div id="decks-table" class="table-panel">
+      <table>
+        <tr>
+          <th>Deck Name</th>
+          <th>Tournament</th>
+          <th>Date</th>
+          <th>Rank</th>
+          <th>Colors</th>
+          <th>Est. Price</th>
+        </tr>
+        {% for h in history %}
+        {% if h.deck %}
+        <tr class="clickable-row deck-row"
+            data-player-name='{{ player.name|tojson }}'
+            data-deck-name='{{ h.deck.name|tojson }}'
+            data-deck-list='{{ h.deck.list_text|tojson }}'>
+          <td class="deck-cell">{{ h.deck.name }}</td>
+          <td>{{ h.tournament.name }}</td>
+          <td>{{ h.tournament.date }}</td>
+          <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
+          <td class="colors-cell"></td>
+          <td class="price-cell">Calculating...</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </table>
     </div>
   </div>
 </div>
+
+{% include '_deck_view_modal.html' %}
+
   <script>
-    function openDeckModal(row) {
-      const playerName = JSON.parse(row.dataset.playerName || '""');
-      const deckName   = JSON.parse(row.dataset.deckName || '""');
-      const deckList   = JSON.parse(row.dataset.deckList || '""');
-      if (!deckName) return;
+    // Toggle between tournaments and decks
+    function swapPanels() {
+      const tournamentsRadio = document.getElementById('tournaments');
+      const decksRadio = document.getElementById('decks');
+      const tournamentsPanel = document.getElementById('tournaments-table');
+      const decksPanel = document.getElementById('decks-table');
 
-      document.getElementById('deckModal').style.display = 'block';
-      document.getElementById('deckModalTitle').textContent = deckName + " (" + playerName + ")";
+      if (tournamentsRadio.checked) {
+        tournamentsPanel.classList.add('active');
+        decksPanel.classList.remove('active');
+      } else {
+        tournamentsPanel.classList.remove('active');
+        decksPanel.classList.add('active');
+        // Compute deck colors and prices when switching to decks view
+        computeAllDeckInfo();
+      }
+    }
 
-      const mainDeck = document.getElementById('mainDeck');
-      const sideboard = document.getElementById('sideboard');
-      mainDeck.innerHTML = "";
-      sideboard.innerHTML = "";
-      resetCardPanel();
+    document.getElementById('tournaments').addEventListener('change', swapPanels);
+    document.getElementById('decks').addEventListener('change', swapPanels);
 
-      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-      let inSideboard = false;
-
-      lines.forEach(line => {
-        if (/^sideboard/i.test(line.trim())) {
-          inSideboard = true;
-          return;
+    // Click handler for tournament rows
+    document.querySelectorAll('.tournament-row').forEach(row => {
+      row.addEventListener('click', function(event) {
+        if (event.target.closest('.deck-cell')) {
+          return; // Let the deck cell handler deal with it
         }
-        const parts = line.trim().split(/\s+/, 2);
-        const count = parts[0];
-        const name = line.trim().substring(count.length).trim();
-        if (!name) return;
-
-        const li = document.createElement('li');
-        const cardNameSpan = document.createElement('span');
-        cardNameSpan.className = 'card-name-text';
-        cardNameSpan.textContent = count + " " + name;
-        li.appendChild(cardNameSpan);
-
-        fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
-          .then(res => res.json())
-          .then(card => {
-            if (card.mana_cost) {
-              const manaSpan = document.createElement('span');
-              manaSpan.className = 'card-mana-cost';
-              manaSpan.innerHTML = renderManaCost(card.mana_cost);
-              li.appendChild(manaSpan);
-            }
-            
-            li.addEventListener('click', () => {
-              document.querySelectorAll('.card-list-enhanced li').forEach(el => el.classList.remove('selected'));
-              li.classList.add('selected');
-              displayCardInfo(card);
-            });
-          });
-
-        (inSideboard ? sideboard : mainDeck).appendChild(li);
+        const tournamentId = this.getAttribute('data-tournament-id');
+        window.location.href = `/tournament/${tournamentId}/standings`;
       });
-    }
+    });
 
-    function resetCardPanel() {
-      document.getElementById('cardPreview').src = '';
-      document.getElementById('cardName').textContent = 'Select a card';
-      document.getElementById('cardPrice').textContent = '–';
-      document.getElementById('cardCmc').textContent = '–';
-      document.getElementById('cardType').textContent = '–';
-      document.getElementById('cardEditions').textContent = '–';
-      document.getElementById('cardLegality').textContent = '–';
-    }
+    // Click handler for deck cells in tournament table
+    document.querySelectorAll('.tournament-row .deck-cell').forEach(cell => {
+      cell.addEventListener('click', function(event) {
+        event.stopPropagation();
+        openDeckModal(this.closest('.clickable-row'));
+      });
+    });
 
-    function displayCardInfo(card) {
-      console.log('Displaying card:', card.name);
-      
-      // Reset image animation
-      const preview = document.getElementById('cardPreview');
-      preview.classList.remove('loaded');
-      
-      // Fetch all printings to find oldest and cheapest
-      fetch(`https://api.scryfall.com/cards/search?q=!"`+encodeURIComponent(card.name)+`" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
-        .then(res => res.json())
-        .then(data => {
-          const editions = data.data || [];
-          
-          // Get oldest card image (first in the sorted list)
-          let imgUrl = "";
-          if (editions.length > 0) {
-            const oldestCard = editions[0];
-            if (oldestCard.image_uris?.normal) {
-              imgUrl = oldestCard.image_uris.normal;
-            } else if (oldestCard.card_faces?.[0]?.image_uris?.normal) {
-              imgUrl = oldestCard.card_faces[0].image_uris.normal;
-            }
-          }
-          
-          console.log('Image URL (oldest):', imgUrl);
-          
-          const preview = document.getElementById('cardPreview');
-          if (imgUrl) {
-            preview.classList.remove('loaded');
-            preview.src = imgUrl;
-            preview.style.display = 'block';
-            preview.onload = () => preview.classList.add('loaded');
-          } else {
-            preview.src = '';
-            preview.style.display = 'none';
-            preview.classList.remove('loaded');
-          }
-          
-          // Find cheapest price across all printings
-          let cheapestPrice = null;
-          editions.forEach(edition => {
-            const usd = parseFloat(edition.prices?.usd);
-            const usdFoil = parseFloat(edition.prices?.usd_foil);
-            
-            if (!isNaN(usd) && usd > 0) {
-              if (cheapestPrice === null || usd < cheapestPrice) {
-                cheapestPrice = usd;
-              }
-            }
-            if (!isNaN(usdFoil) && usdFoil > 0) {
-              if (cheapestPrice === null || usdFoil < cheapestPrice) {
-                cheapestPrice = usdFoil;
-              }
-            }
-          });
-          
-          // Display price
-          document.getElementById('cardPrice').textContent = cheapestPrice !== null ? `$${cheapestPrice.toFixed(2)}` : 'N/A';
-          
-          // Display edition count
-          const editionCount = editions.length;
-          const recentSets = editions.slice(0, 3).map(c => c.set_name).join(', ');
-          document.getElementById('cardEditions').textContent = 
-            editionCount > 3 ? `${editionCount} editions (${recentSets}...)` : 
-            editionCount > 0 ? recentSets : 'N/A';
-        })
-        .catch(() => {
-          // Fallback to original card data if editions fetch fails
-          let imgUrl = "";
-          if (card.image_uris?.normal) {
-            imgUrl = card.image_uris.normal;
-          } else if (card.card_faces?.[0]?.image_uris?.normal) {
-            imgUrl = card.card_faces[0].image_uris.normal;
-          }
-          
-          const preview = document.getElementById('cardPreview');
-          if (imgUrl) {
-            preview.classList.remove('loaded');
-            preview.src = imgUrl;
-            preview.style.display = 'block';
-            preview.onload = () => preview.classList.add('loaded');
-          }
-          
-          const price = card.prices?.usd || card.prices?.usd_foil;
-          document.getElementById('cardPrice').textContent = price ? `$${price}` : 'N/A';
-          document.getElementById('cardEditions').textContent = 'N/A';
-        });
-      
-      // Display card name
-      document.getElementById('cardName').textContent = card.name;
-      
-      // Display CMC
-      document.getElementById('cardCmc').textContent = card.cmc !== undefined ? card.cmc : '–';
-      
-      // Display type
-      document.getElementById('cardType').textContent = card.type_line || '–';
-      
-      // Display legality (Premodern)
-      const legality = card.legalities?.premodern || 'unknown';
-      const legalityEl = document.getElementById('cardLegality');
-      legalityEl.textContent = legality.charAt(0).toUpperCase() + legality.slice(1);
-      legalityEl.className = 'detail-value legality-' + legality;
-    }
-
-    function closeDeckModal() {
-      document.getElementById('deckModal').style.display = 'none';
-      document.getElementById('mainDeck').innerHTML = "";
-      document.getElementById('sideboard').innerHTML = "";
-      resetCardPanel();
-    }
+    // Click handler for deck rows in decks table
+    document.querySelectorAll('.deck-row').forEach(row => {
+      row.addEventListener('click', function(event) {
+        openDeckModal(this);
+      });
+    });
 
     document.querySelectorAll('tr.clickable-row').forEach(row => {
-      row.addEventListener('click', () => openDeckModal(row));
+      // Click on row goes to tournament
+      row.addEventListener('click', (e) => {
+        const tournamentId = row.dataset.tournamentId;
+        if (tournamentId) {
+          window.location.href = `/tournament/${tournamentId}/standings`;
+        }
+      });
+      
+      // Click on deck cell opens modal (stop propagation to prevent tournament navigation)
+      const deckCell = row.querySelector('.deck-cell');
+      if (deckCell) {
+        deckCell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openDeckModal(row);
+        });
+        deckCell.style.cursor = 'zoom-in';
+      }
+      
       row.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          openDeckModal(row);
+          const tournamentId = row.dataset.tournamentId;
+          if (tournamentId) {
+            window.location.href = `/tournament/${tournamentId}/standings`;
+          }
         }
       });
     });
@@ -359,7 +377,8 @@
         data.data.forEach(sym => {
           symbolMap[sym.symbol] = sym.svg_uri;
         });
-        document.querySelectorAll('tr.clickable-row').forEach(row => {
+        // Compute colors for tournament table on load
+        document.querySelectorAll('.tournament-row').forEach(row => {
           const deckListRaw = row.dataset.deckList;
           if (deckListRaw) {
             const deckList = JSON.parse(deckListRaw || '""');
@@ -367,6 +386,22 @@
           }
         });
       });
+
+    // Compute deck colors and prices for decks table (lazy load)
+    let deckInfoComputed = false;
+    function computeAllDeckInfo() {
+      if (deckInfoComputed) return;
+      deckInfoComputed = true;
+
+      document.querySelectorAll('.deck-row').forEach(row => {
+        const deckListRaw = row.dataset.deckList;
+        if (deckListRaw) {
+          const deckList = JSON.parse(deckListRaw || '""');
+          computeDeckColors(deckList, row);
+          computeDeckPrice(deckList, row);
+        }
+      });
+    }
 
     function renderManaCost(manaCost) {
       if (!manaCost) return "";
@@ -410,6 +445,49 @@
             }
           });
         }
+      });
+    }
+
+    function computeDeckPrice(deckList, row) {
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      const cardRequests = [];
+      
+      for (const line of lines) {
+        if (/^sideboard/i.test(line.trim())) break; // Only count main deck
+        const parts = line.trim().split(/\s+/, 2);
+        const count = parseInt(parts[0]);
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name || isNaN(count)) continue;
+        cardRequests.push({ name, count });
+      }
+
+      if (cardRequests.length === 0) {
+        const priceCell = row.querySelector('.price-cell');
+        if (priceCell) priceCell.textContent = '–';
+        return;
+      }
+
+      const promises = cardRequests.slice(0, 75).map(({ name, count }) =>
+        fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(card => {
+            if (card && card.prices && card.prices.usd) {
+              return parseFloat(card.prices.usd) * count;
+            }
+            return 0;
+          })
+          .catch(() => 0)
+      );
+
+      Promise.all(promises).then(prices => {
+        const total = prices.reduce((sum, p) => sum + p, 0);
+        const priceCell = row.querySelector('.price-cell');
+        if (priceCell) {
+          priceCell.textContent = total > 0 ? `$${total.toFixed(2)}` : '–';
+        }
+      }).catch(() => {
+        const priceCell = row.querySelector('.price-cell');
+        if (priceCell) priceCell.textContent = '–';
       });
     }
   </script>

@@ -471,10 +471,302 @@
         color: #333;
         font-weight: 500;
       }
+
+      /* Tournament Header Form Styling */
+      .tournament-header-form {
+        background: transparent;
+        padding: 1.5rem 0;
+        margin-bottom: 2rem;
+      }
+
+      .tournament-header-inputs {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-end;
+      }
+
+      .tournament-name-group {
+        flex: 2;
+      }
+
+      .tournament-date-group {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .tournament-header-form label {
+        display: block;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .tournament-header-form input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: white;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+      }
+
+      .tournament-header-form input:focus {
+        outline: none;
+        border-color: #4CAF50;
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+      }
+
+      .tournament-name-group input {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .tournament-date-group input {
+        font-size: 1rem;
+        color: #2c3e50;
+      }
+
+      /* Dark mode support for tournament header */
+      html.dark-mode .tournament-header-form label {
+        color: #aaa;
+      }
+
+      html.dark-mode .tournament-header-form input {
+        background: #2a2a2a;
+        color: #e0e0e0;
+        border-color: #444;
+      }
+
+      html.dark-mode .tournament-header-form input:focus {
+        border-color: #4CAF50;
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+      }
+
+      /* Enhanced Store Selector */
+      .store-selector-wrapper {
+        position: relative;
+        margin-bottom: 1rem;
+      }
+
+      .store-selector-wrapper.required h3::after {
+        content: " *";
+        color: #d9534f;
+      }
+
+      .store-selector-wrapper.error .store-select-button {
+        border-color: #d9534f;
+        box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.1);
+      }
+
+      .store-select-button {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .store-select-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+      }
+
+      .store-select-image {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+        border-radius: 4px;
+      }
+
+      .store-select-placeholder {
+        width: 32px;
+        height: 32px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 1rem;
+      }
+
+      .store-select-button:hover {
+        border-color: #4CAF50;
+      }
+
+      .store-select-button.active {
+        border-color: #4CAF50;
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+      }
+
+      .store-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 400px;
+        overflow-y: auto;
+        background: white;
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        margin-top: 0.25rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+      }
+
+      .store-dropdown.active {
+        display: block;
+      }
+
+      .store-option {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .store-option:last-child {
+        border-bottom: none;
+      }
+
+      .store-option:hover {
+        background: #f8f9fa;
+      }
+
+      .store-option.selected {
+        background: #e8f5e9;
+      }
+
+      .store-option-image {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+        margin-right: 1rem;
+        border-radius: 4px;
+      }
+
+      .store-option-placeholder {
+        width: 40px;
+        height: 40px;
+        margin-right: 1rem;
+        background: #e0e0e0;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 1.2rem;
+      }
+
+      .store-option-text {
+        flex: 1;
+      }
+
+      .store-option-name {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .store-option-location {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+      }
+
+      .store-error-message {
+        color: #d9534f;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        display: none;
+      }
+
+      .store-selector-wrapper.error .store-error-message {
+        display: block;
+      }
+
+      /* Dark mode store selector */
+      html.dark-mode .store-select-button {
+        background: #2a2a2a;
+        color: #e0e0e0;
+        border-color: #444;
+      }
+
+      html.dark-mode .store-dropdown {
+        background: #2a2a2a;
+        border-color: #4CAF50;
+      }
+
+      html.dark-mode .store-option {
+        border-bottom-color: #333;
+      }
+
+      html.dark-mode .store-option:hover {
+        background: #333;
+      }
+
+      html.dark-mode .store-option.selected {
+        background: #1e3a1e;
+      }
+
+      html.dark-mode .store-option-name {
+        color: #e0e0e0;
+      }
+
+      html.dark-mode .store-option-location {
+        color: #aaa;
+      }
+
+      html.dark-mode .store-option-placeholder {
+        background: #444;
+      }
     </style>
 
 
-    <h1>{% if tournament.imported_from_text and tournament.name %}{{ tournament.name }}{% else %}Tournament Round {{ round_num }}{% endif %}</h1>
+    <form class="tournament-header-form" method="POST" action="{{ url_for('update_tournament_metadata', tid=tournament.id) }}">
+      <input type="hidden" name="current_round" value="{{ round_num }}">
+      <div class="tournament-header-inputs">
+        <div class="tournament-name-group">
+          <label for="tournament-name">Tournament Name</label>
+          <input 
+            type="text" 
+            id="tournament-name" 
+            name="tournament_name"
+            value="{% if tournament.name %}{{ tournament.name }}{% else %}Tournament Round {{ round_num }}{% endif %}"
+            placeholder="Enter tournament name"
+            onchange="this.form.submit()">
+        </div>
+        <div class="tournament-date-group">
+          <label for="tournament-date">Date</label>
+          <input 
+            type="date" 
+            id="tournament-date" 
+            name="tournament_date"
+            value="{{ tournament.date }}"
+            onchange="this.form.submit()"
+            required>
+        </div>
+      </div>
+    </form>
 
     {% if tournament.rounds > 1 %}
     <button id="toggleAllRoundsBtn" class="btn-toggle-rounds">
@@ -699,15 +991,33 @@
   </form>
 
   {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
-  <h3>Store</h3>
-  <select id="storeSelect" name="store_id">
-    <option value="">-- Select Store --</option>
-    {% for store in stores %}
-      <option value="{{ store.id }}" {% if tournament.store_id == store.id %}selected{% endif %}>
-        {{ store.name }}{% if store.location %} ({{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}){% elif store.country %} ({{ store.country }}){% endif %}
-      </option>
-    {% endfor %}
-  </select>
+  <div class="store-selector-wrapper required" id="storeWrapper">
+    <h3>Store</h3>
+    <button type="button" class="store-select-button" id="storeSelectBtn">
+      <div class="store-select-content">
+        <div id="storeSelectImage"></div>
+        <span id="storeSelectText">Select a store...</span>
+      </div>
+      <span>▼</span>
+    </button>
+    <input type="hidden" id="storeSelect" name="store_id" value="{{ tournament.store_id if tournament.store_id else '' }}">
+    <div class="store-dropdown" id="storeDropdown">
+      {% for store in stores %}
+        <div class="store-option" data-store-id="{{ store.id }}" data-store-name="{{ store.name }}" data-store-location="{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}">
+          {% if store.image_url %}
+            <img src="{{ url_for('static', filename=store.image_url) }}" class="store-option-image" alt="{{ store.name }}">
+          {% else %}
+            <div class="store-option-placeholder">🏪</div>
+          {% endif %}
+          <div class="store-option-text">
+            <div class="store-option-name">{{ store.name }}</div>
+            <div class="store-option-location">{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="store-error-message">Please select a store before confirming</div>
+  </div>
   <div id="storeStatus"></div>
   {% endif %}
 </div>
@@ -721,26 +1031,122 @@
     </button>
   </form>
 
-  <h3>Store</h3>
-  <select id="storeSelect" name="store_id">
-    <option value="">-- Select Store --</option>
-    {% for store in stores %}
-      <option value="{{ store.id }}" {% if tournament.store_id == store.id %}selected{% endif %}>
-        {{ store.name }}{% if store.location %} ({{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}){% elif store.country %} ({{ store.country }}){% endif %}
-      </option>
-    {% endfor %}
-  </select>
+  <div class="store-selector-wrapper required" id="storeWrapperEdit">
+    <h3>Store</h3>
+    <button type="button" class="store-select-button" id="storeSelectBtnEdit">
+      <div class="store-select-content">
+        <div id="storeSelectImageEdit"></div>
+        <span id="storeSelectTextEdit">Select a store...</span>
+      </div>
+      <span>▼</span>
+    </button>
+    <input type="hidden" id="storeSelectEdit" name="store_id" value="{{ tournament.store_id if tournament.store_id else '' }}">
+    <div class="store-dropdown" id="storeDropdownEdit">
+      {% for store in stores %}
+        <div class="store-option" data-store-id="{{ store.id }}" data-store-name="{{ store.name }}" data-store-location="{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}">
+          {% if store.image_url %}
+            <img src="{{ url_for('static', filename=store.image_url) }}" class="store-option-image" alt="{{ store.name }}">
+          {% else %}
+            <div class="store-option-placeholder">🏪</div>
+          {% endif %}
+          <div class="store-option-text">
+            <div class="store-option-name">{{ store.name }}</div>
+            <div class="store-option-location">{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="store-error-message">Please select a store before finalizing</div>
+  </div>
   <div id="storeStatus"></div>
 </div>
 {% endif %}
 
 <script>
 {% if (tournament.pending or is_editing) and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
-document.getElementById("storeSelect").addEventListener("change", function() {
-  const storeId = this.value;
+// Store Selector
+function initStoreSelector(buttonId, textId, imageId, dropdownId, hiddenInputId, wrapperId) {
+  const button = document.getElementById(buttonId);
+  const buttonText = document.getElementById(textId);
+  const buttonImage = document.getElementById(imageId);
+  const dropdown = document.getElementById(dropdownId);
+  const hiddenInput = document.getElementById(hiddenInputId);
+  const wrapper = document.getElementById(wrapperId);
+  const options = dropdown.querySelectorAll('.store-option');
+  
+  let selectedStoreId = hiddenInput.value;
+  
+  // Show selected store in button
+  function updateButtonText() {
+    if (selectedStoreId) {
+      const selectedOption = dropdown.querySelector(`[data-store-id="${selectedStoreId}"]`);
+      if (selectedOption) {
+        buttonText.textContent = selectedOption.dataset.storeName;
+        
+        // Update image
+        const imgElement = selectedOption.querySelector('.store-option-image');
+        const placeholderElement = selectedOption.querySelector('.store-option-placeholder');
+        
+        if (imgElement) {
+          buttonImage.innerHTML = `<img src="${imgElement.src}" class="store-select-image" alt="${selectedOption.dataset.storeName}">`;
+        } else if (placeholderElement) {
+          buttonImage.innerHTML = '<div class="store-select-placeholder">🏪</div>';
+        }
+        
+        wrapper.classList.remove('error');
+        
+        // Mark as selected
+        options.forEach(opt => opt.classList.remove('selected'));
+        selectedOption.classList.add('selected');
+      }
+    } else {
+      buttonText.textContent = 'Select a store...';
+      buttonImage.innerHTML = '';
+    }
+  }
+  
+  // Initialize
+  updateButtonText();
+  
+  // Toggle dropdown on button click
+  button.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const isActive = dropdown.classList.contains('active');
+    dropdown.classList.toggle('active');
+    button.classList.toggle('active', !isActive);
+  });
+  
+  // Select option on click
+  options.forEach(option => {
+    option.addEventListener('click', function() {
+      selectedStoreId = this.dataset.storeId;
+      hiddenInput.value = selectedStoreId;
+      buttonText.textContent = this.dataset.storeName;
+      dropdown.classList.remove('active');
+      button.classList.remove('active');
+      wrapper.classList.remove('error');
+      
+      // Mark as selected
+      options.forEach(opt => opt.classList.remove('selected'));
+      this.classList.add('selected');
+      
+      // Submit the store change
+      submitStoreChange(selectedStoreId);
+    });
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!wrapper.contains(e.target)) {
+      dropdown.classList.remove('active');
+      button.classList.remove('active');
+    }
+  });
+}
+
+function submitStoreChange(storeId) {
   if (!storeId) return;
   
-  // Create a form and submit it to follow the redirect properly
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = "{{ url_for('set_tournament_store', tid=tid) }}";
@@ -753,7 +1159,54 @@ document.getElementById("storeSelect").addEventListener("change", function() {
   
   document.body.appendChild(form);
   form.submit();
-});
+}
+
+// Validate store before form submit
+function validateStore(wrapperId, hiddenInputId) {
+  const wrapper = document.getElementById(wrapperId);
+  const hiddenInput = document.getElementById(hiddenInputId);
+  
+  if (!hiddenInput.value) {
+    wrapper.classList.add('error');
+    return false;
+  }
+  return true;
+}
+
+// Initialize both selectors
+{% if tournament.pending %}
+if (document.getElementById('storeWrapper')) {
+  initStoreSelector('storeSelectBtn', 'storeSelectText', 'storeSelectImage', 'storeDropdown', 'storeSelect', 'storeWrapper');
+  
+  // Add validation to confirm button
+  const confirmBtn = document.querySelector('.btn-confirm');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function(e) {
+      if (!validateStore('storeWrapper', 'storeSelect')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+}
+{% endif %}
+
+{% if is_editing %}
+if (document.getElementById('storeWrapperEdit')) {
+  initStoreSelector('storeSelectBtnEdit', 'storeSelectTextEdit', 'storeSelectImageEdit', 'storeDropdownEdit', 'storeSelectEdit', 'storeWrapperEdit');
+  
+  // Add validation to finalize button
+  const finalizeBtn = document.querySelector('form[action="{{ url_for("finalize_tournament_edit", tid=tid) }}"] button');
+  if (finalizeBtn) {
+    finalizeBtn.addEventListener('click', function(e) {
+      if (!validateStore('storeWrapperEdit', 'storeSelectEdit')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+}
+{% endif %}
 {% endif %}
 </script>
 
