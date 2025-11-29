@@ -35,25 +35,83 @@
         color: #e0e0e0;
       }
       html.dark-mode header.site-header {
-        background: #2a2a2a;
-        border-color: #4CAF50;
+        background: #3a3a3a;
+        border-bottom: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       }
       html.dark-mode .navbar-inner a {
         color: #ffffff !important;
+        border-right-color: #777777;
+        border-right-width: 2px;
+      }
+      html.dark-mode .navbar-inner a:link,
+      html.dark-mode .navbar-inner a:visited {
+        color: #ffffff !important;
       }
       html.dark-mode .navbar-inner a:hover {
-        background-color: #3a3a3a;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff !important;
+      }
+      html.dark-mode .navbar-inner a.active {
+        color: #fff !important;
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        border-right-color: transparent;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
       }
       html.dark-mode .navbar-inner .material-icons {
-        color: #ffffff !important;
+        color: inherit !important;
       }
       html.dark-mode .btn-primary,
       html.dark-mode .btn-request {
-        color: #fff !important;
+        color: #ffffff !important;
+        background: transparent !important;
+        border-right: 2px solid #777777;
+      }
+      html.dark-mode .btn-primary.active,
+      html.dark-mode .btn-request.active {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+        border-right-color: transparent;
+      }
+      html.dark-mode .btn-primary:hover,
+      html.dark-mode .btn-request:hover {
+        color: #ffffff !important;
+        background: rgba(255, 255, 255, 0.1) !important;
       }
       html.dark-mode .btn-primary .material-icons,
       html.dark-mode .btn-request .material-icons {
-        color: #fff !important;
+        color: inherit !important;
+      }
+      html.dark-mode .profile-trigger {
+        background: transparent !important;
+        border: 2px solid #666666;
+      }
+      html.dark-mode .profile-trigger:hover {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: #888888;
+      }
+      html.dark-mode .profile-trigger img {
+        border: none;
+      }
+      html.dark-mode .profile-trigger .profile-name {
+        color: #ffffff;
+      }
+      html.dark-mode .profile-trigger .profile-name {
+        color: #f3f4f6;
+      }
+      html.dark-mode .profile-dropdown {
+        background: #1f2937;
+        border-color: #374151;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      }
+      html.dark-mode .profile-dropdown a {
+        color: #e5e7eb !important;
+      }
+      html.dark-mode .profile-dropdown a:hover {
+        background: #374151;
+      }
+      html.dark-mode .profile-dropdown a i.material-icons {
+        color: #9ca3af !important;
       }
 
       /* Dark mode - Global overrides */
@@ -133,19 +191,18 @@
       html.dark-mode td span.elo-match-neg {
         color: #ef5350 !important;
       }
-      html.dark-mode a:not(.btn-primary):not(.btn-request):not(.profile-trigger) {
+      html.dark-mode a:not(.btn-primary):not(.btn-request):not(.profile-trigger):not(.navbar-inner a) {
         color: #6ab0f3 !important;
+      }
+      html.dark-mode .navbar-inner a,
+      html.dark-mode .navbar-inner a:link,
+      html.dark-mode .navbar-inner a:visited {
+        color: #ffffff !important;
       }
       html.dark-mode a:not(.btn-primary):not(.btn-request):not(.profile-trigger):hover {
         color: #8ac4f7 !important;
       }
       /* Override for navbar links specifically */
-      html.dark-mode .navbar-inner a:not(.btn-primary):not(.btn-request) {
-        color: #ffffff !important;
-      }
-      html.dark-mode .navbar-inner a:not(.btn-primary):not(.btn-request):hover {
-        color: #ffffff !important;
-      }
       html.dark-mode small {
         color: #b0b0b0 !important;
       }
@@ -217,8 +274,8 @@
       html.dark-mode .btn-danger:hover {
         background-color: #b71c1c;
       }
-      html.dark-mode .btn-primary,
-      html.dark-mode .btn-request,
+      html.dark-mode .btn-primary:not(.navbar-inner .btn-primary),
+      html.dark-mode .btn-request:not(.navbar-inner .btn-request),
       html.dark-mode .btn-danger,
       html.dark-mode .btn {
         border-color: transparent !important;
@@ -585,45 +642,150 @@
         color: #999 !important;
       }
       
+      /* Light mode navbar */
       header.site-header {
         position: sticky;
         top: 0;
         z-index: 999;
-        width: 98%;
+        width: 100%;
         max-width: none;
-        margin: 0 auto 0.75rem;
-        background: #d4edda;
-        border: 1px solid #b2d8b2;
-        border-radius: 6px;
-        padding: 0.5rem 0;
-      }
-      .navbar-inner {
-        padding: 0 1rem;
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 1rem;
-        box-sizing: border-box;
+        margin: 0;
+        background: #e5e5e5;
+        border-bottom: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
       .navbar-inner a {
-        color: #155724;
+        color: #2c2c2c !important;
         text-decoration: none;
-        font-weight: bold;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        padding: 1.1rem 2rem;
+        border-radius: 0;
+        transition: all 0.2s ease;
         display: inline-flex;
         align-items: center;
         gap: 0.3rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 4px;
-        line-height: 1.2;
+        position: relative;
+        background: transparent;
+        border-right: 2px solid #b0b0b0;
+      }
+      .navbar-inner a:link,
+      .navbar-inner a:visited {
+        color: #2c2c2c !important;
       }
       .navbar-inner a:hover {
-        background-color: #cce5cc;
-        text-decoration: none;
+        color: #2c2c2c !important;
+        background: rgba(0, 0, 0, 0.05);
       }
-      .navbar-inner .material-icons {
+      .navbar-inner a.active {
+        color: #fff !important;
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        box-shadow: none;
+        border-right-color: transparent;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+      }
+      .btn-primary, .btn-request {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #2c2c2c !important;
+        border-right: 2px solid #b0b0b0;
+      }
+      .btn-primary.active, .btn-request.active {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+        color: #ffffff !important;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+        border-right-color: transparent;
+      }
+      .btn-primary:hover, .btn-request:hover {
+        background: rgba(0, 0, 0, 0.05) !important;
+        color: #2c2c2c !important;
+      }
+      .login-button {
+        color: #2c2c2c !important;
+        border: 2px solid #999999;
+        border-left: 2px solid #b0b0b0;
+      }
+      .login-icon i {
+        color: #2c2c2c;
+      }
+      .profile-trigger {
+        border: 2px solid #999999;
+        border-left: 2px solid #b0b0b0;
+      }
+      .profile-name {
+        color: #2c2c2c !important;
+      }
+      
+      /* Dark mode navbar */
+      html.dark-mode header.site-header {
+        background: #3a3a3a;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+      html.dark-mode .navbar-inner a {
+        color: #ffffff !important;
+        border-right: 2px solid #777777;
+      }
+      html.dark-mode .navbar-inner a:link,
+      html.dark-mode .navbar-inner a:visited {
+        color: #ffffff !important;
+      }
+      html.dark-mode .navbar-inner a:hover {
+        color: #ffffff !important;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      html.dark-mode .btn-primary, 
+      html.dark-mode .btn-request {
+        color: #ffffff !important;
+        border-right: 2px solid #777777;
+      }
+      html.dark-mode .btn-primary:hover, 
+      html.dark-mode .btn-request:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+      }
+      html.dark-mode .login-button {
+        color: #ffffff !important;
+        border: 2px solid #666666;
+        border-left: 2px solid #777777;
+      }
+      html.dark-mode .login-icon i {
+        color: #ffffff;
+      }
+      html.dark-mode .profile-trigger {
+        border: 2px solid #666666;
+        border-left: 2px solid #777777;
+      }
+      html.dark-mode .profile-name {
+        color: #ffffff !important;
+      }
+      .navbar-inner {
+        padding: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: stretch;
+        gap: 0;
+        height: 60px;
+        max-width: 1400px;
+        margin: 0 auto;
+        box-sizing: border-box;
+      }
+      .navbar-left {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+      }
+      .navbar-inner a i.material-icons {
         font-size: 18px;
-        color: #155724;
+        display: none;
+      }
+      .navbar-left a:last-child {
+        border-right: 2px solid #b0b0b0;
+      }
+      html.dark-mode .navbar-left a:last-child {
+        border-right: 2px solid #777777;
       }
       .container {
         max-width: 1200px;
@@ -636,63 +798,131 @@
       body {
         font-family: system-ui, sans-serif;
         margin: 0;
-        padding-top: 1rem;
+        padding-top: 0;
         min-height: 100%;
         display: flex;
         flex-direction: column;
       }
-      .btn-primary, .btn-request {
-        padding: 0.4rem 0.8rem;
-        border-radius: 4px;
-        color: #fff !important;
-        font-weight: bold;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        transition: background-color 0.2s ease, opacity 0.2s ease;
-      }
-      .btn-primary { background-color: #4CAF50; }
-      .btn-request { background-color: #007bff; }
-      .btn-primary:hover { background-color: #45a049; }
-      .btn-request:hover { background-color: #0069d9; }
 
       /* Profile dropdown */
       .profile-menu {
         position: relative;
-        display: inline-block;
-      }
-      .profile-trigger {
-        background-color: #d9534f;
-        color: #fff;
-        padding: 0.4rem 0.8rem;
-        border-radius: 4px;
-        cursor: pointer;
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
+      }
+      .profile-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.3rem 0.5rem 0.3rem 1rem;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: transparent !important;
+        border: 2px solid #666666;
+        border-left: 2px solid #777777;
+        height: auto;
+        margin: 0.65rem 1.5rem;
       }
       .profile-trigger:hover {
-        background-color: #c9302c;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: #888888;
+      }
+      .login-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.3rem 0.5rem 0.3rem 1rem;
+        border-radius: 18px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: transparent !important;
+        border: 2px solid #666666;
+        border-left: 2px solid #777777;
+        height: auto;
+        margin: 0.65rem 1.5rem;
+        color: #ffffff !important;
+        text-decoration: none;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .login-button:hover {
+        background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+        border-color: #10b981;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+      }
+      .login-text {
+        order: 1;
+      }
+      .login-icon {
+        order: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-icon i {
+        font-size: 24px;
+        color: #ffffff;
+      }
+      .profile-trigger img {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        order: 2;
+      }
+      .profile-trigger .profile-name {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #ffffff;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        order: 1;
+      }
+      .profile-trigger .material-icons {
+        display: none;
+      }
+      .profile-trigger i.material-icons {
+        font-size: 20px;
+        color: #9ca3af;
       }
       .profile-dropdown {
         display: none;
         position: absolute;
         right: 0;
-        top: 100%;
+        top: calc(100% + 8px);
         background-color: #fff;
-        min-width: 200px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        border-radius: 6px;
+        min-width: 220px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 8px;
         z-index: 1000;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
       }
       .profile-dropdown a {
-        display: block;
-        padding: 0.6rem 1rem;
-        color: #155724;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        color: #374151 !important;
         text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: normal;
+        transition: background-color 0.15s ease;
       }
       .profile-dropdown a:hover {
-        background-color: #f2f2f2;
+        background-color: #f9fafb;
+      }
+      .profile-dropdown a i.material-icons {
+        font-size: 20px;
+        color: #6b7280;
+        display: inline-block;
       }
       .profile-menu.open .profile-dropdown {
         display: block;
@@ -1069,36 +1299,41 @@
   <body>
     <header class="site-header">
       <div class="navbar-inner">
-        <a href="{{ url_for('players') }}"><i class="material-icons">groups</i> Player List</a>
+        <div class="navbar-left">
+          <a href="{{ url_for('players') }}" class="{% if request.endpoint == 'players' %}active{% endif %}">Players</a>
 
-        {% if current_user.is_authenticated %}
-          {% if current_user.is_admin or current_user.is_scorekeeper %}
-            <a href="{{ url_for('choose_tournament_type') }}" class="btn-primary">
-              <i class="material-icons">add</i> Add Tournament
-            </a>
-          {% else %}
-            <a href="{{ url_for('request_access') }}" class="btn-request">
-              <i class="material-icons">lock_open</i> Request Access
+          {% if current_user.is_authenticated %}
+            {% if current_user.is_admin or current_user.is_scorekeeper %}
+              <a href="{{ url_for('choose_tournament_type') }}" class="btn-primary {% if request.endpoint in ['choose_tournament_type', 'new_tournament', 'new_tournament_casual', 'import_tournament_text', 'import_tournament_pdf'] %}active{% endif %}">
+                Add Tournament
+              </a>
+            {% else %}
+              <a href="{{ url_for('request_access') }}" class="btn-request">
+                Request Access
+              </a>
+            {% endif %}
+          {% endif %}
+
+          <a href="{{ url_for('decks_list') }}" class="{% if request.endpoint == 'decks_list' %}active{% endif %}">Decks</a>
+          <a href="{{ url_for('tournaments_list') }}" class="{% if request.endpoint == 'tournaments_list' %}active{% endif %}">Tournaments</a>
+          <a href="{{ url_for('blog') }}" class="{% if request.endpoint == 'blog' %}active{% endif %}">Blog</a>
+
+          {% if current_user.is_authenticated and current_user.is_admin %}
+            <a href="{{ url_for('admin_panel') }}" class="{% if request.endpoint == 'admin_panel' %}active{% endif %}">
+              Admin
             </a>
           {% endif %}
-        {% endif %}
-
-        <a href="{{ url_for('tournaments_list') }}"><i class="material-icons">list</i> See Past Tournaments</a>
-        <a href="{{ url_for('decks_list') }}"><i class="material-icons">style</i> See All Decks</a>
-        <a href="{{ url_for('blog') }}"><i class="material-icons">article</i> Blog</a>
-
-        {% if current_user.is_authenticated and current_user.is_admin %}
-          <a href="{{ url_for('admin_panel') }}" class="btn-request">
-            <i class="material-icons">admin_panel_settings</i> Admin
-          </a>
-        {% endif %}
+        </div>
 
         {% if current_user.is_authenticated %}
           <div class="profile-menu" id="profileMenu">
             <div class="profile-trigger">
-              <i class="material-icons">account_circle</i>
-              {{ current_user.name }}
-              <i class="material-icons">expand_more</i>
+              <span class="profile-name">{{ current_user.name }}</span>
+              {% if current_user.profile_picture %}
+                <img src="{{ current_user.profile_picture }}" alt="{{ current_user.name }}">
+              {% else %}
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: transparent; border: 2px solid #888888; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; color: #ffffff; order: 2;">{{ current_user.name[0].upper() }}</div>
+              {% endif %}
             </div>
             <div class="profile-dropdown">
               <a href="{{ url_for('profile_settings') }}"><i class="material-icons">settings</i> Settings</a>
@@ -1111,8 +1346,11 @@
             </div>
           </div>
         {% else %}
-          <a href="{{ url_for('google.login') }}" class="btn-primary">
-            <i class="material-icons">login</i> Login with Google
+          <a href="{{ url_for('google.login') }}" class="login-button">
+            <span class="login-text">Login with Google</span>
+            <div class="login-icon">
+              <i class="material-icons">login</i>
+            </div>
           </a>
         {% endif %}
       </div>

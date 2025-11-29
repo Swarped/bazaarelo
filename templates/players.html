@@ -100,6 +100,73 @@
         color: #777;
       }
 
+      /* Smooth row animations for filtering */
+      #playersTable,
+      #casualPlayersTable {
+        table-layout: fixed;
+        width: 100%;
+      }
+
+      #playersTable tr,
+      #casualPlayersTable tr {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+      }
+
+      /* Initial page load animation */
+      #playersTable tr:not(:first-child),
+      #casualPlayersTable tr:not(:first-child) {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      #playersTable tr:not(:first-child).loaded,
+      #casualPlayersTable tr:not(:first-child).loaded {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Stagger the transition delay for each row on page load */
+      #playersTable tr.loaded:nth-child(2) { transition-delay: 0.05s; }
+      #playersTable tr.loaded:nth-child(3) { transition-delay: 0.1s; }
+      #playersTable tr.loaded:nth-child(4) { transition-delay: 0.15s; }
+      #playersTable tr.loaded:nth-child(5) { transition-delay: 0.2s; }
+      #playersTable tr.loaded:nth-child(6) { transition-delay: 0.25s; }
+      #playersTable tr.loaded:nth-child(7) { transition-delay: 0.3s; }
+      #playersTable tr.loaded:nth-child(8) { transition-delay: 0.35s; }
+      #playersTable tr.loaded:nth-child(9) { transition-delay: 0.4s; }
+      #playersTable tr.loaded:nth-child(10) { transition-delay: 0.45s; }
+      #playersTable tr.loaded:nth-child(n+11) { transition-delay: 0.5s; }
+
+      #casualPlayersTable tr.loaded:nth-child(2) { transition-delay: 0.05s; }
+      #casualPlayersTable tr.loaded:nth-child(3) { transition-delay: 0.1s; }
+      #casualPlayersTable tr.loaded:nth-child(4) { transition-delay: 0.15s; }
+      #casualPlayersTable tr.loaded:nth-child(5) { transition-delay: 0.2s; }
+      #casualPlayersTable tr.loaded:nth-child(6) { transition-delay: 0.25s; }
+      #casualPlayersTable tr.loaded:nth-child(7) { transition-delay: 0.3s; }
+      #casualPlayersTable tr.loaded:nth-child(8) { transition-delay: 0.35s; }
+      #casualPlayersTable tr.loaded:nth-child(9) { transition-delay: 0.4s; }
+      #casualPlayersTable tr.loaded:nth-child(10) { transition-delay: 0.45s; }
+      #casualPlayersTable tr.loaded:nth-child(n+11) { transition-delay: 0.5s; }
+
+      #playersTable tr.hidden,
+      #casualPlayersTable tr.hidden {
+        opacity: 0;
+        transform: translateY(-5px);
+        position: absolute;
+        visibility: hidden;
+        transition-delay: 0s !important;
+      }
+
+      /* Don't animate the header row */
+      #playersTable tr:first-child,
+      #casualPlayersTable tr:first-child {
+        transition: none;
+        position: static !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
       html.dark-mode #searchBar:focus {
         border-color: #4a9eff;
         box-shadow: 0 0 0 3px rgba(74,158,255,0.15);
@@ -760,15 +827,15 @@ html.dark-mode .featured-posts-section h2 {
 
       <div class="filters-toolbar">
         <input type="text" id="searchBar" placeholder="🔍 Search players...">
-        <form method="GET" class="filter-group">
+        <form method="GET" class="filter-group" id="countryFilterForm">
           <label for="country">Country:</label>
-          <select name="country" id="country" class="country-select" onchange="this.form.submit()">
-            <option value="" {% if request.args.get('country') == '' %}selected{% endif %}>All Countries</option>
-            <option value="AR" {% if request.args.get('country') == 'AR' %}selected{% endif %}>🇦🇷 Argentina</option>
-            <option value="BR" {% if request.args.get('country') == 'BR' %}selected{% endif %}>🇧🇷 Brazil</option>
-            <option value="CL" {% if request.args.get('country') == 'CL' %}selected{% endif %}>🇨🇱 Chile</option>
-            <option value="US" {% if request.args.get('country') == 'US' %}selected{% endif %}>🇺🇸 United States</option>
-            <option value="ES" {% if request.args.get('country') == 'ES' %}selected{% endif %}>🇪🇸 Spain</option>
+          <select name="country" id="country" class="country-select">
+            <option value="">All Countries</option>
+            {% if 'AR' in available_countries %}<option value="AR" {% if request.args.get('country') == 'AR' %}selected{% endif %}>🇦🇷 Argentina</option>{% endif %}
+            {% if 'BR' in available_countries %}<option value="BR" {% if request.args.get('country') == 'BR' %}selected{% endif %}>🇧🇷 Brazil</option>{% endif %}
+            {% if 'CL' in available_countries %}<option value="CL" {% if request.args.get('country') == 'CL' %}selected{% endif %}>🇨🇱 Chile</option>{% endif %}
+            {% if 'US' in available_countries %}<option value="US" {% if request.args.get('country') == 'US' %}selected{% endif %}>🇺🇸 United States</option>{% endif %}
+            {% if 'ES' in available_countries %}<option value="ES" {% if request.args.get('country') == 'ES' %}selected{% endif %}>🇪🇸 Spain</option>{% endif %}
           </select>
         </form>
       </div>
@@ -786,7 +853,7 @@ html.dark-mode .featured-posts-section h2 {
               <th>Country</th>
             </tr>
             {% for p in players %}
-            <tr class="clickable-row" data-href="{{ url_for('player_info', pid=p.player.id) }}">
+            <tr class="clickable-row" data-href="{{ url_for('player_info', pid=p.player.id) }}" data-country="{{ player_country(p.player.id) or '' }}">
               <td>
                 {% if p.rank %}
                   #{{ p.rank }}
@@ -826,7 +893,7 @@ html.dark-mode .featured-posts-section h2 {
               <th>Country</th>
             </tr>
             {% for p in casual_players %}
-            <tr>
+            <tr data-country="{{ player_country(p.player.id) or '' }}">
               <td>#{{ p.rank }}</td>
               <td>{{ p.player.name }}</td>
               <td>{{ p.player.casual_points }}</td>
@@ -972,23 +1039,122 @@ html.dark-mode .featured-posts-section h2 {
   });
 
 const searchBar = document.getElementById("searchBar");
+const countrySelect = document.getElementById("country");
+
+// Prevent form submission and handle client-side
+if (countrySelect) {
+  countrySelect.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+  });
+  
+  countrySelect.addEventListener('change', () => {
+    applyFilters();
+  });
+}
+
 searchBar.addEventListener("keyup", () => {
-  const filter = searchBar.value.toLowerCase();
+  applyFilters();
+});
+
+function applyFilters() {
+  const searchFilter = searchBar.value.toLowerCase();
+  const countryFilter = countrySelect ? countrySelect.value : '';
+
+  const rowsToHide = [];
+  const rowsToShow = [];
 
   // Competitive rows
   const compRows = document.querySelectorAll("#playersTable tr:not(:first-child)");
   compRows.forEach(row => {
     const nameCell = row.cells[1].textContent.toLowerCase();
-    row.style.display = nameCell.includes(filter) ? "" : "none";
+    const rowCountry = row.getAttribute('data-country') || '';
+    
+    const matchesSearch = nameCell.includes(searchFilter);
+    const matchesCountry = !countryFilter || rowCountry === countryFilter;
+    
+    const shouldBeHidden = !(matchesSearch && matchesCountry);
+    const isCurrentlyHidden = row.classList.contains('hidden');
+    
+    if (shouldBeHidden && !isCurrentlyHidden) {
+      rowsToHide.push(row);
+    } else if (!shouldBeHidden && isCurrentlyHidden) {
+      rowsToShow.push(row);
+    }
   });
 
   // Casual rows
   const casualRows = document.querySelectorAll("#casualPlayersTable tr:not(:first-child)");
   casualRows.forEach(row => {
     const nameCell = row.cells[1].textContent.toLowerCase();
-    row.style.display = nameCell.includes(filter) ? "" : "none";
+    const rowCountry = row.getAttribute('data-country') || '';
+    
+    const matchesSearch = nameCell.includes(searchFilter);
+    const matchesCountry = !countryFilter || rowCountry === countryFilter;
+    
+    const shouldBeHidden = !(matchesSearch && matchesCountry);
+    const isCurrentlyHidden = row.classList.contains('hidden');
+    
+    if (shouldBeHidden && !isCurrentlyHidden) {
+      rowsToHide.push(row);
+    } else if (!shouldBeHidden && isCurrentlyHidden) {
+      rowsToShow.push(row);
+    }
+  });
+
+  // Hide rows with animation
+  if (rowsToHide.length > 0) {
+    // Remove loaded class to trigger hide animation
+    rowsToHide.forEach(row => {
+      row.classList.remove('loaded');
+    });
+    
+    // Force reflow
+    rowsToHide[0].offsetHeight;
+    
+    // Add hidden class after CSS transition
+    requestAnimationFrame(() => {
+      rowsToHide.forEach(row => {
+        row.classList.add('hidden');
+      });
+    });
+  }
+
+  // Show rows with animation
+  if (rowsToShow.length > 0) {
+    rowsToShow.forEach(row => {
+      row.classList.remove('hidden');
+      row.classList.remove('loaded'); // Remove to reset animation
+    });
+    
+    // Force reflow
+    rowsToShow[0].offsetHeight;
+    
+    // Add loaded class on next frame to trigger animation
+    requestAnimationFrame(() => {
+      rowsToShow.forEach(row => row.classList.add('loaded'));
+    });
+  }
+}
+
+// Initial page load animation
+window.addEventListener('load', () => {
+  const allRows = document.querySelectorAll('#playersTable tr:not(:first-child), #casualPlayersTable tr:not(:first-child)');
+  
+  // Force reflow
+  if (allRows.length > 0) {
+    allRows[0].offsetHeight;
+  }
+  
+  // Trigger animation
+  requestAnimationFrame(() => {
+    allRows.forEach(row => {
+      if (!row.classList.contains('hidden')) {
+        row.classList.add('loaded');
+      }
+    });
   });
 });
+
 
 
   document.querySelectorAll('tr.clickable-row').forEach(row => {

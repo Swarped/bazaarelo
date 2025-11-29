@@ -84,6 +84,7 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, default=False)
     is_scorekeeper = db.Column(db.Boolean, default=False)
     dark_mode = db.Column(db.Boolean, default=False)
+    profile_picture = db.Column(db.String(500))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -433,6 +434,7 @@ def google_login():
     user_id = user_info.get("id")
     email = user_info.get("email")
     name = user_info.get("name")
+    picture = user_info.get("picture")
 
     if not user_id or not email:
         flash("Missing Google user id or email.", "error")
@@ -448,12 +450,18 @@ def google_login():
             # Update that record to use the new Google id
             existing_by_email.id = user_id
             existing_by_email.name = name
+            existing_by_email.profile_picture = picture
             db.session.commit()
             user = existing_by_email
         else:
             # Create brand new user
-            user = User(id=user_id, name=name, email=email)
+            user = User(id=user_id, name=name, email=email, profile_picture=picture)
             db.session.add(user)
+            db.session.commit()
+    else:
+        # Update existing user's profile picture if it changed
+        if user.profile_picture != picture:
+            user.profile_picture = picture
             db.session.commit()
 
     login_user(user)
@@ -1623,6 +1631,13 @@ def players():
         key=lambda x: (x["rank"] is None, x["rank"] if x["rank"] is not None else float("inf"))
     )
 
+    # Get unique countries from all competitive players (before filtering)
+    available_countries = set()
+    for p in all_competitive_players:
+        country = player_country_local(p.id)
+        if country:
+            available_countries.add(country.upper())
+    available_countries = sorted(list(available_countries))
 
     # === Casual ranking (points) ===
     casual_players = (
@@ -1683,7 +1698,8 @@ def players():
         top_stores=top_stores,
         player_country=player_country,
         tournaments_played=tournaments_played,
-        featured_posts=featured_posts
+        featured_posts=featured_posts,
+        available_countries=available_countries
     )
 
 
