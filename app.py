@@ -1733,34 +1733,96 @@ def decks_list():
     
     print(f"DEBUG: Found {len(archetypes)} archetypes")
 
+    # Calculate archetype metrics for sorting and tier assignment
+    archetype_stats = []
+    for name, deck_list in archetypes.items():
+        deck_count = len(deck_list)
+        
+        # Calculate average rank (lower is better)
+        ranks = []
+        for d in deck_list:
+            player = Player.query.get(d.player_id) if d.player_id else None
+            tournament = Tournament.query.get(d.tournament_id) if d.tournament_id else None
+            
+            if player and tournament:
+                matches = Match.query.filter_by(tournament_id=tournament.id).all()
+                players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id) \
+                                      .filter(TournamentPlayer.tournament_id == tournament.id).all()
+                
+                standings = []
+                for p in players:
+                    wins = draws = losses = points = 0
+                    for m in matches:
+                        if m.player1_id == p.id or m.player2_id == p.id:
+                            if m.result == "bye" and m.player1_id == p.id:
+                                wins += 1; points += 3
+                            elif m.result in ["2-0", "2-1", "1-0"] and m.player1_id == p.id:
+                                wins += 1; points += 3
+                            elif m.result in ["0-2", "1-2", "0-1"] and m.player2_id == p.id:
+                                wins += 1; points += 3
+                            elif m.result == "1-1":
+                                draws += 1; points += 1
+                            else:
+                                losses += 1
+                    standings.append({
+                        "player_id": p.id,
+                        "points": points,
+                        "wins": wins
+                    })
+                
+                standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
+                
+                for idx, s in enumerate(standings):
+                    if s["player_id"] == player.id:
+                        ranks.append(idx + 1)
+                        break
+        
+        avg_rank = sum(ranks) / len(ranks) if ranks else 999
+        
+        archetype_stats.append({
+            "name": name,
+            "deck_count": deck_count,
+            "avg_rank": avg_rank
+        })
+    
+    # Sort by deck count (desc), then by avg rank (asc)
+    archetype_stats.sort(key=lambda x: (-x["deck_count"], x["avg_rank"]))
+    
+    # Assign tiers
+    total_archetypes = len(archetype_stats)
+    tier_1_cutoff = int(total_archetypes * 0.20)
+    tier_2_cutoff = int(total_archetypes * 0.50)
+    
+    archetype_tiers = {}
+    for idx, stat in enumerate(archetype_stats):
+        if idx < tier_1_cutoff:
+            archetype_tiers[stat["name"]] = "Tier 1"
+        elif idx < tier_2_cutoff:
+            archetype_tiers[stat["name"]] = "Tier 2"
+        else:
+            archetype_tiers[stat["name"]] = "Tier 3"
+
     archetype_colors = {}
     for name, deck_list in archetypes.items():
-        # Get the latest 5 decks (or all if less than 5), sorted by ID descending
         sorted_decks = sorted(deck_list, key=lambda d: d.id, reverse=True)
         recent_decks = sorted_decks[:5] if len(sorted_decks) >= 5 else sorted_decks
         
-        # If we don't have 5 recent decks, use all decks for color calculation
         if len(recent_decks) < 5:
             recent_decks = sorted_decks
         
-        # Debug: Print what we're seeing
         print(f"DEBUG: Archetype '{name}' has {len(recent_decks)} recent decks")
         for deck in recent_decks:
             print(f"  Deck ID {deck.id}: colors='{deck.colors}', has_list_text={bool(deck.list_text and deck.list_text.strip())}")
         
-        # Count color combinations across recent decks
         color_counter = {}
         for deck in recent_decks:
-            # Ignore null/empty/None colors
             if deck.colors and deck.colors.strip() and deck.colors not in ['None', 'none', 'null']:
-                # Normalize colors to WUBRG order
                 colors_set = set(deck.colors)
                 color_key = ''.join([c for c in 'WUBRG' if c in colors_set])
                 color_counter[color_key] = color_counter.get(color_key, 0) + 1
         
         print(f"  Color counter: {color_counter}")
         
-        # Get the most common color combination (prioritize non-null over null)
         if color_counter:
             most_common = max(color_counter.items(), key=lambda x: x[1])[0]
             archetype_colors[name] = most_common
@@ -1769,7 +1831,10 @@ def decks_list():
             archetype_colors[name] = ""
             print(f"  Result: empty (no colors found)")
 
-    return render_template("decks.html", archetypes=archetypes, archetype_colors=archetype_colors)
+    # Re-order archetypes dict by sorted order
+    sorted_archetypes = {stat["name"]: archetypes[stat["name"]] for stat in archetype_stats}
+
+    return render_template("decks.html", archetypes=sorted_archetypes, archetype_colors=archetype_colors, archetype_tiers=archetype_tiers)
 
 
 @app.route('/decks/<deck_name>')
@@ -1782,11 +1847,39 @@ def deck_detail(deck_name):
 
         rank = None
         if player and tournament:
-            tp = TournamentPlayer.query.filter_by(
-                tournament_id=tournament.id,
-                player_id=player.id
-            ).first()
-            rank = getattr(tp, "rank", None) if tp else None
+            # Calculate rank from tournament standings
+            matches = Match.query.filter_by(tournament_id=tournament.id).all()
+            players = Player.query.join(TournamentPlayer, Player.id == TournamentPlayer.player_id) \
+                                  .filter(TournamentPlayer.tournament_id == tournament.id).all()
+            
+            standings = []
+            for p in players:
+                wins = draws = losses = points = 0
+                for m in matches:
+                    if m.player1_id == p.id or m.player2_id == p.id:
+                        if m.result == "bye" and m.player1_id == p.id:
+                            wins += 1; points += 3
+                        elif m.result in ["2-0", "2-1", "1-0"] and m.player1_id == p.id:
+                            wins += 1; points += 3
+                        elif m.result in ["0-2", "1-2", "0-1"] and m.player2_id == p.id:
+                            wins += 1; points += 3
+                        elif m.result == "1-1":
+                            draws += 1; points += 1
+                        else:
+                            losses += 1
+                standings.append({
+                    "player_id": p.id,
+                    "points": points,
+                    "wins": wins
+                })
+            
+            standings.sort(key=lambda s: (s["points"], s["wins"]), reverse=True)
+            
+            # Find player's rank
+            for idx, s in enumerate(standings):
+                if s["player_id"] == player.id:
+                    rank = idx + 1
+                    break
 
         rows.append({
             "player": player,

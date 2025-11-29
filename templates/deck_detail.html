@@ -122,10 +122,10 @@
     .modal-content-deck h3 {
       margin: 0;
       padding: 1rem 2rem;
-      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
       color: white;
       font-size: 1.4rem;
-      border-bottom: 3px solid #3d8b40;
+      border-bottom: 3px solid #6d28d9;
       position: relative;
       flex-shrink: 0;
     }
@@ -178,7 +178,7 @@
       color: #333;
       font-size: 1.1rem;
       padding-bottom: 0.5rem;
-      border-bottom: 2px solid #4CAF50;
+      border-bottom: 2px solid #a855f7;
     }
     
     .deck-panel-left {
@@ -226,9 +226,9 @@
     }
     
     .card-list-enhanced li.selected {
-      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-      color: white;
-      border-color: #3d8b40;
+      background: linear-gradient(135deg, #c084fc 0%, #e9d5ff 100%);
+      color: #1f2937;
+      border-color: #a855f7;
       font-weight: 500;
     }
     
@@ -300,7 +300,7 @@
       margin: 0 0 0.75rem 0;
       color: #333;
       font-size: 1.1rem;
-      border-bottom: 2px solid #4CAF50;
+      border-bottom: 2px solid #a855f7;
       padding-bottom: 0.4rem;
     }
     
@@ -434,21 +434,74 @@
     });
 
     let symbolMap = {};
+    let cardCache = {};
+    
     fetch("https://api.scryfall.com/symbology")
       .then(res => res.json())
       .then(data => {
         data.data.forEach(sym => {
           symbolMap[sym.symbol] = sym.svg_uri;
         });
+        
+        // Collect all unique card names from all decks
+        const allCardNames = new Set();
         document.querySelectorAll('tr.clickable-row').forEach(row => {
           const deckListRaw = row.dataset.deckList;
           if (deckListRaw) {
             const deckList = JSON.parse(deckListRaw || '""');
-            computeDeckColors(deckList, row);
-            computeDeckPrice(deckList, row);
+            extractCardNames(deckList).forEach(name => allCardNames.add(name));
           }
         });
+        
+        // Batch fetch all cards
+        if (allCardNames.size > 0) {
+          batchFetchCards([...allCardNames]).then(() => {
+            // Now compute colors and prices using cached data
+            document.querySelectorAll('tr.clickable-row').forEach(row => {
+              const deckListRaw = row.dataset.deckList;
+              if (deckListRaw) {
+                const deckList = JSON.parse(deckListRaw || '""');
+                computeDeckColors(deckList, row);
+                computeDeckPrice(deckList, row);
+              }
+            });
+          });
+        }
       });
+    
+    async function batchFetchCards(cardNames, timeout = 5000) {
+      const uniqueNames = [...new Set(cardNames)];
+      
+      const promises = uniqueNames.map(name => 
+        Promise.race([
+          fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+            .then(res => res.json())
+            .then(card => {
+              if (card.name) {
+                cardCache[name] = card;
+              }
+            }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), timeout)
+          )
+        ])
+        .catch(err => console.warn('Card fetch error:', err))
+      );
+      
+      await Promise.all(promises);
+    }
+    
+    function extractCardNames(deckList) {
+      const names = [];
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
+        const parts = line.trim().split(/\s+/, 2);
+        const name = line.trim().substring(parts[0].length).trim();
+        if (name) names.push(name);
+      });
+      return names;
+    }
 
     function renderManaCost(manaCost) {
       if (!manaCost) return "";
@@ -464,83 +517,66 @@
     function computeDeckColors(deckList, row) {
       const colors = new Set();
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-      const promises = lines.map(line => {
-        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
         const parts = line.trim().split(/\s+/, 2);
         const name = line.trim().substring(parts[0].length).trim();
-        if (!name) return Promise.resolve();
-        return fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
-          .then(res => res.json())
-          .then(card => {
-            if (card.color_identity) {
-              card.color_identity.forEach(c => colors.add(c));
-            }
-          });
-      });
-
-      Promise.all(promises).then(() => {
-        const cell = row.querySelector(".colors-cell");
-        if (cell) {
-          cell.innerHTML = "";
-          ["W","U","B","R","G"].forEach(c => {
-            if (colors.has(c)) {
-              const token = `{${c}}`;
-              const uri = symbolMap[token];
-              if (uri) {
-                cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
-              }
-            }
-          });
+        if (!name) return;
+        
+        const card = cardCache[name];
+        if (card && card.color_identity) {
+          card.color_identity.forEach(c => colors.add(c));
         }
       });
+
+      const cell = row.querySelector(".colors-cell");
+      if (cell) {
+        cell.innerHTML = "";
+        ["W","U","B","R","G"].forEach(c => {
+          if (colors.has(c)) {
+            cell.innerHTML += `<img src="https://svgs.scryfall.io/card-symbols/${c}.svg" alt="${c}" class="mana-icon">`;
+          }
+        });
+      }
     }
 
     function computeDeckPrice(deckList, row) {
       let totalPrice = 0;
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-      const promises = lines.map(line => {
-        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
         const parts = line.trim().split(/\s+/, 2);
         const count = parseInt(parts[0]) || 0;
         const name = line.trim().substring(parts[0].length).trim();
-        if (!name || count === 0) return Promise.resolve();
+        if (!name || count === 0) return;
         
-        // Fetch all printings to find cheapest price
-        return fetch(`https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
-          .then(res => res.json())
-          .then(data => {
-            const editions = data.data || [];
-            let cheapestPrice = null;
-            
-            editions.forEach(edition => {
-              const usd = parseFloat(edition.prices?.usd);
-              const usdFoil = parseFloat(edition.prices?.usd_foil);
-              
-              if (!isNaN(usd) && usd > 0) {
-                if (cheapestPrice === null || usd < cheapestPrice) {
-                  cheapestPrice = usd;
-                }
-              }
-              if (!isNaN(usdFoil) && usdFoil > 0) {
-                if (cheapestPrice === null || usdFoil < cheapestPrice) {
-                  cheapestPrice = usdFoil;
-                }
-              }
-            });
-            
-            if (cheapestPrice !== null) {
-              totalPrice += cheapestPrice * count;
+        const card = cardCache[name];
+        if (card && card.prices) {
+          const usd = parseFloat(card.prices.usd);
+          const usdFoil = parseFloat(card.prices.usd_foil);
+          
+          let cheapestPrice = null;
+          if (!isNaN(usd) && usd > 0) {
+            cheapestPrice = usd;
+          }
+          if (!isNaN(usdFoil) && usdFoil > 0) {
+            if (cheapestPrice === null || usdFoil < cheapestPrice) {
+              cheapestPrice = usdFoil;
             }
-          })
-          .catch(() => {}); // Ignore errors for individual cards
-      });
-
-      Promise.all(promises).then(() => {
-        const cell = row.querySelector(".price-cell");
-        if (cell) {
-          cell.textContent = totalPrice > 0 ? `$${totalPrice.toFixed(2)}` : 'N/A';
+          }
+          
+          if (cheapestPrice !== null) {
+            totalPrice += cheapestPrice * count;
+          }
         }
       });
+
+      const cell = row.querySelector(".price-cell");
+      if (cell) {
+        cell.textContent = totalPrice > 0 ? `$${totalPrice.toFixed(2)}` : 'N/A';
+      }
     }
   </script>
   {% endblock %}

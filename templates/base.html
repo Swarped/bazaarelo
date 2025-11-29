@@ -280,6 +280,29 @@
       html.dark-mode .btn {
         border-color: transparent !important;
       }
+      
+      /* Flash messages - dark mode */
+      html.dark-mode .flash-error {
+        background: #3d1f1f !important;
+        color: #ff6b6b !important;
+        border-color: #5c2a2a !important;
+      }
+      html.dark-mode .flash-success {
+        background: #1f3d2a !important;
+        color: #6bff8b !important;
+        border-color: #2a5c3a !important;
+      }
+      html.dark-mode .flash-warning {
+        background: #3d3520 !important;
+        color: #ffdb6b !important;
+        border-color: #5c4f2a !important;
+      }
+      html.dark-mode .flash-info {
+        background: #1f2f3d !important;
+        color: #6ba8ff !important;
+        border-color: #2a425c !important;
+      }
+      
       html.dark-mode .deck-card,
       html.dark-mode .tournament-card {
         background-color: #2a2a2a !important;
@@ -958,10 +981,10 @@
       .modal-content-deck h3 {
         margin: 0;
         padding: 1rem 2rem;
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
         color: white;
         font-size: 1.4rem;
-        border-bottom: 3px solid #3d8b40;
+        border-bottom: 3px solid #6d28d9;
         position: relative;
         flex-shrink: 0;
       }
@@ -973,9 +996,9 @@
         transform: translateY(-50%);
         font-size: 2.5rem;
         cursor: pointer;
-        color: white;
+        color: white !important;
         line-height: 1;
-        opacity: 0.95;
+        opacity: 1;
         transition: opacity 0.2s, transform 0.2s;
         font-weight: 300;
         padding: 0;
@@ -983,6 +1006,7 @@
         background: none;
         border: none;
         text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        z-index: 10;
       }
       
       .modal-content-deck h3 .close:hover {
@@ -1069,9 +1093,9 @@
       }
       
       .card-list-enhanced li.selected {
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        color: white;
-        border-color: #3d8b40;
+        background: linear-gradient(135deg, #c084fc 0%, #e9d5ff 100%);
+        color: #1f2937;
+        border-color: #a855f7;
         font-weight: 500;
       }
       
@@ -1268,9 +1292,9 @@
       }
       
       html.dark-mode .card-list-enhanced li.selected {
-        background: linear-gradient(135deg, #3a5a3a 0%, #2a4a2a 100%);
-        color: #a8d8a8;
-        border-color: #4CAF50;
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: #ffffff;
+        border-color: #c084fc;
       }
       
       html.dark-mode .card-image-container,

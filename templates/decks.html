@@ -56,10 +56,66 @@ th, td {
   font-size: 0.95rem;
 }
 
+/* Table row animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+tr.clickable-row {
+  opacity: 0;
+}
+
+tr.clickable-row.animate {
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+tr.clickable-row.animate:nth-child(1) { animation-delay: 0.1s; }
+tr.clickable-row.animate:nth-child(2) { animation-delay: 0.15s; }
+tr.clickable-row.animate:nth-child(3) { animation-delay: 0.2s; }
+tr.clickable-row.animate:nth-child(4) { animation-delay: 0.25s; }
+tr.clickable-row.animate:nth-child(5) { animation-delay: 0.3s; }
+tr.clickable-row.animate:nth-child(6) { animation-delay: 0.35s; }
+tr.clickable-row.animate:nth-child(7) { animation-delay: 0.4s; }
+tr.clickable-row.animate:nth-child(8) { animation-delay: 0.45s; }
+tr.clickable-row.animate:nth-child(9) { animation-delay: 0.5s; }
+tr.clickable-row.animate:nth-child(n+10) { animation-delay: 0.55s; }
+
 
 td.archetype-cell {
   text-align: left;
   font-weight: bold;
+  position: relative;
+}
+
+.archetype-cell .edit-name-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 8px;
+  cursor: pointer;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.05);
+  vertical-align: middle;
+  transition: all 0.2s;
+}
+
+.archetype-cell .edit-name-icon:hover {
+  background: rgba(0,0,0,0.1);
+  transform: scale(1.1);
+}
+
+.archetype-cell .edit-name-icon .material-icons {
+  font-size: 16px;
+  color: #666;
 }
 
 .count-cell {
@@ -71,20 +127,60 @@ td.archetype-cell {
 }
 
 .tier-box {
-  background: #4CAF50;
   color: white;
   padding: .3rem .5rem;
   border-radius: 4px;
   display: inline-block;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tier-box.tier-1 {
+  background: linear-gradient(135deg, #d4af37 0%, #f0d066 100%);
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4);
+}
+
+.tier-box.tier-2 {
+  background: linear-gradient(135deg, #a8a8a8 0%, #d0d0d0 100%);
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(168, 168, 168, 0.4);
+}
+
+.tier-box.tier-3 {
+  background: linear-gradient(135deg, #b87333 0%, #d4956e 100%);
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(184, 115, 51, 0.4);
 }
 
 .tier-box input {
   border: none;
   background: transparent;
-  color: white;
-  font-weight: bold;
+  color: inherit;
+  font-weight: 900;
   text-align: center;
   width: 80px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+html.dark-mode .tier-box input {
+  background: transparent !important;
+  color: #1a1a1a !important;
+}
+
+html.dark-mode .tier-box.tier-1 {
+  background: linear-gradient(135deg, #d4af37 0%, #f0d066 100%) !important;
+  color: #1a1a1a !important;
+}
+
+html.dark-mode .tier-box.tier-2 {
+  background: linear-gradient(135deg, #a8a8a8 0%, #d0d0d0 100%) !important;
+  color: #1a1a1a !important;
+}
+
+html.dark-mode .tier-box.tier-3 {
+  background: linear-gradient(135deg, #b87333 0%, #d4956e 100%) !important;
+  color: #1a1a1a !important;
 }
 
 
@@ -94,9 +190,32 @@ td.archetype-cell {
   }
 
   tr.clickable-row:hover {
-    background: #4CAF50;
-    color: white;
+    background: linear-gradient(135deg, #bfdbfe 0%, #dbeafe 100%) !important;
+    color: #1f2937 !important;
     cursor: pointer;
+  }
+  
+  tr.clickable-row:hover td {
+    background: transparent !important;
+    color: #1f2937 !important;
+  }
+  
+  tr.clickable-row:hover .archetype-img {
+    filter: brightness(1.2) drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+  }
+  
+  html.dark-mode tr.clickable-row:hover {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    color: white !important;
+  }
+  
+  html.dark-mode tr.clickable-row:hover td {
+    background: transparent !important;
+    color: white !important;
+  }
+  
+  html.dark-mode tr.clickable-row:hover .archetype-img {
+    filter: brightness(1.2) drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
   }
 
 /* --- Image column --- */
@@ -105,6 +224,32 @@ th:first-child, td:first-child {
   padding: 0;
   text-align: center;
   vertical-align: middle;
+}
+
+/* Archetype name column */
+th:nth-child(2), td:nth-child(2) {
+  width: 35%;
+  text-align: left;
+}
+
+/* Tier column */
+th:nth-child(3), td:nth-child(3) {
+  width: 100px;
+}
+
+/* Count column */
+th:nth-child(4), td:nth-child(4) {
+  width: 80px;
+}
+
+/* Colors column */
+th:nth-child(5), td:nth-child(5) {
+  width: 120px;
+}
+
+/* Price column */
+th:nth-child(6), td:nth-child(6) {
+  width: 100px;
 }
 
 .image-wrapper {
@@ -157,7 +302,8 @@ th:first-child, td:first-child {
   }
 
   .colors-cell {
-    text-align: right;
+    text-align: center;
+    width: 120px;
   }
 
   /* --- Modal --- */
@@ -316,11 +462,100 @@ th:first-child, td:first-child {
     cursor: pointer;
   }
   button:hover { background: #0056b3; }
+  
+  .filters-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+  }
+  
+  html.dark-mode .filters-container {
+    background: #2a2a2a;
+  }
+  
+  .filter-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .filter-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1rem;
+  }
+  
+  html.dark-mode .filter-group label {
+    color: #e5e5e5;
+  }
+  
+  .tier-filter-btn {
+    padding: 0.6rem 1.2rem;
+    border: 2px solid #ccc;
+    background: white;
+    color: #1f2937;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s;
+  }
+  
+  .tier-filter-btn.active {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border-color: #7c3aed;
+  }
+  
+  html.dark-mode .tier-filter-btn {
+    background: #2a2a2a;
+    border-color: #505050;
+    color: #e5e5e5;
+  }
+  
+  html.dark-mode .tier-filter-btn.active {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border-color: #a855f7;
+  }
+  
+  .name-filter-input {
+    padding: 0.6rem 1rem;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 300px;
+  }
+  
+  html.dark-mode .name-filter-input {
+    background: #2a2a2a;
+    border-color: #505050;
+    color: #e5e5e5;
+  }
 </style>
 
 
 
 <div class="decks-page"></div>
+
+<div class="filters-container">
+  <div class="filter-group">
+    <label>Name:</label>
+    <input type="text" class="name-filter-input" placeholder="Filter by archetype name..." id="nameFilter">
+  </div>
+  <div class="filter-group">
+    <label>Tier:</label>
+    <button class="tier-filter-btn active" data-tier="all">All</button>
+    <button class="tier-filter-btn" data-tier="1">TIER 1</button>
+    <button class="tier-filter-btn" data-tier="2">TIER 2</button>
+    <button class="tier-filter-btn" data-tier="3">TIER 3</button>
+  </div>
+</div>
 
   <table>
     <tr>
@@ -330,16 +565,13 @@ th:first-child, td:first-child {
   <th>Count</th>
   <th>Colors</th>
   <th>Avg. Price</th>
-  {% if current_user.is_authenticated and current_user.is_admin %}
-  <th>Actions</th>
-{% endif %}
 </tr>
 
     {% for name, decks in archetypes.items() %}
     {% set last_deck = decks[-1] %}
     <tr class="clickable-row"
         data-href="{{ url_for('deck_detail', deck_name=name) }}"
-        data-colors='{{ archetype_colors[name]|tojson if archetype_colors and name in archetype_colors else "" }}'
+        data-colors='{{ last_deck.colors if last_deck.colors else "" }}'
         data-deck-lists='{{ decks[-5:]|map(attribute="list_text")|list|tojson }}'
         data-deck-list='{{ (last_deck.list_text if last_deck.list_text else "")|tojson }}'>
       <td>
@@ -356,31 +588,34 @@ th:first-child, td:first-child {
   {% endif %}
 </div>
       </td>
-      <td class="archetype-cell">{{ name }}</td>
+      <td class="archetype-cell">
+        {{ name }}
+        {% if current_user.is_authenticated and current_user.is_admin %}
+          <span class="edit-name-icon" data-archetype="{{ name }}">
+            <span class="material-icons">edit</span>
+          </span>
+        {% endif %}
+      </td>
 <td class="tier-cell">
-  <div class="tier-box">
-    <input type="text" value="Tier 1">
+  {% set tier = archetype_tiers.get(name, 'Tier 3') %}
+  {% set tier_class = 'tier-' + tier.split()[1] %}
+  <div class="tier-box {{ tier_class }}">
+    <input type="text" value="{{ tier }}" readonly>
   </div>
 </td>
 <td class="count-cell">{{ decks|length }}</td>
 <td class="colors-cell"></td>
 <td class="price-cell">Calculating...</td>
-{% if current_user.is_authenticated and current_user.is_admin %}
-<td>
-  <button class="btn btn-primary edit-name-btn" data-archetype="{{ name }}">Edit Name</button>
-</td>
-{% endif %}
 
     </tr>
     {% endfor %}
 
 {% if current_user.is_authenticated and current_user.is_admin %}
 <div style="margin-bottom:1rem;">
-  <form method="POST" action="{{ url_for('decks_list') }}">
-    <label>New Archetype</label>
-    <input type="text" name="deck_name" placeholder="e.g. Burn, UW Control" required>
-    <button type="submit" class="btn btn-primary">Add Archetype</button>
-  </form>
+  <button type="button" class="btn btn-primary" onclick="openCreateArchetypeModal()">
+    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">add</span>
+    Create New Archetype
+  </button>
 </div>
 {% endif %}
 
@@ -429,6 +664,57 @@ th:first-child, td:first-child {
         <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="saveSelectedImage()" id="saveImageBtn">Save Image</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Create Archetype Modal -->
+  <div id="createArchetypeModal" class="modal">
+    <div class="modal-content image-modal-content">
+      <span class="close" onclick="closeCreateArchetypeModal()">&times;</span>
+      <h3>Create New Archetype</h3>
+      
+      <div class="modal-tabs">
+        <button class="modal-tab active" onclick="switchCreateTab('upload')">Upload Image</button>
+        <button class="modal-tab" onclick="switchCreateTab('select')">Select Existing</button>
+      </div>
+
+      <form id="createArchetypeForm" method="POST" action="{{ url_for('decks_list') }}" enctype="multipart/form-data">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Archetype Name</label>
+          <input type="text" name="deck_name" id="createArchetypeName" placeholder="e.g. Burn, UW Control" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+
+        <!-- Upload Tab -->
+        <div id="createUploadTab" class="tab-content active">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Upload Image</label>
+          <input type="file" name="image" id="createImageInput" accept="image/jpeg,image/jpg,image/png" style="margin-bottom: 1rem;">
+          <div class="cropper-container-wrapper" id="createCropperWrapper" style="display: none;">
+            <img id="createImageToCrop" />
+            <div class="crop-controls">
+              <button type="button" class="crop-btn" onclick="cropCreateImage('zoom', 0.1)">🔍 Zoom In</button>
+              <button type="button" class="crop-btn" onclick="cropCreateImage('zoom', -0.1)">🔍 Zoom Out</button>
+              <button type="button" class="crop-btn" onclick="cropCreateImage('move', -10, 0)">← Move</button>
+              <button type="button" class="crop-btn" onclick="cropCreateImage('move', 10, 0)">Move →</button>
+              <button type="button" class="crop-btn" onclick="cropCreateImage('move', 0, -10)">↑ Move</button>
+              <button type="button" class="crop-btn" onclick="cropCreateImage('move', 0, 10)">Move ↓</button>
+              <button type="button" class="crop-btn" onclick="cropCreateImage('reset')">↺ Reset</button>
+            </div>
+            <div class="crop-info">Target size: 512x256px (2:1 ratio)</div>
+          </div>
+        </div>
+
+        <!-- Select Tab -->
+        <div id="createSelectTab" class="tab-content">
+          <p style="margin-bottom: 1rem; color: #666;">Click an image to select it:</p>
+          <div id="createImageGallery" class="image-gallery"></div>
+          <input type="hidden" name="existing_image" id="createExistingImage">
+        </div>
+
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+          <button type="button" class="btn btn-danger" onclick="closeCreateArchetypeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Archetype</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -697,7 +983,7 @@ th:first-child, td:first-child {
     }
 
     // Edit Name button opens modal
-    document.querySelectorAll('.edit-name-btn').forEach(btn=>{
+    document.querySelectorAll('.edit-name-icon').forEach(btn=>{
       btn.addEventListener('click', e=>{
         e.stopPropagation();
         const archetype = btn.getAttribute('data-archetype');
@@ -711,31 +997,153 @@ th:first-child, td:first-child {
       document.getElementById('editNameModal').style.display = 'none';
     }
 
+    // Create archetype modal functions
+    let createCropper = null;
+    let createSelectedImage = null;
+
+    function openCreateArchetypeModal() {
+      document.getElementById('createArchetypeModal').style.display = 'block';
+      loadCreateArchetypeImages();
+    }
+
+    function closeCreateArchetypeModal() {
+      document.getElementById('createArchetypeModal').style.display = 'none';
+      if (createCropper) {
+        createCropper.destroy();
+        createCropper = null;
+      }
+      document.getElementById('createArchetypeForm').reset();
+      document.getElementById('createCropperWrapper').style.display = 'none';
+      createSelectedImage = null;
+    }
+
+    function switchCreateTab(tab) {
+      document.querySelectorAll('#createArchetypeModal .modal-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('#createArchetypeModal .tab-content').forEach(t => t.classList.remove('active'));
+      
+      if (tab === 'upload') {
+        document.querySelector('#createArchetypeModal .modal-tab:nth-child(1)').classList.add('active');
+        document.getElementById('createUploadTab').classList.add('active');
+      } else {
+        document.querySelector('#createArchetypeModal .modal-tab:nth-child(2)').classList.add('active');
+        document.getElementById('createSelectTab').classList.add('active');
+      }
+    }
+
+    async function loadCreateArchetypeImages() {
+      const gallery = document.getElementById('createImageGallery');
+      gallery.innerHTML = '<p>Loading images...</p>';
+      
+      try {
+        const response = await fetch('/api/deck_images');
+        const images = await response.json();
+        
+        if (images.length === 0) {
+          gallery.innerHTML = '<p style="text-align: center; color: #999;">No images available</p>';
+          return;
+        }
+        
+        gallery.innerHTML = '';
+        images.forEach(img => {
+          const div = document.createElement('div');
+          div.className = 'gallery-item';
+          div.innerHTML = `<img src="/static/${img}" alt="Deck image">`;
+          div.onclick = () => selectCreateImage(img, div);
+          gallery.appendChild(div);
+        });
+      } catch (error) {
+        gallery.innerHTML = '<p style="color: red;">Error loading images</p>';
+      }
+    }
+
+    function selectCreateImage(imagePath, element) {
+      document.querySelectorAll('#createImageGallery .gallery-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      createSelectedImage = imagePath;
+      document.getElementById('createExistingImage').value = imagePath;
+    }
+
+    document.getElementById('createImageInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (createCropper) {
+        createCropper.destroy();
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = document.getElementById('createImageToCrop');
+        img.src = event.target.result;
+        document.getElementById('createCropperWrapper').style.display = 'flex';
+        
+        createCropper = new Cropper(img, {
+          aspectRatio: 2 / 1,
+          viewMode: 1,
+          autoCropArea: 1,
+          responsive: true,
+          background: false
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function cropCreateImage(action, ...args) {
+      if (!createCropper) return;
+      
+      switch(action) {
+        case 'zoom':
+          createCropper.zoom(args[0]);
+          break;
+        case 'move':
+          createCropper.move(args[0], args[1]);
+          break;
+        case 'reset':
+          createCropper.reset();
+          break;
+      }
+    }
+
+    // Handle form submission with cropped image
+    document.getElementById('createArchetypeForm').addEventListener('submit', async function(e) {
+      const activeTab = document.querySelector('#createArchetypeModal .tab-content.active').id;
+      
+      if (activeTab === 'createUploadTab' && createCropper) {
+        e.preventDefault();
+        
+        const canvas = createCropper.getCroppedCanvas({
+          width: 512,
+          height: 256,
+          imageSmoothingQuality: 'high'
+        });
+        
+        canvas.toBlob(async (blob) => {
+          const formData = new FormData();
+          formData.append('deck_name', document.getElementById('createArchetypeName').value);
+          formData.append('image', blob, 'archetype.jpg');
+          
+          const response = await fetch('{{ url_for("decks_list") }}', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            window.location.reload();
+          } else {
+            alert('Error creating archetype');
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    });
+
 
     // Render colors
     let symbolMap = {};
-    fetch("https://api.scryfall.com/symbology")
-      .then(res => res.json())
-      .then(data => {
-        data.data.forEach(sym => { symbolMap[sym.symbol] = sym.svg_uri; });
-        document.querySelectorAll('tr.clickable-row').forEach(row => {
-          const deckListRaw = row.dataset.deckList;
-          const deckListsRaw = row.dataset.deckLists;
-          if (deckListRaw) {
-            const deckList = JSON.parse(deckListRaw || '""');
-            if (deckList && deckList.trim()) {
-              computeDeckColors(deckList, row);
-            }
-          }
-          if (deckListsRaw) {
-            const deckLists = JSON.parse(deckListsRaw || '[]');
-            if (deckLists && deckLists.length > 0) {
-              computeAverageDeckPrice(deckLists, row);
-            }
-          }
-        });
-      });
-
+    let cardCache = {}; // Cache for card lookups
+    
+    // Compute colors from deck list
     function computeDeckColors(deckList, row) {
       const colors = new Set();
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
@@ -751,97 +1159,135 @@ th:first-child, td:first-child {
               card.color_identity.forEach(c => colors.add(c));
             }
           })
-          .catch(() => {}); // Ignore errors for individual cards
+          .catch(() => {});
       });
 
-      Promise.all(promises).then(() => {
+      return Promise.all(promises).then(() => {
         const cell = row.querySelector(".colors-cell");
         if (cell) {
           cell.innerHTML = "";
           ["W","U","B","R","G"].forEach(c => {
             if (colors.has(c)) {
-              const token = `{${c}}`;
-              const uri = symbolMap[token];
-              if (uri) {
-                cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
-              }
+              cell.innerHTML += `<img src="https://svgs.scryfall.io/card-symbols/${c}.svg" alt="${c}" class="mana-icon">`;
             }
           });
         }
       });
     }
-
-    function computeAverageDeckPrice(deckLists, row) {
-      const deckPrices = [];
-      
-      // Calculate price for each deck
-      const deckPromises = deckLists.map(deckList => {
-        if (!deckList || !deckList.trim()) {
-          return Promise.resolve(null);
-        }
+    
+    // Compute deck price from latest deck submission
+    function computeDeckPrice(deckList, row) {
+      let totalPrice = 0;
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      const promises = lines.map(line => {
+        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+        const parts = line.trim().split(/\s+/, 2);
+        const count = parseInt(parts[0]) || 0;
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name || count === 0) return Promise.resolve();
         
-        return computeSingleDeckPrice(deckList);
-      });
-      
-      Promise.all(deckPromises).then(prices => {
-        const validPrices = prices.filter(p => p !== null && p > 0);
-        const cell = row.querySelector(".price-cell");
-        
-        if (cell && validPrices.length > 0) {
-          const avgPrice = validPrices.reduce((sum, p) => sum + p, 0) / validPrices.length;
-          cell.textContent = `$${Math.round(avgPrice)}`;
-        } else if (cell) {
-          cell.textContent = 'N/A';
-        }
-      });
-    }
-
-    function computeSingleDeckPrice(deckList) {
-      return new Promise((resolve) => {
-        let totalPrice = 0;
-        const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-        const promises = lines.map(line => {
-          if (/^sideboard/i.test(line.trim())) return Promise.resolve();
-          const parts = line.trim().split(/\s+/, 2);
-          const count = parseInt(parts[0]) || 0;
-          const name = line.trim().substring(parts[0].length).trim();
-          if (!name || count === 0) return Promise.resolve();
-          
-          // Fetch all printings to find cheapest price
-          return fetch(`https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
-            .then(res => res.json())
-            .then(data => {
-              const editions = data.data || [];
-              let cheapestPrice = null;
+        return fetch(`https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
+          .then(res => res.json())
+          .then(data => {
+            const editions = data.data || [];
+            let cheapestPrice = null;
+            
+            editions.forEach(edition => {
+              const usd = parseFloat(edition.prices?.usd);
+              const usdFoil = parseFloat(edition.prices?.usd_foil);
               
-              editions.forEach(edition => {
-                const usd = parseFloat(edition.prices?.usd);
-                const usdFoil = parseFloat(edition.prices?.usd_foil);
-                
-                if (!isNaN(usd) && usd > 0) {
-                  if (cheapestPrice === null || usd < cheapestPrice) {
-                    cheapestPrice = usd;
-                  }
+              if (!isNaN(usd) && usd > 0) {
+                if (cheapestPrice === null || usd < cheapestPrice) {
+                  cheapestPrice = usd;
                 }
-                if (!isNaN(usdFoil) && usdFoil > 0) {
-                  if (cheapestPrice === null || usdFoil < cheapestPrice) {
-                    cheapestPrice = usdFoil;
-                  }
-                }
-              });
-              
-              if (cheapestPrice !== null) {
-                totalPrice += cheapestPrice * count;
               }
-            })
-            .catch(() => {}); // Ignore errors for individual cards
-        });
+              if (!isNaN(usdFoil) && usdFoil > 0) {
+                if (cheapestPrice === null || usdFoil < cheapestPrice) {
+                  cheapestPrice = usdFoil;
+                }
+              }
+            });
+            
+            if (cheapestPrice !== null) {
+              totalPrice += cheapestPrice * count;
+            }
+          })
+          .catch(() => {});
+      });
 
-        Promise.all(promises).then(() => {
-          resolve(totalPrice > 0 ? totalPrice : null);
-        });
+      Promise.all(promises).then(() => {
+        const cell = row.querySelector(".price-cell");
+        if (cell) {
+          cell.textContent = totalPrice > 0 ? `$${totalPrice.toFixed(2)}` : 'N/A';
+        }
       });
     }
+    
+    // Compute colors and prices from latest deck submission
+    const rows = document.querySelectorAll('tr.clickable-row');
+    const colorPromises = [];
+    
+    rows.forEach(row => {
+      const deckListRaw = row.dataset.deckList;
+      if (deckListRaw) {
+        const deckList = JSON.parse(deckListRaw || '""');
+        const colorPromise = computeDeckColors(deckList, row);
+        colorPromises.push(colorPromise);
+        computeDeckPrice(deckList, row);
+      }
+    });
+    
+    // Wait for all colors to be calculated, then show animation
+    Promise.all(colorPromises).then(() => {
+      rows.forEach(row => {
+        row.classList.add('animate');
+      });
+    });
+    
+    // Filter functionality
+    let currentTierFilter = 'all';
+    let currentNameFilter = '';
+    
+    function applyFilters() {
+      const rows = document.querySelectorAll('tr.clickable-row');
+      rows.forEach(row => {
+        const tierInput = row.querySelector('.tier-box input');
+        const tierText = tierInput ? tierInput.value : '';
+        const tierNum = tierText.split(' ')[1]; // Extract "1", "2", or "3" from "Tier 1"
+        
+        const archetypeName = row.querySelector('.archetype-cell').textContent.trim().toLowerCase();
+        
+        let showRow = true;
+        
+        // Tier filter
+        if (currentTierFilter !== 'all' && tierNum !== currentTierFilter) {
+          showRow = false;
+        }
+        
+        // Name filter
+        if (currentNameFilter && !archetypeName.includes(currentNameFilter.toLowerCase())) {
+          showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+      });
+    }
+    
+    // Tier filter buttons
+    document.querySelectorAll('.tier-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tier-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTierFilter = btn.dataset.tier;
+        applyFilters();
+      });
+    });
+    
+    // Name filter input
+    document.getElementById('nameFilter').addEventListener('input', (e) => {
+      currentNameFilter = e.target.value;
+      applyFilters();
+    });
   </script>
 
 {% endblock %}

@@ -72,11 +72,111 @@ td.store-cell img {
         background: white;
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         position: relative;
+        table-layout: fixed;
       }
 
-      #competitive-table,
-      #casual-table {
-        position: relative;
+      /* Table row animation */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      tr.tournament-row-wrapper {
+        opacity: 0;
+      }
+
+      tr.tournament-row-wrapper.animate {
+        animation: slideIn 0.5s ease-out forwards;
+      }
+
+      tr.tournament-row-wrapper.animate:nth-child(1) { animation-delay: 0.1s; }
+      tr.tournament-row-wrapper.animate:nth-child(2) { animation-delay: 0.15s; }
+      tr.tournament-row-wrapper.animate:nth-child(3) { animation-delay: 0.2s; }
+      tr.tournament-row-wrapper.animate:nth-child(4) { animation-delay: 0.25s; }
+      tr.tournament-row-wrapper.animate:nth-child(5) { animation-delay: 0.3s; }
+      tr.tournament-row-wrapper.animate:nth-child(6) { animation-delay: 0.35s; }
+      tr.tournament-row-wrapper.animate:nth-child(7) { animation-delay: 0.4s; }
+      tr.tournament-row-wrapper.animate:nth-child(8) { animation-delay: 0.45s; }
+      tr.tournament-row-wrapper.animate:nth-child(9) { animation-delay: 0.5s; }
+      tr.tournament-row-wrapper.animate:nth-child(n+10) { animation-delay: 0.55s; }
+
+      /* Keep action column visible during row animation */
+      .action-column {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      /* Column widths for competitive table */
+      #competitive-table th:nth-child(1),
+      #competitive-table td:nth-child(1) {
+        width: 120px; /* Store */
+      }
+
+      #competitive-table th:nth-child(2),
+      #competitive-table td:nth-child(2) {
+        width: auto; /* Tournament - takes remaining space */
+      }
+
+      #competitive-table th:nth-child(3),
+      #competitive-table td:nth-child(3) {
+        width: 100px; /* Date */
+      }
+
+      #competitive-table th:nth-child(4),
+      #competitive-table td:nth-child(4) {
+        width: 70px; /* Rounds */
+      }
+
+      #competitive-table th:nth-child(5),
+      #competitive-table td:nth-child(5) {
+        width: 100px; /* Player Count */
+      }
+
+      #competitive-table th:nth-child(6),
+      #competitive-table td:nth-child(6) {
+        width: 80px; /* Top Cut */
+      }
+
+      #competitive-table th:nth-child(7),
+      #competitive-table td:nth-child(7) {
+        width: 70px; /* Country */
+      }
+
+      /* Column widths for casual table */
+      #casual-table th:nth-child(1),
+      #casual-table td:nth-child(1) {
+        width: auto; /* Tournament - takes remaining space */
+      }
+
+      #casual-table th:nth-child(2),
+      #casual-table td:nth-child(2) {
+        width: 100px; /* Date */
+      }
+
+      #casual-table th:nth-child(3),
+      #casual-table td:nth-child(3) {
+        width: 70px; /* Rounds */
+      }
+
+      #casual-table th:nth-child(4),
+      #casual-table td:nth-child(4) {
+        width: 100px; /* Player Count */
+      }
+
+      #casual-table th:nth-child(5),
+      #casual-table td:nth-child(5) {
+        width: 80px; /* Top Cut */
+      }
+
+      #casual-table th:nth-child(6),
+      #casual-table td:nth-child(6) {
+        width: 70px; /* Country */
       }
 
       th, td {
@@ -109,23 +209,42 @@ td.store-cell img {
         transition: background-color 140ms ease, color 140ms ease;
       }
       tr.clickable-row:hover {
-        background-color: #4CAF50;
-        color: white;
+        background: linear-gradient(135deg, #bfdbfe 0%, #dbeafe 100%) !important;
+        color: #1f2937 !important;
         cursor: pointer;
+      }
+      
+      tr.clickable-row:hover td {
+        background: transparent !important;
+        color: #1f2937 !important;
       }
 
       tr.clickable-row:hover a {
-        color: white;
+        color: #1f2937 !important;
+      }
+      
+      html.dark-mode tr.clickable-row:hover {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+        color: white !important;
+      }
+      
+      html.dark-mode tr.clickable-row:hover td {
+        background: transparent !important;
+        color: white !important;
+      }
+      
+      html.dark-mode tr.clickable-row:hover a {
+        color: white !important;
       }
 
       .toggle-container {
         position: relative;
         display: flex;
-        width: 400px;
+        width: calc(100% - 117px);
         height: 50px;
         background-color: #ddd;
-        border-radius: 30px;
-        margin-bottom: 1rem;
+        border-radius: 8px 8px 0 0;
+        margin-bottom: 0;
         overflow: hidden;
       }
 
@@ -150,14 +269,69 @@ td.store-cell img {
         left: 0;
         width: 50%;
         height: 100%;
-        background-color: #4CAF50;
-        border-radius: 30px;
-        transition: transform 0.3s;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border-radius: 8px 0 0 0;
+        transition: transform 0.3s ease;
         z-index: 1;
+        box-shadow: 0 2px 8px rgba(0,123,255,0.3);
       }
 
       .toggle-container input#casual:checked ~ .toggle-slider {
         transform: translateX(100%);
+        border-radius: 0 8px 0 0;
+      }
+      
+      .toggle-container input#competitive:checked ~ .toggle-slider {
+        border-radius: 8px 0 0 0;
+      }
+      
+      .toggle-container input#competitive:checked + label {
+        color: white;
+      }
+      .toggle-container input#casual:checked + label {
+        color: white;
+      }
+      
+      .toggle-container label:not([for]):hover {
+        background-color: rgba(0,0,0,0.05);
+      }
+      
+      #competitive:not(:checked) ~ label[for="competitive"]:hover {
+        background-color: rgba(0,0,0,0.05);
+      }
+      
+      #casual:not(:checked) ~ label[for="casual"]:hover {
+        background-color: rgba(0,0,0,0.05);
+      }
+      
+      .panels-wrapper {
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .table-panel {
+        position: absolute;
+        top: 0;
+        width: 100%;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+        min-height: 100%;
+      }
+      
+      .table-panel.active {
+        transform: translateX(0);
+        pointer-events: auto;
+        position: relative;
+      }
+      
+      .table-panel h2 {
+        display: none;
+      }
+      
+      .table-panel table {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       }
 
       .toggle-container input#competitive:checked + label {
@@ -167,8 +341,44 @@ td.store-cell img {
         color: white;
       }
 
-      #competitive-table, #casual-table {
-        margin-top: 1rem;
+      .search-filter {
+        margin-bottom: 0;
+        margin-top: 0;
+        padding: 0.75rem;
+        background-color: #f5f5f5;
+        width: calc(100% - 117px);
+        box-sizing: border-box;
+      }
+
+      .search-filter input {
+        width: 100%;
+        padding: 0.5rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+      }
+
+      .search-filter input:focus {
+        outline: none;
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+      }
+
+      html.dark-mode .search-filter {
+        background-color: #2a2a2a;
+      }
+
+      html.dark-mode .search-filter input {
+        background-color: #2a2a2a;
+        border-color: #444;
+        color: #e0e0e0;
+      }
+
+      html.dark-mode .search-filter input:focus {
+        border-color: #a855f7;
+        box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
       }
 
       #competitive-table h2,
@@ -182,7 +392,9 @@ td.store-cell img {
         background: white !important;
         border: none !important;
         padding: 0.5rem !important;
-        width: 80px;
+        width: 100px;
+        min-width: 100px;
+        max-width: 100px;
         box-shadow: none !important;
       }
 
@@ -240,23 +452,29 @@ td.store-cell img {
         gap: 0.5rem;
         justify-content: center;
       }
-
-      #competitive-table,
-      #casual-table {
-        position: relative;
+      #competitive-table {
+        left: 0;
+        transform: translateX(0);
       }
-
-      #competitive-table table,
-      #casual-table table {
-        margin-right: 100px;
+      
+      #competitive-table:not(.active) {
+        transform: translateX(-100%);
+      }
+      
+      #casual-table {
+        left: 0;
+        transform: translateX(100%);
+      }
+      
+      #casual-table.active {
+        transform: translateX(0);
       }
 
       .icon-btn {
         background: none;
-        border: 2px solid transparent;
+        border: none;
         padding: 0.5rem;
         cursor: pointer;
-        border-radius: 4px;
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
@@ -266,38 +484,26 @@ td.store-cell img {
       .icon-btn .material-icons {
         font-size: 1.5rem;
         color: #666;
-        transition: color 0.2s ease;
+        transition: all 0.2s ease;
       }
 
-      /* Dark mode support */
-      @media (prefers-color-scheme: dark) {
-        .icon-btn {
-          border-color: #555;
-        }
-        
-        .icon-btn .material-icons {
-          color: #aaa;
-        }
+      html.dark-mode .icon-btn .material-icons {
+        color: #aaa;
+        text-shadow: 0 0 1px rgba(170, 170, 170, 0.5);
       }
 
       .icon-btn:hover .material-icons {
         transform: scale(1.1);
       }
 
-      .edit-btn:hover {
-        background-color: rgba(76, 175, 80, 0.1);
-      }
-
       .edit-btn:hover .material-icons {
         color: #4CAF50;
-      }
-
-      .delete-btn:hover {
-        background-color: rgba(217, 83, 79, 0.1);
+        filter: drop-shadow(0 0 3px rgba(76, 175, 80, 0.6));
       }
 
       .delete-btn:hover .material-icons {
         color: #d9534f;
+        filter: drop-shadow(0 0 3px rgba(217, 83, 79, 0.6));
       }
     </style>
  <div class="tournaments-page"></div>
@@ -314,7 +520,12 @@ td.store-cell img {
       <div class="toggle-slider"></div>
     </div>
 
-    <div id="competitive-table">
+    <div class="search-filter">
+      <input type="text" id="tournamentSearch" placeholder="🔍 Search tournaments...">
+    </div>
+
+    <div class="panels-wrapper">
+    <div id="competitive-table" class="table-panel active">
       <h2>Competitive Tournaments</h2>
       <table>
 <tr>
@@ -381,7 +592,7 @@ td.store-cell img {
       </table>
     </div>
 
-    <div id="casual-table" style="display:none;">
+    <div id="casual-table" class="table-panel">
       <h2>Casual Tournaments</h2>
       <table>
 <tr>
@@ -433,14 +644,8 @@ td.store-cell img {
         {% endfor %}
       </table>
     </div>
-    <!-- Danger zone -->
-    <form method="POST" action="{{ url_for('reset_db') }}"
-          onsubmit="return confirm('Are you sure you want to delete ALL tournament data?');">
-      <button type="submit" class="btn btn-danger" style="margin-top:1rem;">
-        🗑 Delete Tournament Database
-      </button>
-    </form>
-
+    </div> <!-- End panels-wrapper -->
+    
 <script>
   // Make table rows clickable (mouse + keyboard)
   document.querySelectorAll('tr.clickable-row').forEach(row => {
@@ -473,14 +678,49 @@ td.store-cell img {
   const casualTable = document.getElementById('casual-table');
 
   competitiveRadio.addEventListener('change', () => {
-    competitiveTable.style.display = 'block';
-    casualTable.style.display = 'none';
+    competitiveTable.classList.add('active');
+    casualTable.classList.remove('active');
   });
 
   casualRadio.addEventListener('change', () => {
-    competitiveTable.style.display = 'none';
-    casualTable.style.display = 'block';
+    casualTable.classList.add('active');
+    competitiveTable.classList.remove('active');
   });
+
+  // Animate rows on page load
+  window.addEventListener('load', () => {
+    const rows = document.querySelectorAll('tr.tournament-row-wrapper');
+    rows.forEach(row => {
+      row.classList.add('animate');
+    });
+  });
+
+  // Search filter
+  const searchInput = document.getElementById('tournamentSearch');
+  searchInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    // Search in both tables
+    const allRows = document.querySelectorAll('tr.tournament-row-wrapper');
+    
+    allRows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      if (text.includes(searchTerm)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  });
+
+  // Reset search when toggling tables
+  function resetSearch() {
+    searchInput.value = '';
+    const allRows = document.querySelectorAll('tr.tournament-row-wrapper');
+    allRows.forEach(row => row.style.display = '');
+  }
+
+  competitiveRadio.addEventListener('change', resetSearch);
+  casualRadio.addEventListener('change', resetSearch);
 </script>
 
 
