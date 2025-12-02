@@ -168,6 +168,11 @@ class Store(db.Model):
     country = db.Column(db.String(5))
     premium = db.Column(db.Boolean, default=False)
     image_url = db.Column(db.String(255))
+    competitive_tokens = db.Column(db.Integer, default=5)
+    premium_tokens = db.Column(db.Integer, default=1)
+    last_token_reset = db.Column(db.Date, nullable=True)
+    default_competitive_tokens = db.Column(db.Integer, default=5)
+    default_premium_tokens = db.Column(db.Integer, default=1)
 
     tournaments = db.relationship("Tournament", backref="store")
     assignments = db.relationship(
@@ -197,6 +202,61 @@ def stores_for_user(user: User):
     if not store_ids:
         return []
     return Store.query.filter(Store.id.in_(store_ids)).all()
+
+
+def reset_store_tokens_if_needed(store: Store):
+    """Reset tokens if we're in a new month"""
+    from datetime import date
+    today = date.today()
+    
+    if not store.last_token_reset or (today.month != store.last_token_reset.month or today.year != store.last_token_reset.year):
+        store.competitive_tokens = store.default_competitive_tokens if store.default_competitive_tokens is not None else 5
+        store.premium_tokens = (store.default_premium_tokens if store.default_premium_tokens is not None else 1) if store.premium else 0
+        store.last_token_reset = today
+        db.session.commit()
+
+
+def get_user_store_tokens(user: User):
+    """Get token availability for all user's stores"""
+    from datetime import date
+    from calendar import monthrange
+    
+    stores = stores_for_user(user)
+    store_data = []
+    today = date.today()
+    
+    # Calculate next reset date (1st of next month)
+    if today.day == 1:
+        next_reset = today
+    else:
+        # Get next month
+        if today.month == 12:
+            next_reset = date(today.year + 1, 1, 1)
+        else:
+            next_reset = date(today.year, today.month + 1, 1)
+    
+    for store in stores:
+        reset_store_tokens_if_needed(store)
+        # Ensure tokens are not None
+        competitive_tokens = store.competitive_tokens if store.competitive_tokens is not None else 5
+        premium_tokens = store.premium_tokens if store.premium_tokens is not None else (1 if store.premium else 0)
+        default_competitive = store.default_competitive_tokens if store.default_competitive_tokens is not None else 5
+        default_premium = store.default_premium_tokens if store.default_premium_tokens is not None else 1
+        
+        store_data.append({
+            'id': store.id,
+            'name': store.name,
+            'premium': store.premium,
+            'competitive_tokens': competitive_tokens,
+            'premium_tokens': premium_tokens,
+            'default_competitive_tokens': default_competitive,
+            'default_premium_tokens': default_premium,
+            'has_competitive': competitive_tokens > 0,
+            'has_premium': store.premium and premium_tokens > 0,
+            'next_reset_date': next_reset
+        })
+    
+    return store_data
 
 
 class BlogPost(db.Model):
@@ -665,7 +725,18 @@ def admin_panel():
     # Query event logs (most recent 100)
     event_logs = EventLog.query.order_by(EventLog.timestamp.desc()).limit(100).all()
     
-    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs)
+    # Calculate next reset date
+    from datetime import date
+    today = date.today()
+    if today.day == 1:
+        next_reset = today
+    else:
+        if today.month == 12:
+            next_reset = date(today.year + 1, 1, 1)
+        else:
+            next_reset = date(today.year, today.month + 1, 1)
+    
+    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs, next_reset_date=next_reset)
 
 
 @app.route("/admin/stores", methods=["GET", "POST"])
@@ -731,7 +802,18 @@ def admin_stores():
     # Query event logs (most recent 100)
     event_logs = EventLog.query.order_by(EventLog.timestamp.desc()).limit(100).all()
     
-    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs)
+    # Calculate next reset date
+    from datetime import date
+    today = date.today()
+    if today.day == 1:
+        next_reset = today
+    else:
+        if today.month == 12:
+            next_reset = date(today.year + 1, 1, 1)
+        else:
+            next_reset = date(today.year, today.month + 1, 1)
+    
+    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs, next_reset_date=next_reset)
 
 
 @app.route("/admin/store/<int:store_id>/assign", methods=["POST"])
@@ -801,6 +883,48 @@ def remove_user_from_store(store_id, user_id):
         db.session.commit()
         flash("User removed from store.", "success")
     return redirect(url_for("admin_stores"))
+
+@app.route("/admin/store/<int:store_id>/update_tokens", methods=["POST"])
+@login_required
+def update_store_tokens(store_id):
+    if not current_user.is_admin:
+        return jsonify({"error": "Admins only"}), 403
+
+    store = Store.query.get_or_404(store_id)
+    
+    try:
+        competitive_tokens = request.form.get("competitive_tokens", type=int)
+        premium_tokens = request.form.get("premium_tokens", type=int)
+        default_competitive_tokens = request.form.get("default_competitive_tokens", type=int)
+        default_premium_tokens = request.form.get("default_premium_tokens", type=int)
+        
+        if competitive_tokens is not None and competitive_tokens >= 0:
+            store.competitive_tokens = competitive_tokens
+        if premium_tokens is not None and premium_tokens >= 0:
+            store.premium_tokens = premium_tokens
+        if default_competitive_tokens is not None and default_competitive_tokens >= 0:
+            store.default_competitive_tokens = default_competitive_tokens
+        if default_premium_tokens is not None and default_premium_tokens >= 0:
+            store.default_premium_tokens = default_premium_tokens
+        
+        db.session.commit()
+        
+        log_event(
+            action_type='store_tokens_updated',
+            details=f"Updated tokens for {store.name}: Competitive={store.competitive_tokens}, Premium={store.premium_tokens}, Defaults: Competitive={store.default_competitive_tokens}, Premium={store.default_premium_tokens}",
+            recoverable=False
+        )
+        
+        return jsonify({
+            "success": True,
+            "competitive_tokens": store.competitive_tokens,
+            "premium_tokens": store.premium_tokens,
+            "default_competitive_tokens": store.default_competitive_tokens,
+            "default_premium_tokens": store.default_premium_tokens
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
 
 @app.route("/admin/store/<int:store_id>/delete", methods=["POST"])
 @login_required
@@ -1609,6 +1733,14 @@ def players():
         .all()
     )
 
+    # Get unique countries from all competitive players (before filtering)
+    available_countries = set()
+    for p in all_competitive_players:
+        country = player_country_local(p.id)
+        if country:
+            available_countries.add(country.upper())
+    available_countries = sorted(list(available_countries))
+
     if country_filter:
         all_competitive_players = [
             p for p in all_competitive_players
@@ -1630,14 +1762,6 @@ def players():
     competitive_ranked.sort(
         key=lambda x: (x["rank"] is None, x["rank"] if x["rank"] is not None else float("inf"))
     )
-
-    # Get unique countries from all competitive players (before filtering)
-    available_countries = set()
-    for p in all_competitive_players:
-        country = player_country_local(p.id)
-        if country:
-            available_countries.add(country.upper())
-    available_countries = sorted(list(available_countries))
 
     # === Casual ranking (points) ===
     casual_players = (
@@ -1955,7 +2079,23 @@ def reset_db():
 @app.route('/tournament/choose')
 @login_required
 def choose_tournament_type():
-    return render_template('choose_tournament_type.html')
+    store_tokens = get_user_store_tokens(current_user)
+    
+    # Check if user has any stores with available tokens
+    has_tokens_competitive = any(s['has_competitive'] for s in store_tokens)
+    has_tokens_premium = any(s['has_premium'] for s in store_tokens)
+    
+    # Cards are only enabled if there are actual tokens available
+    # (Admin/scorekeeper status doesn't bypass this UI restriction)
+    has_any_competitive = has_tokens_competitive
+    has_any_premium = has_tokens_premium
+    
+    return render_template('choose_tournament_type.html', 
+                         store_tokens=store_tokens,
+                         has_any_competitive=has_any_competitive,
+                         has_any_premium=has_any_premium,
+                         has_tokens_competitive=has_tokens_competitive,
+                         has_tokens_premium=has_tokens_premium)
 
 
 
@@ -1966,6 +2106,22 @@ def new_tournament():
     if not (current_user.is_admin or current_user.is_scorekeeper):
         flash("Only admins or scorekeepers can create tournaments.", "error")
         return redirect(url_for('players'))
+    
+    # Check token availability before allowing access
+    tournament_type = request.args.get('type', 'competitive')
+    store_tokens = get_user_store_tokens(current_user)
+    
+    if tournament_type == 'premium':
+        has_premium_tokens = any(s['has_premium'] for s in store_tokens)
+        if not has_premium_tokens:
+            flash("No premium tokens available. Please add tokens to your stores.", "error")
+            return redirect(url_for('choose_tournament_type'))
+    elif tournament_type == 'competitive':
+        has_competitive_tokens = any(s['has_competitive'] for s in store_tokens)
+        if not has_competitive_tokens:
+            flash("No competitive tokens available. Please add tokens to your stores.", "error")
+            return redirect(url_for('choose_tournament_type'))
+    # Casual tournaments don't require token check
 
     if request.method == 'POST':
         workflow = request.form.get('workflow')
@@ -2980,12 +3136,25 @@ def submit_deck():
     if deck:
         deck.name = deck_name
         deck.list_text = deck_list
+        # Preserve existing image if archetype has one and current deck doesn't
+        if not deck.image_url and deck_name:
+            existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
+            if existing_archetype:
+                deck.image_url = existing_archetype.image_url
     else:
+        # Check if archetype exists and has an image
+        archetype_image = None
+        if deck_name:
+            existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
+            if existing_archetype:
+                archetype_image = existing_archetype.image_url
+        
         deck = Deck(
             player_id=player_id,
             tournament_id=tournament_id,
             name=deck_name,
-            list_text=deck_list
+            list_text=deck_list,
+            image_url=archetype_image
         )
         db.session.add(deck)
 
@@ -3121,11 +3290,56 @@ def tournament_round(tid, round_num):
 
     # Build stores list for selector
     stores = []
+    valid_store_ids = []
     if current_user.is_authenticated:
         if current_user.is_admin:
-            stores = Store.query.order_by(Store.name.asc()).all()
+            all_stores = Store.query.order_by(Store.name.asc()).all()
+            # Filter based on tournament type
+            for store in all_stores:
+                reset_store_tokens_if_needed(store)
+                # In edit mode, allow all stores regardless of tokens
+                if is_editing:
+                    if tournament.premium and store.premium:
+                        stores.append(store)
+                        valid_store_ids.append(store.id)
+                    elif not tournament.premium:
+                        stores.append(store)
+                        valid_store_ids.append(store.id)
+                else:
+                    # Normal mode requires tokens
+                    if tournament.premium:
+                        # Premium tournaments need premium store with tokens
+                        if store.premium and store.premium_tokens > 0:
+                            stores.append(store)
+                            valid_store_ids.append(store.id)
+                    else:
+                        # Competitive tournaments need competitive tokens
+                        if store.competitive_tokens > 0:
+                            stores.append(store)
+                            valid_store_ids.append(store.id)
         else:
-            stores = stores_for_user(current_user)
+            user_stores = stores_for_user(current_user)
+            for store in user_stores:
+                reset_store_tokens_if_needed(store)
+                # In edit mode, allow all user stores regardless of tokens
+                if is_editing:
+                    if tournament.premium and store.premium:
+                        stores.append(store)
+                        valid_store_ids.append(store.id)
+                    elif not tournament.premium:
+                        stores.append(store)
+                        valid_store_ids.append(store.id)
+                else:
+                    # Normal mode requires tokens
+                    if tournament.premium:
+                        if store.premium and store.premium_tokens > 0:
+                            stores.append(store)
+                            valid_store_ids.append(store.id)
+                    else:
+                        # Scorekeepers get competitive access even without tokens
+                        if store.competitive_tokens > 0 or current_user.is_scorekeeper:
+                            stores.append(store)
+                            valid_store_ids.append(store.id)
 
     # Imported tournament preview workflow
     if tournament.imported_from_text:
@@ -3373,6 +3587,16 @@ def apply_top_cut(tid):
             continue
         scores = result_to_scores(m.result) or (1, 1)
         update_elo(p1, p2, *scores, tournament)
+
+    # Consume token if tournament has a store assigned
+    # Only consume tokens for NEW tournaments (pending=True means first-time finalization)
+    if tournament.store_id and tournament.pending:
+        store = Store.query.get(tournament.store_id)
+        if store:
+            if tournament.premium and store.premium_tokens > 0:
+                store.premium_tokens -= 1
+            elif not tournament.premium and not tournament.casual and store.competitive_tokens > 0:
+                store.competitive_tokens -= 1
 
     # Mark final and clear token
     tournament.pending = False

@@ -485,6 +485,7 @@
   <div class="admin-sidebar">
     <h2>Admin Panel</h2>
     <a href="#users-stores">Users & Stores</a>
+    <a href="#store-tokens">Store Tokens</a>
     <a href="#requests">Requests</a>
     <a href="#event-logs">Event Logs</a>
     <a href="#danger">Danger Zone</a>
@@ -632,6 +633,161 @@
 {% endfor %}
 
     </div> <!-- End Users & Stores section -->
+
+    <div id="store-tokens" class="admin-section">
+      <h2>Store Tokens Management</h2>
+      <p>Set token counts for each store. Tokens reset automatically on the <strong>1st</strong> of each month.</p>
+      
+      <div style="background: #e7f3ff; border: 1px solid #0d6efd; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="material-icons" style="color: #0d6efd;">event</span>
+          <strong style="color: #0d6efd;">Next Token Reset:</strong>
+          <span style="color: #084298;">{{ next_reset_date.strftime('%B %d, %Y') }}</span>
+        </div>
+      </div>
+
+      <div style="display: grid; gap: 1rem; margin-top: 1.5rem;">
+        {% for store in stores %}
+        <div style="background: var(--bg-primary, #fff); border: 1px solid var(--border-color, #dee2e6); border-radius: 8px; padding: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span class="material-icons" style="color: #667eea;">store</span>
+                <h3 style="margin: 0; font-size: 1.1rem;">{{ store.name }}</h3>
+                {% if store.premium %}
+                  <span class="badge-premium" style="font-size: 0.7rem;">✨ Premium</span>
+                {% endif %}
+              </div>
+              <div style="color: var(--text-secondary, #6c757d); font-size: 0.85rem;">
+                {% if store.location %}{{ store.location }}{% endif %}
+                {% if store.country %}
+                  <span class="fi fi-{{ store.country|lower }}" style="margin-left: 0.5rem;"></span>
+                {% endif %}
+              </div>
+              {% if store.last_token_reset %}
+                <div style="color: var(--text-secondary, #999); font-size: 0.8rem; margin-top: 0.25rem;">
+                  Last reset: {{ store.last_token_reset.strftime('%B %d, %Y') }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <!-- Competitive Tokens -->
+            <div style="background: var(--bg-secondary, #f8f9fa); padding: 1rem; border-radius: 6px; border: 2px solid #4caf50;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <span class="material-icons" style="color: #4caf50; font-size: 1.2rem;">local_activity</span>
+                <span style="font-weight: 600; color: #4caf50;">Competitive Tokens</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="number" 
+                       id="competitive-{{ store.id }}" 
+                       value="{{ store.competitive_tokens if store.competitive_tokens is not none else 5 }}" 
+                       min="0" 
+                       max="100"
+                       style="flex: 1; padding: 0.5rem; font-size: 1rem; border: 1px solid #ddd; border-radius: 4px; text-align: center;">
+                <button onclick="updateStoreTokens({{ store.id }}, 'competitive')" 
+                        class="btn btn-primary" 
+                        style="padding: 0.5rem 1rem;">
+                  <span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span>
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <!-- Premium Tokens -->
+            <div style="background: var(--bg-secondary, #f8f9fa); padding: 1rem; border-radius: 6px; border: 2px solid #ffc107;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <span class="material-icons" style="color: #ffc107; font-size: 1.2rem;">workspace_premium</span>
+                <span style="font-weight: 600; color: #f57f17;">Premium Tokens</span>
+              </div>
+              {% if store.premium %}
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="number" 
+                       id="premium-{{ store.id }}" 
+                       value="{{ store.premium_tokens if store.premium_tokens is not none else 1 }}" 
+                       min="0" 
+                       max="100"
+                       style="flex: 1; padding: 0.5rem; font-size: 1rem; border: 1px solid #ddd; border-radius: 4px; text-align: center;">
+                <button onclick="updateStoreTokens({{ store.id }}, 'premium')" 
+                        class="btn btn-primary" 
+                        style="padding: 0.5rem 1rem;">
+                  <span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span>
+                  Save
+                </button>
+              </div>
+              {% else %}
+              <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; text-align: center;">
+                <span class="material-icons" style="color: #856404; font-size: 2rem;">lock</span>
+                <p style="margin: 0.5rem 0 0 0; color: #856404; font-size: 0.85rem;">
+                  This store is not premium.<br>
+                  Enable premium status in "Users & Stores" section to manage premium tokens.
+                </p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Default Token Values (Reset Defaults) -->
+          <div style="background: #f0f4ff; border: 2px dashed #667eea; border-radius: 6px; padding: 1rem; margin-top: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+              <span class="material-icons" style="color: #667eea;">settings_backup_restore</span>
+              <h4 style="margin: 0; color: #667eea;">Reset Defaults</h4>
+              <span style="color: #6c757d; font-size: 0.85rem; font-style: italic;">(Applied on monthly reset)</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <!-- Default Competitive -->
+              <div>
+                <label style="display: block; margin-bottom: 0.5rem; color: #495057; font-size: 0.9rem; font-weight: 600;">
+                  <span class="material-icons" style="font-size: 14px; vertical-align: middle; color: #4caf50;">local_activity</span>
+                  Default Competitive
+                </label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <input type="number" 
+                         id="default-competitive-{{ store.id }}" 
+                         value="{{ store.default_competitive_tokens if store.default_competitive_tokens is not none else 5 }}" 
+                         min="0" 
+                         max="100"
+                         style="flex: 1; padding: 0.5rem; font-size: 0.95rem; border: 1px solid #ddd; border-radius: 4px; text-align: center;">
+                  <button onclick="updateStoreTokens({{ store.id }}, 'default_competitive')" 
+                          class="btn btn-secondary" 
+                          style="padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+                    <span class="material-icons" style="font-size: 14px; vertical-align: middle;">save</span>
+                  </button>
+                </div>
+              </div>
+              <!-- Default Premium -->
+              <div>
+                <label style="display: block; margin-bottom: 0.5rem; color: #495057; font-size: 0.9rem; font-weight: 600;">
+                  <span class="material-icons" style="font-size: 14px; vertical-align: middle; color: #ffc107;">workspace_premium</span>
+                  Default Premium
+                </label>
+                {% if store.premium %}
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <input type="number" 
+                         id="default-premium-{{ store.id }}" 
+                         value="{{ store.default_premium_tokens if store.default_premium_tokens is not none else 1 }}" 
+                         min="0" 
+                         max="100"
+                         style="flex: 1; padding: 0.5rem; font-size: 0.95rem; border: 1px solid #ddd; border-radius: 4px; text-align: center;">
+                  <button onclick="updateStoreTokens({{ store.id }}, 'default_premium')" 
+                          class="btn btn-secondary" 
+                          style="padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+                    <span class="material-icons" style="font-size: 14px; vertical-align: middle;">save</span>
+                  </button>
+                </div>
+                {% else %}
+                <div style="background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; padding: 0.75rem; text-align: center;">
+                  <span style="color: #6c757d; font-size: 0.8rem;">Not available (non-premium store)</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
 
     <div id="event-logs" class="admin-section">
       <h2>Event Logs</h2>
@@ -1007,6 +1163,60 @@ let storeCropper = null;
 let currentStoreId = null;
 let selectedExistingImage = null;
 let availableImages = [];
+
+// Update store tokens
+async function updateStoreTokens(storeId, tokenType) {
+  const inputId = `${tokenType}-${storeId}`;
+  const input = document.getElementById(inputId);
+  const value = parseInt(input.value);
+  
+  if (isNaN(value) || value < 0) {
+    alert('Please enter a valid number (0 or greater)');
+    return;
+  }
+  
+  try {
+    const formData = new FormData();
+    formData.append(`${tokenType}_tokens`, value);
+    
+    const response = await fetch(`/admin/store/${storeId}/update_tokens`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Update the input value to match saved value
+      if (tokenType === 'competitive') {
+        input.value = data.competitive_tokens;
+      } else if (tokenType === 'premium') {
+        input.value = data.premium_tokens;
+      } else if (tokenType === 'default_competitive') {
+        input.value = data.default_competitive_tokens;
+      } else if (tokenType === 'default_premium') {
+        input.value = data.default_premium_tokens;
+      }
+      
+      // Show success feedback
+      const button = input.nextElementSibling;
+      const originalText = button.innerHTML;
+      button.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">check</span> Saved';
+      button.style.backgroundColor = '#28a745';
+      
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.backgroundColor = '';
+      }, 2000);
+    } else {
+      const error = await response.json();
+      alert(error.error || 'Error updating tokens');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error updating tokens');
+  }
+}
 
 // Load available images
 async function loadAvailableImages() {

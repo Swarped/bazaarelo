@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>{% block title %}{% endblock %}</title>
+    <title>PremodernRating - {% block title %}{% endblock %}</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script>
       // Apply dark mode immediately based on browser preference or user setting
@@ -177,7 +177,7 @@
         color: #e0e0e0 !important;
       }
       /* Generic spans - but exclude special classes */
-      html.dark-mode span:not(.material-icons):not(.elo-match-pos):not(.elo-match-neg):not([style*="color"]) {
+      html.dark-mode span:not(.material-icons):not(.elo-match-pos):not(.elo-match-neg):not(.elo-badge):not(.hl-valid):not(.hl-sideboard):not(.quantity-error):not([style*="color"]) {
         color: #e0e0e0 !important;
       }
       /* Force ELO colors after generic span rule */
@@ -989,6 +989,24 @@
         flex-shrink: 0;
       }
       
+      .modal-content-deck h3 .copy-deck-icon {
+        position: absolute;
+        right: 5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: white;
+        opacity: 0.85;
+        transition: opacity 0.2s, transform 0.2s;
+        z-index: 10;
+      }
+      
+      .modal-content-deck h3 .copy-deck-icon:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.1);
+      }
+      
       .modal-content-deck h3 .close {
         position: absolute;
         right: 1.5rem;
@@ -1097,6 +1115,31 @@
         color: #1f2937;
         border-color: #a855f7;
         font-weight: 500;
+      }
+      
+      .card-list-enhanced li.type-divider {
+        background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+        color: white;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.4rem 0.6rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.3rem;
+        border: none;
+        cursor: default;
+        pointer-events: none;
+      }
+      
+      .card-list-enhanced li.type-divider:first-child {
+        margin-top: 0;
+      }
+      
+      .card-list-enhanced li.type-divider:hover {
+        background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+        transform: none;
+        border-color: transparent;
       }
       
       .card-name-text {
@@ -1297,6 +1340,15 @@
         border-color: #c084fc;
       }
       
+      html.dark-mode .card-list-enhanced li.type-divider {
+        background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+        color: #f1f5f9;
+      }
+      
+      html.dark-mode .card-list-enhanced li.type-divider:hover {
+        background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+      }
+      
       html.dark-mode .card-image-container,
       html.dark-mode .card-details {
         background: #2a2a2a;
@@ -1361,7 +1413,7 @@
             </div>
             <div class="profile-dropdown">
               <a href="{{ url_for('profile_settings') }}"><i class="material-icons">settings</i> Settings</a>
-              <a href="{{ url_for('user_tournaments', user_id=current_user.id) }}"><i class="material-icons">emoji_events</i> My Tournaments</a>
+              <a href="{{ url_for('tournaments_list', show_mine='1') }}"><i class="material-icons">emoji_events</i> My Tournaments</a>
               <a href="#" id="darkModeToggle" style="display:flex; justify-content:space-between; align-items:center;">
                 <span><i class="material-icons">dark_mode</i> Dark Mode</span>
                 <span id="darkModeStatus">{% if current_user.dark_mode %}ON{% else %}OFF{% endif %}</span>

@@ -62,6 +62,48 @@
         background-color: #45a049;
       }
 
+      .btn-secondary {
+        background-color: #f0f0f0;
+        color: #333 !important;
+        border: 1px solid #ccc;
+        transition: all 0.3s ease;
+        text-decoration: none !important;
+      }
+      .btn-secondary:hover {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        border-color: #7c3aed;
+        color: #fff !important;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+      }
+
+      html.dark-mode .btn-secondary,
+      html.dark-mode a.btn-secondary,
+      html.dark-mode aside a.btn-secondary {
+        background-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+        border-color: #666 !important;
+      }
+
+      html.dark-mode .btn-secondary:hover,
+      html.dark-mode a.btn-secondary:hover,
+      html.dark-mode aside a.btn-secondary:hover {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+        border-color: #7c3aed !important;
+        color: #fff !important;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4) !important;
+      }
+      
+      /* Override any link color rules for btn-secondary */
+      html.dark-mode a.btn-secondary,
+      html.dark-mode a.btn-secondary:link,
+      html.dark-mode a.btn-secondary:visited {
+        color: #e0e0e0 !important;
+      }
+      
+      html.dark-mode a.btn-secondary:hover {
+        color: #fff !important;
+      }
+
       .btn-danger {
         background-color: #d9534f;
         color: white;
@@ -181,9 +223,133 @@
 
       th, td {
         border: 1px solid #ddd;
-        padding: 0.75rem;
+        padding: 0.5rem;
         text-align: left;
         vertical-align: middle;
+      }
+
+      th:first-child,
+      td:first-child {
+        width: 60px;
+        text-align: center;
+        font-weight: bold;
+      }
+
+      th:nth-child(3),
+      td:nth-child(3) {
+        width: 100px;
+        text-align: center;
+      }
+
+      th:nth-child(4),
+      td:nth-child(4) {
+        width: 80px;
+        text-align: center;
+      }
+
+      .elo-badge-wrapper {
+        display: inline-block;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      }
+
+      .elo-badge-wrapper.gold {
+        filter: drop-shadow(0 2px 6px rgba(212, 175, 55, 0.3));
+      }
+
+      .elo-badge-wrapper.silver {
+        filter: drop-shadow(0 2px 6px rgba(168, 168, 168, 0.3));
+      }
+
+      .elo-badge-wrapper.bronze {
+        filter: drop-shadow(0 2px 6px rgba(184, 115, 51, 0.3));
+      }
+
+      .elo-badge-wrapper.black {
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+      }
+
+      .elo-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
+        font-weight: bold;
+        font-size: 0.95rem;
+        color: #d0d0d0;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        min-width: 60px;
+        text-align: center;
+      }
+
+      .elo-badge.gold {
+        background: linear-gradient(135deg, #9d8034 0%, #c9a961 50%, #9d8034 100%);
+        color: #ffffff !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      }
+
+      .elo-badge.silver {
+        background: linear-gradient(135deg, #6b747d 0%, #9ca5ad 50%, #6b747d 100%);
+        color: #ffffff !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      }
+
+      .elo-badge.bronze {
+        background: linear-gradient(135deg, #6b4a2a 0%, #9d7352 50%, #6b4a2a 100%);
+        color: #ffffff !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      }
+
+      .elo-badge.black {
+        background: linear-gradient(135deg, #2a2a2a 0%, #4a4a4a 50%, #2a2a2a 100%);
+        color: #d0d0d0 !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      }
+
+      html.dark-mode .elo-badge.gold {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode .elo-badge.silver {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode .elo-badge.bronze {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode .elo-badge.black {
+        color: #d0d0d0 !important;
+      }
+
+      html.dark-mode td .elo-badge.gold {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode td .elo-badge.silver {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode td .elo-badge.bronze {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode td .elo-badge.black {
+        color: #d0d0d0 !important;
+      }
+
+      html.dark-mode table td .elo-badge.gold {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode table td .elo-badge.silver {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode table td .elo-badge.bronze {
+        color: #ffffff !important;
+      }
+
+      html.dark-mode table td .elo-badge.black {
+        color: #d0d0d0 !important;
       }
 
       th {
@@ -253,6 +419,18 @@ tr:hover td, tr:hover th {
   padding: 0.5rem;
 }
 
+.country-select option::before {
+  content: '';
+  display: inline-block;
+  width: 1.5em;
+  height: 1em;
+  margin-right: 0.5em;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  vertical-align: middle;
+}
+
 html.dark-mode .country-select {
   background-color: #2a2a2a;
   border-color: #444;
@@ -266,6 +444,110 @@ html.dark-mode .country-select:focus {
 
 html.dark-mode .country-select option {
   background-color: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.custom-country-select {
+  position: relative;
+  min-width: 180px;
+  user-select: none;
+}
+
+.custom-select-selected {
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.custom-select-selected::after {
+  content: '▼';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.custom-country-select.open .custom-select-selected::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.custom-select-selected:hover {
+  border-color: #007bff;
+}
+
+.custom-select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  display: none;
+}
+
+.custom-country-select.open .custom-select-options {
+  display: block;
+}
+
+.custom-select-option {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.custom-select-option:hover {
+  background-color: #f0f0f0;
+}
+
+.custom-select-option.selected {
+  background-color: #e3f2fd;
+  font-weight: 500;
+}
+
+.custom-select-option .fi,
+.custom-select-selected .fi {
+  margin-right: 0.5rem;
+}
+
+td .fi {
+  font-size: 1.25rem;
+  vertical-align: middle;
+}
+
+html.dark-mode .custom-select-selected {
+  background-color: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+html.dark-mode .custom-select-selected:hover {
+  border-color: #4a9eff;
+}
+
+html.dark-mode .custom-select-options {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+html.dark-mode .custom-select-option:hover {
+  background-color: #3a3a3a;
+}
+
+html.dark-mode .custom-select-option.selected {
+  background-color: #1a3a52;
   color: #e0e0e0;
 }
 
@@ -646,27 +928,11 @@ html.dark-mode .featured-posts-section h2 {
 }
 
     </style>
-<div class="players-page">
-  <header>
-    <h1>Players</h1>
-  </header>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        {% if category == 'error' %}
-          <div class="flash-error">{{ message }}</div>
-        {% elif category == 'success' %}
-          <div class="flash-success">{{ message }}</div>
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  <!-- FEATURED BLOG POSTS -->
+  <!-- FEATURED BLOG POSTS - Full Width -->
   {% if featured_posts %}
-  <div class="featured-posts-section" style="margin-bottom: 2rem;">
-    <div class="blog-carousel" style="position: relative; overflow: hidden; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <div class="featured-posts-section" style="margin: 1rem 0 2rem 0; width: auto;">
+    <div class="blog-carousel" style="position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 12px;">
       <div class="blog-carousel-track" style="display: flex; transition: transform 0.5s ease;">
         {% for post in featured_posts %}
         <div class="blog-slide" style="min-width: 100%; flex-shrink: 0;">
@@ -697,11 +963,13 @@ html.dark-mode .featured-posts-section h2 {
             <div class="blog-slide-content" style="
               position: relative;
               z-index: 1;
-              padding: 2rem 2.5rem;
+              padding: 2rem 5rem;
               display: flex;
               flex-direction: column;
               justify-content: center;
-              min-height: 280px;">
+              min-height: 280px;
+              max-width: 1200px;
+              margin: 0 auto;">
               <h3 style="
                 margin: 0 0 0.75rem 0;
                 font-size: 1.75rem;
@@ -812,6 +1080,19 @@ html.dark-mode .featured-posts-section h2 {
   </div>
   {% endif %}
 
+<div class="players-page">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        {% if category == 'error' %}
+          <div class="flash-error">{{ message }}</div>
+        {% elif category == 'success' %}
+          <div class="flash-success">{{ message }}</div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   <!-- FLEX CONTAINER: left tables + right aside -->
   <div style="display:flex; gap:2rem; align-items:flex-start; flex-wrap:nowrap;">
     <!-- LEFT COLUMN -->
@@ -830,12 +1111,47 @@ html.dark-mode .featured-posts-section h2 {
         <form method="GET" class="filter-group" id="countryFilterForm">
           <label for="country">Country:</label>
           <select name="country" id="country" class="country-select">
-            <option value="">All Countries</option>
-            {% if 'AR' in available_countries %}<option value="AR" {% if request.args.get('country') == 'AR' %}selected{% endif %}>🇦🇷 Argentina</option>{% endif %}
-            {% if 'BR' in available_countries %}<option value="BR" {% if request.args.get('country') == 'BR' %}selected{% endif %}>🇧🇷 Brazil</option>{% endif %}
-            {% if 'CL' in available_countries %}<option value="CL" {% if request.args.get('country') == 'CL' %}selected{% endif %}>🇨🇱 Chile</option>{% endif %}
-            {% if 'US' in available_countries %}<option value="US" {% if request.args.get('country') == 'US' %}selected{% endif %}>🇺🇸 United States</option>{% endif %}
-            {% if 'ES' in available_countries %}<option value="ES" {% if request.args.get('country') == 'ES' %}selected{% endif %}>🇪🇸 Spain</option>{% endif %}
+            <option value="">🌐 Global</option>
+            {% set country_names = {
+              'AR': 'Argentina',
+              'BR': 'Brazil',
+              'CL': 'Chile',
+              'US': 'United States',
+              'ES': 'Spain',
+              'UY': 'Uruguay',
+              'MX': 'Mexico',
+              'CO': 'Colombia',
+              'PE': 'Peru',
+              'VE': 'Venezuela',
+              'EC': 'Ecuador',
+              'BO': 'Bolivia',
+              'PY': 'Paraguay',
+              'CR': 'Costa Rica',
+              'PA': 'Panama',
+              'GT': 'Guatemala',
+              'HN': 'Honduras',
+              'SV': 'El Salvador',
+              'NI': 'Nicaragua',
+              'DO': 'Dominican Republic',
+              'CU': 'Cuba',
+              'PR': 'Puerto Rico',
+              'CA': 'Canada',
+              'GB': 'United Kingdom',
+              'FR': 'France',
+              'DE': 'Germany',
+              'IT': 'Italy',
+              'PT': 'Portugal',
+              'JP': 'Japan',
+              'AU': 'Australia',
+              'NZ': 'New Zealand'
+            } %}
+            {% for country_code in available_countries|sort %}
+              {% if country_code in country_names %}
+                <option value="{{ country_code }}" {% if request.args.get('country') == country_code %}selected{% endif %} data-flag="{{ country_code|lower }}">{{ country_names[country_code] }}</option>
+              {% else %}
+                <option value="{{ country_code }}" {% if request.args.get('country') == country_code %}selected{% endif %} data-flag="{{ country_code|lower }}">{{ country_code }}</option>
+              {% endif %}
+            {% endfor %}
           </select>
         </form>
       </div>
@@ -849,7 +1165,7 @@ html.dark-mode .featured-posts-section h2 {
             <tr>
               <th>Rank</th>
               <th>Name</th>
-              <th>Elo</th>
+              <th>Rating</th>
               <th>Country</th>
             </tr>
             {% for p in players %}
@@ -869,7 +1185,16 @@ html.dark-mode .featured-posts-section h2 {
                 {% elif num_tournaments < 3 and current_user.is_admin %}
                   {{ p.player.elo }} <span style="color:orange;">(provisional)</span>
                 {% else %}
-                  {{ p.player.elo }}
+                  {% set total_ranked = players|selectattr('rank')|list|length %}
+                  {% if p.rank and p.rank <= (total_ranked * 0.1)|int %}
+                    <span class="elo-badge-wrapper gold"><span class="elo-badge gold">{{ p.player.elo }}</span></span>
+                  {% elif p.rank and p.rank <= (total_ranked * 0.3)|int %}
+                    <span class="elo-badge-wrapper silver"><span class="elo-badge silver">{{ p.player.elo }}</span></span>
+                  {% elif p.rank and p.rank <= (total_ranked * 0.6)|int %}
+                    <span class="elo-badge-wrapper bronze"><span class="elo-badge bronze">{{ p.player.elo }}</span></span>
+                  {% else %}
+                    <span class="elo-badge-wrapper black"><span class="elo-badge black">{{ p.player.elo }}</span></span>
+                  {% endif %}
                 {% endif %}
               </td>
               <td>
@@ -910,9 +1235,9 @@ html.dark-mode .featured-posts-section h2 {
     </div>
 
     <!-- RIGHT COLUMN -->
-    <aside style="width:240px; flex-shrink:0; margin-top:2.5rem;">
-      <a href="{{ url_for('decks_list') }}" class="btn btn-primary" 
-         style="display:block; margin-bottom:1rem; text-align:center; padding:1rem; font-size:1.1rem;">
+    <aside style="width:240px; flex-shrink:0; margin-top:0;">
+      <a href="{{ url_for('decks_list') }}" class="btn btn-secondary" 
+         style="display:block; margin-bottom:1rem; text-align:center; padding:0.4rem 1rem; font-size:1.1rem; color: inherit !important;">
         <i class="material-icons" style="vertical-align:middle; font-size:22px;">style</i> 
         See All Decks
       </a>
@@ -986,9 +1311,8 @@ html.dark-mode .featured-posts-section h2 {
       {% endfor %}
     </aside>
   </div>
-</div>
-
-
+</div> <!-- End flex container -->
+</div> <!-- End players-page -->
 
 
 
@@ -1250,6 +1574,92 @@ if (blogCarousel) {
     }, 5000);
   });
 }
+
+// Custom select with flag icons
+document.addEventListener('DOMContentLoaded', function() {
+  const countrySelect = document.getElementById('country');
+  if (countrySelect) {
+    // Create custom select container
+    const customSelect = document.createElement('div');
+    customSelect.className = 'custom-country-select';
+    
+    // Create selected display
+    const selectedDisplay = document.createElement('div');
+    selectedDisplay.className = 'custom-select-selected';
+    
+    // Get selected option
+    const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+    const selectedFlag = selectedOption.getAttribute('data-flag');
+    
+    if (selectedFlag) {
+      selectedDisplay.innerHTML = `<span class="fi fi-${selectedFlag}"></span> ${selectedOption.text}`;
+    } else {
+      selectedDisplay.textContent = selectedOption.text;
+    }
+    
+    // Create options container
+    const optionsContainer = document.createElement('div');
+    optionsContainer.className = 'custom-select-options';
+    
+    // Populate options
+    Array.from(countrySelect.options).forEach((option, index) => {
+      const optionDiv = document.createElement('div');
+      optionDiv.className = 'custom-select-option';
+      if (option.selected) optionDiv.classList.add('selected');
+      
+      const flag = option.getAttribute('data-flag');
+      if (flag) {
+        optionDiv.innerHTML = `<span class="fi fi-${flag}"></span> ${option.text}`;
+      } else {
+        optionDiv.textContent = option.text;
+      }
+      
+      optionDiv.addEventListener('click', function() {
+        // Update native select
+        countrySelect.selectedIndex = index;
+        
+        // Update display
+        if (flag) {
+          selectedDisplay.innerHTML = `<span class="fi fi-${flag}"></span> ${option.text}`;
+        } else {
+          selectedDisplay.textContent = option.text;
+        }
+        
+        // Update selected class
+        document.querySelectorAll('.custom-select-option').forEach(opt => opt.classList.remove('selected'));
+        optionDiv.classList.add('selected');
+        
+        // Close dropdown
+        customSelect.classList.remove('open');
+        
+        // Submit form
+        document.getElementById('countryFilterForm').submit();
+      });
+      
+      optionsContainer.appendChild(optionDiv);
+    });
+    
+    // Toggle dropdown
+    selectedDisplay.addEventListener('click', function() {
+      customSelect.classList.toggle('open');
+    });
+    
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!customSelect.contains(e.target)) {
+        customSelect.classList.remove('open');
+      }
+    });
+    
+    // Build custom select
+    customSelect.appendChild(selectedDisplay);
+    customSelect.appendChild(optionsContainer);
+    
+    // Replace native select
+    countrySelect.style.display = 'none';
+    countrySelect.parentNode.insertBefore(customSelect, countrySelect);
+  }
+});
 
 </script>
 

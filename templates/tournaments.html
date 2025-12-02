@@ -521,7 +521,15 @@ td.store-cell img {
     </div>
 
     <div class="search-filter">
-      <input type="text" id="tournamentSearch" placeholder="🔍 Search tournaments...">
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <input type="text" id="tournamentSearch" placeholder="🔍 Search tournaments..." style="flex: 1;">
+        {% if current_user.is_authenticated %}
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; white-space: nowrap;">
+          <input type="checkbox" id="showOnlyMine" {% if request.args.get('show_mine') == '1' %}checked{% endif %}>
+          <span>Show only mine</span>
+        </label>
+        {% endif %}
+      </div>
     </div>
 
     <div class="panels-wrapper">
@@ -544,7 +552,8 @@ td.store-cell img {
     tabindex="0"
     role="link"
     aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
-    data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+    data-href="{{ url_for('tournament_standings', tid=t.id) }}"
+    data-user-id="{{ t.user_id }}">
 <td class="store-cell">
   {% if t.store and t.store.image_url %}
     <img src="{{ url_for('static', filename=t.store.image_url) }}"
@@ -610,7 +619,8 @@ td.store-cell img {
             tabindex="0"
             role="link"
             aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
-            data-href="{{ url_for('tournament_standings', tid=t.id) }}">
+            data-href="{{ url_for('tournament_standings', tid=t.id) }}"
+            data-user-id="{{ t.user_id }}">
           <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
           <td>{{ t.date }}</td>
           <td>{{ t.rounds }}</td>
@@ -695,11 +705,54 @@ td.store-cell img {
     });
   });
 
+  // Show only mine filter
+  {% if current_user.is_authenticated %}
+  const showOnlyMineCheckbox = document.getElementById('showOnlyMine');
+  const currentUserId = '{{ current_user.id }}';
+  
+  function applyMineFilter() {
+    const showOnlyMine = showOnlyMineCheckbox.checked;
+    const searchTerm = searchInput.value.toLowerCase();
+    const allRows = document.querySelectorAll('tr.tournament-row-wrapper');
+    
+    allRows.forEach(row => {
+      const rowUserId = row.getAttribute('data-user-id');
+      const matchesMineFilter = !showOnlyMine || rowUserId === currentUserId;
+      const matchesSearch = !searchTerm || row.textContent.toLowerCase().includes(searchTerm);
+      
+      if (matchesMineFilter && matchesSearch) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+  
+  showOnlyMineCheckbox.addEventListener('change', () => {
+    applyMineFilter();
+    // Update URL to reflect filter state
+    const url = new URL(window.location);
+    if (showOnlyMineCheckbox.checked) {
+      url.searchParams.set('show_mine', '1');
+    } else {
+      url.searchParams.delete('show_mine');
+    }
+    window.history.replaceState({}, '', url);
+  });
+  
+  // Apply filter on page load if URL parameter is set
+  if (showOnlyMineCheckbox.checked) {
+    applyMineFilter();
+  }
+  {% endif %}
+
   // Search filter
   const searchInput = document.getElementById('tournamentSearch');
   searchInput.addEventListener('input', (e) => {
+    {% if current_user.is_authenticated %}
+    applyMineFilter();
+    {% else %}
     const searchTerm = e.target.value.toLowerCase();
-    // Search in both tables
     const allRows = document.querySelectorAll('tr.tournament-row-wrapper');
     
     allRows.forEach(row => {
@@ -710,6 +763,7 @@ td.store-cell img {
         row.style.display = 'none';
       }
     });
+    {% endif %}
   });
 
   // Reset search when toggling tables

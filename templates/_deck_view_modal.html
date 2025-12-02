@@ -2,7 +2,8 @@
 <div id="deckModal" class="modal">
   <div class="modal-content-deck">
     <h3 id="deckModalTitle">
-      Deck
+      <span id="deckTitleText">Deck</span>
+      <i class="material-icons copy-deck-icon" onclick="copyDeckToClipboard(event)" title="Copy deck list to clipboard">content_copy</i>
       <span class="close" onclick="closeDeckModal()">&times;</span>
     </h3>
     
@@ -69,7 +70,7 @@
     if (!deckName) return;
 
     document.getElementById('deckModal').style.display = 'block';
-    document.getElementById('deckModalTitle').textContent = deckName + " (" + playerName + ")";
+    document.getElementById('deckTitleText').textContent = deckName + " (" + playerName + ")";
 
     const mainDeck = document.getElementById('mainDeck');
     const sideboard = document.getElementById('sideboard');
@@ -82,6 +83,22 @@
     const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
     let inSideboard = false;
 
+    // Store card data grouped by type
+    const mainDeckCards = {
+      Creature: [],
+      Planeswalker: [],
+      Artifact: [],
+      Enchantment: [],
+      Instant: [],
+      Sorcery: [],
+      Land: [],
+      Other: []
+    };
+    const sideboardCards = [];
+
+    // Parse all lines and fetch card data
+    const fetchPromises = [];
+
     lines.forEach(line => {
       if (/^sideboard/i.test(line.trim())) {
         inSideboard = true;
@@ -93,46 +110,230 @@
 
       if (!name) return;
 
-      const li = document.createElement('li');
-      const cardNameSpan = document.createElement('span');
-      cardNameSpan.className = 'card-name-text';
-      cardNameSpan.textContent = count + " " + name;
-      li.appendChild(cardNameSpan);
-
       // Capture the current sideboard state for this specific card
       const isInSideboard = inSideboard;
 
-      fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+      const promise = fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
         .then(res => res.json())
         .then(card => {
-          if (card.mana_cost) {
-            const manaSpan = document.createElement('span');
-            manaSpan.className = 'card-mana-cost';
-            manaSpan.innerHTML = renderManaCost(card.mana_cost);
-            li.appendChild(manaSpan);
-          }
+          const cardData = { name, count, card, isInSideboard };
           
-          li.addEventListener('click', () => {
-            document.querySelectorAll('.card-list-enhanced li').forEach(el => el.classList.remove('selected'));
-            li.classList.add('selected');
-            displayCardInfo(card);
-          });
-
-          // Auto-select first card in main deck
-          if (!isInSideboard && !hasAutoSelected) {
-            hasAutoSelected = true; // Mark that we're auto-selecting
-            firstCardInDeck = li;
-            // Use longer timeout to ensure DOM is ready
-            setTimeout(() => {
-              li.classList.add('selected');
-              displayCardInfo(card);
-            }, 200);
+          if (isInSideboard) {
+            sideboardCards.push(cardData);
+          } else {
+            // Determine card type category
+            const typeLine = (card.type_line || '').toLowerCase();
+            if (typeLine.includes('creature')) {
+              mainDeckCards.Creature.push(cardData);
+            } else if (typeLine.includes('planeswalker')) {
+              mainDeckCards.Planeswalker.push(cardData);
+            } else if (typeLine.includes('artifact')) {
+              mainDeckCards.Artifact.push(cardData);
+            } else if (typeLine.includes('enchantment')) {
+              mainDeckCards.Enchantment.push(cardData);
+            } else if (typeLine.includes('instant')) {
+              mainDeckCards.Instant.push(cardData);
+            } else if (typeLine.includes('sorcery')) {
+              mainDeckCards.Sorcery.push(cardData);
+            } else if (typeLine.includes('land')) {
+              mainDeckCards.Land.push(cardData);
+            } else {
+              mainDeckCards.Other.push(cardData);
+            }
           }
         })
         .catch(err => console.error("Scryfall fetch error", err));
 
-      (inSideboard ? sideboard : mainDeck).appendChild(li);
+      fetchPromises.push(promise);
     });
+
+    // Wait for all fetches to complete, then render
+    Promise.all(fetchPromises).then(() => {
+      console.log('=== Starting to render deck ===');
+      // Render main deck with type dividers
+      const typeOrder = ['Creature', 'Planeswalker', 'Artifact', 'Enchantment', 'Instant', 'Sorcery', 'Land', 'Other'];
+      
+      typeOrder.forEach(type => {
+        const cards = mainDeckCards[type];
+        if (cards.length === 0) return; // Skip empty types
+        
+        // Calculate total count for this type
+        const totalCount = cards.reduce((sum, c) => sum + parseInt(c.count), 0);
+        
+        // Create type divider
+        const divider = document.createElement('li');
+        divider.className = 'type-divider';
+        divider.textContent = `${type} (${totalCount})`;
+        mainDeck.appendChild(divider);
+        
+        // Add cards of this type
+        cards.forEach(cardData => {
+          const li = createCardListItem(cardData.name, cardData.count, cardData.card, false);
+          mainDeck.appendChild(li);
+        });
+      });
+
+      // Render sideboard
+      sideboardCards.forEach(cardData => {
+        const li = createCardListItem(cardData.name, cardData.count, cardData.card, true);
+        sideboard.appendChild(li);
+      });
+      
+      console.log('=== About to call adjustListSize ===');
+      console.log('Main deck children:', mainDeck.querySelectorAll('li').length);
+      console.log('Sideboard children:', sideboard.querySelectorAll('li').length);
+      
+      // Adjust font sizes to prevent scrolling
+      adjustListSize(mainDeck);
+      adjustListSize(sideboard);
+    });
+  }
+  
+  function adjustListSize(listElement) {
+    // Count total items including dividers
+    const totalItems = listElement.querySelectorAll('li').length;
+    const dividerCount = listElement.querySelectorAll('li.type-divider').length;
+    
+    console.log('Total items:', totalItems, 'Dividers:', dividerCount);
+    
+    if (totalItems === 0) return;
+    
+    // Base font size, padding, and margins - start larger for smaller lists
+    let fontSize = 1.0; // rem - increased default
+    let padding = 0.4; // rem - increased default
+    let cardMargin = 0.12; // rem - increased default
+    let dividerMarginTop = 0.35; // rem
+    let dividerMarginBottom = 0.25; // rem
+    let dividerPadding = 0.22; // rem - keep compact
+    let dividerFontSize = 0.8; // rem
+    
+    // Adjust based on item count (including dividers)
+    // Only scale down when necessary
+    if (totalItems > 70) {
+      fontSize = 0.55;
+      padding = 0.18;
+      cardMargin = 0.04;
+      dividerMarginTop = 0.15;
+      dividerMarginBottom = 0.12;
+      dividerPadding = 0.15;
+      dividerFontSize = 0.55;
+    } else if (totalItems > 60) {
+      fontSize = 0.6;
+      padding = 0.2;
+      cardMargin = 0.05;
+      dividerMarginTop = 0.18;
+      dividerMarginBottom = 0.14;
+      dividerPadding = 0.17;
+      dividerFontSize = 0.6;
+    } else if (totalItems > 50) {
+      fontSize = 0.65;
+      padding = 0.22;
+      cardMargin = 0.06;
+      dividerMarginTop = 0.22;
+      dividerMarginBottom = 0.16;
+      dividerPadding = 0.19;
+      dividerFontSize = 0.63;
+    } else if (totalItems > 40) {
+      fontSize = 0.7;
+      padding = 0.24;
+      cardMargin = 0.07;
+      dividerMarginTop = 0.25;
+      dividerMarginBottom = 0.18;
+      dividerPadding = 0.2;
+      dividerFontSize = 0.67;
+    } else if (totalItems > 30) {
+      fontSize = 0.75;
+      padding = 0.26;
+      cardMargin = 0.08;
+      dividerMarginTop = 0.28;
+      dividerMarginBottom = 0.2;
+      dividerPadding = 0.21;
+      dividerFontSize = 0.7;
+    } else if (totalItems > 25) {
+      fontSize = 0.8;
+      padding = 0.28;
+      cardMargin = 0.09;
+      dividerMarginTop = 0.3;
+      dividerMarginBottom = 0.22;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.73;
+    } else if (totalItems > 20) {
+      fontSize = 0.85;
+      padding = 0.32;
+      cardMargin = 0.1;
+      dividerMarginTop = 0.32;
+      dividerMarginBottom = 0.23;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.75;
+    } else if (totalItems > 15) {
+      fontSize = 0.9;
+      padding = 0.35;
+      cardMargin = 0.11;
+      dividerMarginTop = 0.33;
+      dividerMarginBottom = 0.24;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.77;
+    } else if (totalItems > 10) {
+      fontSize = 0.95;
+      padding = 0.37;
+      cardMargin = 0.115;
+      dividerMarginTop = 0.34;
+      dividerMarginBottom = 0.24;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.78;
+    }
+    // If 10 or fewer items, use the larger default values
+    
+    // Apply styles to all list items
+    listElement.querySelectorAll('li').forEach(li => {
+      if (li.classList.contains('type-divider')) {
+        // Adjust divider-specific spacing - keep them compact
+        li.style.fontSize = dividerFontSize + 'rem';
+        li.style.padding = dividerPadding + 'rem 1rem'; // Wider padding
+        li.style.marginTop = dividerMarginTop + 'rem';
+        li.style.marginBottom = dividerMarginBottom + 'rem';
+      } else {
+        // Adjust card item spacing
+        li.style.fontSize = fontSize + 'rem';
+        li.style.padding = padding + 'rem 0.5rem';
+        li.style.marginBottom = cardMargin + 'rem';
+      }
+    });
+    
+    console.log('Applied fontSize:', fontSize, 'dividerFontSize:', dividerFontSize);
+  }
+
+  function createCardListItem(name, count, card, isInSideboard) {
+    const li = document.createElement('li');
+    const cardNameSpan = document.createElement('span');
+    cardNameSpan.className = 'card-name-text';
+    cardNameSpan.textContent = count + " " + name;
+    li.appendChild(cardNameSpan);
+
+    if (card.mana_cost) {
+      const manaSpan = document.createElement('span');
+      manaSpan.className = 'card-mana-cost';
+      manaSpan.innerHTML = renderManaCost(card.mana_cost);
+      li.appendChild(manaSpan);
+    }
+    
+    li.addEventListener('click', () => {
+      document.querySelectorAll('.card-list-enhanced li').forEach(el => el.classList.remove('selected'));
+      li.classList.add('selected');
+      displayCardInfo(card);
+    });
+
+    // Auto-select first card in main deck
+    if (!isInSideboard && !hasAutoSelected) {
+      hasAutoSelected = true;
+      firstCardInDeck = li;
+      setTimeout(() => {
+        li.classList.add('selected');
+        displayCardInfo(card);
+      }, 200);
+    }
+
+    return li;
   }
 
   function resetCardPanel() {
@@ -327,6 +528,52 @@
     document.getElementById('mainDeck').innerHTML = "";
     document.getElementById('sideboard').innerHTML = "";
     resetCardPanel();
+  }
+  
+  function copyDeckToClipboard(event) {
+    const mainDeck = document.getElementById('mainDeck');
+    const sideboard = document.getElementById('sideboard');
+    
+    let deckText = '';
+    
+    // Copy main deck
+    mainDeck.querySelectorAll('li').forEach(li => {
+      // Skip dividers
+      if (li.classList.contains('type-divider')) return;
+      
+      const cardText = li.querySelector('.card-name-text');
+      if (cardText) {
+        deckText += cardText.textContent.trim() + '\n';
+      }
+    });
+    
+    // Add sideboard if it has cards
+    const sideboardCards = sideboard.querySelectorAll('li:not(.type-divider)');
+    if (sideboardCards.length > 0) {
+      deckText += '\nSideboard\n';
+      sideboardCards.forEach(li => {
+        const cardText = li.querySelector('.card-name-text');
+        if (cardText) {
+          deckText += cardText.textContent.trim() + '\n';
+        }
+      });
+    }
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(deckText.trim()).then(() => {
+      // Visual feedback
+      const icon = event.target;
+      const originalIcon = icon.textContent;
+      icon.textContent = 'check';
+      icon.style.color = '#4CAF50';
+      setTimeout(() => {
+        icon.textContent = originalIcon;
+        icon.style.color = '';
+      }, 1500);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy deck list to clipboard');
+    });
   }
 
   window.onclick = function(event) {

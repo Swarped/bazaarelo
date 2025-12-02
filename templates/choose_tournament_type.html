@@ -1,66 +1,719 @@
-  {% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Choose Tournament Type{% endblock %}
 
 {% block content %}
   
-    <meta charset="utf-8">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  .choose-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
 
-    <style>
-.material-icons {
-  font-size: 24px;
-  vertical-align: middle;
-  margin-right: 6px;
-}
+  .choose-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
 
-.material-icons.large {
-  font-size: 48px;
-}
+  .choose-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
 
+  .choose-header p {
+    color: #666;
+    font-size: 1rem;
+  }
 
+  .dark-mode .choose-header p {
+    color: #aaa;
+  }
 
+  .tournament-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    align-items: start;
+  }
 
-      .choose-tournament-page { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; text-align: center; }
-      h1 { margin-bottom: 2rem; }
-      .option {
-        display: inline-block;
-        width: 40%;
-        margin: 1rem;
-        padding: 2rem;
-        border: 2px solid #4CAF50;
-        border-radius: 8px;
-        cursor: pointer;
-        text-decoration: none;
-        font-size: 1.2rem;
-        transition: background 0.3s;
-      }
-      .option:hover {
-        background: #f0f0f0;
-      }
-      .option h2 {
-        margin-top: 0;
-        color: #4CAF50;
-      }
-    </style>
- 
-  <div class="choose-tournament-type"></div>
+  .left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
 
-    <h1>Choose Tournament Type</h1>
-<a href="{{ url_for('new_tournament') }}" class="option">
-  <h2><i class="material-icons large">emoji_events</i> Competitive (ELO)</h2>
-  <p>Track player ratings with ELO. Full standings and rating updates.</p>
-</a>
-<a href="{{ url_for('new_tournament_casual') }}" class="option">
-  <h2><i class="material-icons large">celebration</i> Casual (Top 8)</h2>
-  <p>Quick setup for casual play. Only Top 8 standings, no ELO changes.</p>
-</a>
-<a href="{{ url_for('new_tournament', type='premium') }}" 
-   class="option option-premium" 
-   style="border-color:gold;">
-  <h2><i class="material-icons large" style="color:gold;">star</i> Premium Event</h2>
-  <p style="color:#b8860b;">Big Opens with boosted ELO rewards.</p>
-</a>
-  
-  {% endblock %}
+  .tournament-option {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 2.5rem;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tournament-option.premium-card {
+    height: 75px;
+    padding-top: 1rem;
+  }
+
+  .tournament-option.premium-card:hover {
+    height: 325px;
+    padding-top: 2.5rem;
+  }
+
+  .tournament-option.competitive-card {
+    height: 325px;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card {
+    height: 75px;
+    padding-top: 1rem;
+  }
+
+  .tournament-option.casual-card {
+    min-height: 495px;
+  }
+
+  .dark-mode .tournament-option {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  .tournament-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .tournament-option.competitive-card::before {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(56, 142, 60, 0.08) 100%);
+  }
+
+  .tournament-option.premium-card::before {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+  }
+
+  .tournament-option.casual-card::before {
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.08) 0%, rgba(123, 31, 162, 0.08) 100%);
+  }
+
+  .tournament-option:hover:not(.disabled)::before {
+    opacity: 1;
+  }
+
+  .tournament-option > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .tournament-option:hover:not(.disabled) {
+    border-color: #667eea;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+    transform: translateY(-3px);
+  }
+
+  .tournament-option.competitive-card:hover:not(.disabled) {
+    border-color: #4CAF50;
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  }
+
+  .tournament-option.premium-card:hover:not(.disabled) {
+    border-color: #FFD700;
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+  }
+
+  .tournament-option.casual-card:hover:not(.disabled) {
+    border-color: #9c27b0;
+    box-shadow: 0 6px 20px rgba(156, 39, 176, 0.3);
+  }
+
+  .tournament-option.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .tournament-option.disabled::after {
+    content: 'UNAVAILABLE';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+  }
+
+  .dark-mode .tournament-option.disabled::after {
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+  }
+
+  .option-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    transition: margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tournament-option.competitive-card .option-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .option-header {
+    margin-bottom: 0;
+  }
+
+  .tournament-option.premium-card .option-header {
+    margin-bottom: 0;
+  }
+
+  .tournament-option.premium-card:hover .option-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .option-title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .option-icon {
+    font-size: 3rem;
+  }
+
+  .option-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .option-description {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    flex-grow: 1;
+    opacity: 1;
+    transition: opacity 0.2s ease, height 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+
+  .tournament-option.competitive-card .option-description {
+    opacity: 1;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .option-description {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+    transition: opacity 0.2s ease, height 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tournament-option.premium-card .option-description {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+  }
+
+  .tournament-option.premium-card:hover .option-description {
+    opacity: 1;
+    height: auto;
+    margin-bottom: 1.5rem;
+    transition: opacity 0.4s ease 0.1s, height 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .token-section {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 1rem;
+    margin-top: auto;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: visible;
+  }
+
+  .tournament-option.competitive-card .token-section {
+    opacity: 1;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 1rem;
+    margin-top: auto;
+    position: relative;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .token-section {
+    opacity: 1;
+    border-top: 1px solid #e0e0e0;
+    padding: 0.75rem 0 0 0;
+    margin: 0;
+    position: absolute;
+    right: 2.5rem;
+    left: 2.5rem;
+    top: 4.5rem;
+    width: auto;
+  }
+
+  .tournament-option.premium-card .token-section {
+    opacity: 1;
+    border-top: 1px solid #e0e0e0;
+    padding: 0.75rem 0 0 0;
+    margin: 0;
+    position: absolute;
+    right: 2.5rem;
+    left: 2.5rem;
+    top: 4.5rem;
+    width: auto;
+  }
+
+  .tournament-option.premium-card:hover .token-section {
+    opacity: 1;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 1rem;
+    margin-top: auto;
+    position: relative;
+    right: auto;
+    left: auto;
+    top: auto;
+    width: 100%;
+  }
+
+  /* Compact token display - only when NOT hovering premium */
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .token-section .token-header,
+  .tournament-option.premium-card:not(:hover) .token-section .token-header {
+    display: none;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .token-section .token-list,
+  .tournament-option.premium-card:not(:hover) .token-section .token-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-end;
+  }
+
+  .tournament-option.premium-card:hover .token-section .token-list {
+    display: block;
+    align-items: stretch;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .token-section .token-item,
+  .tournament-option.premium-card:not(:hover) .token-section .token-item {
+    padding: 0;
+    border: none;
+    font-size: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .tournament-option.premium-card:hover .token-section .token-item {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 1rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .token-section .store-name,
+  .tournament-option.premium-card:not(:hover) .token-section .store-name {
+    display: inline;
+  }
+
+  .tournament-option.premium-card:hover .token-section .store-name {
+    display: block;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .scorekeeper-access,
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .always-available,
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .no-access-msg,
+  .tournament-option.premium-card:not(:hover) .scorekeeper-access,
+  .tournament-option.premium-card:not(:hover) .always-available,
+  .tournament-option.premium-card:not(:hover) .no-access-msg {
+    font-size: 0.75rem;
+  }
+
+  .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card .token-section .token-reset-msg,
+  .tournament-option.premium-card:not(:hover) .token-section .token-reset-msg {
+    text-align: left;
+  }
+
+  .dark-mode .option-description {
+    color: #aaa;
+  }
+
+  .dark-mode .token-section {
+    border-top-color: #444;
+  }
+
+  .token-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .token-header .material-icons {
+    font-size: 1rem;
+  }
+
+  .token-list {
+    font-size: 0.85rem;
+  }
+
+  .token-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    gap: 1rem;
+  }
+
+  .store-name {
+    color: #666;
+  }
+
+  .dark-mode .store-name {
+    color: #aaa;
+  }
+
+  .token-badge {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .token-badge.out-of-tokens {
+    background: #ffebee;
+    color: #c62828;
+  }
+
+  .dark-mode .token-badge {
+    background: #1b5e20;
+    color: #a5d6a7;
+  }
+
+  .dark-mode .token-badge.out-of-tokens {
+    background: #b71c1c;
+    color: #ffcdd2;
+  }
+
+  .token-badge.premium {
+    background: #fff8e1;
+    color: #f57f17;
+  }
+
+  .token-badge.premium.out-of-tokens {
+    background: #ffebee;
+    color: #c62828;
+  }
+
+  .dark-mode .token-badge.premium {
+    background: #f57f17;
+    color: #fff8e1;
+  }
+
+  .dark-mode .token-badge.premium.out-of-tokens {
+    background: #b71c1c;
+    color: #ffcdd2;
+  }
+
+  /* Token Bar Visualization */
+  .token-bar-container {
+    display: flex;
+    align-items: center;
+    min-width: 80px;
+    width: 80px;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  .token-bar {
+    display: flex;
+    height: 18px;
+    max-width: 80px;
+    background: #f5f5f5;
+    border-radius: 10px;
+    border: 1px solid #d0d0d0;
+    overflow: hidden;
+    padding: 2px;
+    gap: 0;
+  }
+
+  .dark-mode .token-bar {
+    background: #2a2a2a;
+    border-color: #505050;
+  }
+
+  .token-segment {
+    width: 14.4px;
+    flex-shrink: 0;
+    background: #e8e8e8;
+    position: relative;
+    transition: background-color 0.3s ease;
+  }
+
+  .token-segment:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: #c0c0c0;
+  }
+
+  .dark-mode .token-segment {
+    background: #3a3a3a;
+  }
+
+  .dark-mode .token-segment:not(:last-child)::after {
+    background: #555;
+  }
+
+  .token-segment.filled {
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+  }
+
+  .dark-mode .token-segment.filled {
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+  }
+
+  .token-segment.filled.premium {
+    background: linear-gradient(135deg, #ffd54f 0%, #ffc107 100%);
+  }
+
+  .dark-mode .token-segment.filled.premium {
+    background: linear-gradient(135deg, #ffd54f 0%, #ffc107 100%);
+  }
+
+  .token-segment:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+  }
+
+  .token-segment:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+
+  .always-available {
+    color: #4CAF50;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .scorekeeper-access {
+    color: #667eea;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .no-access-msg {
+    color: #f44336;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 768px) {
+    .tournament-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+    }
+
+    .left-column {
+      height: auto;
+    }
+    
+    .tournament-option.premium-card {
+      height: auto;
+      min-height: 320px;
+    }
+
+    .tournament-option.premium-card:hover {
+      height: auto;
+    }
+
+    .tournament-option.competitive-card {
+      height: auto;
+      min-height: 320px;
+    }
+
+    .tournament-grid:has(.tournament-option.premium-card:hover) .tournament-option.competitive-card {
+      height: auto;
+      min-height: 320px;
+    }
+
+    .tournament-option.casual-card {
+      height: auto;
+      min-height: 320px;
+    }
+  }
+</style>
+
+<div class="choose-container">
+  <div class="choose-header">
+    <h1>New Tournament</h1>
+    <p>Select the type of tournament you want to create</p>
+  </div>
+
+  <div class="tournament-grid">
+    <div class="left-column">
+      <!-- Competitive Tournament -->
+      <a {% if has_any_competitive %}href="{{ url_for('new_tournament') }}"{% endif %}
+         class="tournament-option competitive-card {% if not has_any_competitive %}disabled{% endif %}">
+        <div class="option-header">
+          <i class="material-icons option-icon" style="color: #4CAF50;">emoji_events</i>
+          <h2 class="option-title">Competitive</h2>
+        </div>
+        <div class="option-description">
+          Official tournament with full ELO tracking. Players earn rating points based on their performance.
+        </div>
+        
+        <div class="token-section">
+          {% if store_tokens %}
+            <div class="token-header">
+              <i class="material-icons">local_activity</i>
+              Tokens Available (5/month)
+            </div>
+            <div class="token-list">
+              {% for store in store_tokens %}
+              <div>
+                <div class="token-item">
+                  <span class="store-name">{{ store.name }}</span>
+                  <div class="token-bar-container">
+                    <div class="token-bar">
+                      {% for i in range(store.default_competitive_tokens) %}
+                        <div class="token-segment{% if i < store.competitive_tokens %} filled{% endif %}"></div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+                {% if store.competitive_tokens == 0 %}
+                <div class="token-reset-msg" style="font-size: 0.75rem; color: #999; font-style: italic; margin-top: 0.25rem; margin-bottom: 0.5rem;">
+                  Resets on {{ store.next_reset_date.strftime('%B %d, %Y') }}
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          {% elif current_user.is_scorekeeper or current_user.is_admin %}
+            <div class="scorekeeper-access">
+              <i class="material-icons" style="font-size: 1rem;">verified_user</i>
+              Scorekeeper Access
+            </div>
+          {% else %}
+            <div class="no-access-msg">No tokens available</div>
+          {% endif %}
+        </div>
+      </a>
+
+      <!-- Premium Tournament -->
+      <a {% if has_any_premium %}href="{{ url_for('new_tournament', type='premium') }}"{% endif %}
+         class="tournament-option premium-card {% if not has_any_premium %}disabled{% endif %}">
+        <div class="option-header">
+          <i class="material-icons option-icon" style="color: #FFD700;">star</i>
+          <h2 class="option-title">Premium</h2>
+        </div>
+        <div class="option-description">
+          Major events with enhanced ELO rewards. Higher stakes for competitive players seeking top rankings.
+        </div>
+        
+        <div class="token-section">
+          {% if store_tokens %}
+            {% set has_premium_stores = store_tokens|selectattr('premium')|list %}
+            {% if has_premium_stores %}
+              <div class="token-header" style="color: #FFD700;">
+                <i class="material-icons">workspace_premium</i>
+                Premium Tokens (1/month)
+              </div>
+              <div class="token-list">
+                {% for store in has_premium_stores %}
+                <div>
+                  <div class="token-item">
+                    <span class="store-name">{{ store.name }}</span>
+                    <div class="token-bar-container">
+                      <div class="token-bar">
+                        {% for i in range(store.default_premium_tokens) %}
+                          <div class="token-segment{% if i < store.premium_tokens %} filled premium{% endif %}"></div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                  {% if store.premium_tokens == 0 %}
+                  <div class="token-reset-msg" style="font-size: 0.75rem; color: #999; font-style: italic; margin-top: -0.25rem; margin-bottom: 0.5rem;">
+                    Resets on {{ store.next_reset_date.strftime('%B %d, %Y') }}
+                  </div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="no-access-msg">No premium stores assigned</div>
+            {% endif %}
+          {% elif current_user.is_admin %}
+            <div class="scorekeeper-access">
+              <i class="material-icons" style="font-size: 1rem;">admin_panel_settings</i>
+              Admin Access
+            </div>
+          {% else %}
+            <div class="no-access-msg">No premium access</div>
+          {% endif %}
+        </div>
+      </a>
+    </div>
+
+    <!-- Casual Tournament -->
+    <a href="{{ url_for('new_tournament', type='casual') }}" class="tournament-option casual-card">
+      <div class="option-header">
+        <i class="material-icons option-icon" style="color: #9c27b0;">celebration</i>
+        <h2 class="option-title">Casual</h2>
+      </div>
+      <div class="option-description">
+        Quick setup for casual events. Track Top 8 standings without affecting player ratings.
+      </div>
+      <div class="token-section">
+        <div class="always-available">
+          <i class="material-icons" style="font-size: 1rem;">check_circle</i>
+          Always Available
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{% endblock %}
 

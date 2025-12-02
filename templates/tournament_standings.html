@@ -217,9 +217,16 @@
   {% endif %}
   
   
+  {% if tournament.premium %}
+  <div style="margin: 1rem 0; padding: 0.75rem 1rem; background: linear-gradient(135deg, #d4af37 0%, #e6c84a 100%); border: 2px solid #c9a634; border-radius: 6px; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);">
+    <span class="material-icons" style="color: #6d5d1e; font-size: 1.5rem;">star</span>
+    <span style="font-weight: bold; color: #6d5d1e; font-size: 1.1rem;">This is a premium event</span>
+  </div>
+  {% endif %}
+  
   {% if can_edit %}
-  <div style="margin: 1rem 0; padding: 1rem; background-color: #f0f8ff; border: 1px solid #4CAF50; border-radius: 6px;">
-    <p style="margin: 0 0 0.5rem 0;"><strong>Tournament Editing:</strong> You can edit match results and deck lists for this tournament.</p>
+  <div style="margin: 1rem 0; padding: 1rem; background-color: #f0f8ff; border: 1px solid #4CAF50; border-radius: 6px; text-align: right;">
+    
     <form method="POST" action="{{ url_for('edit_tournament', tid=tournament.id) }}" style="display: inline;">
       <button type="submit" class="btn btn-primary" style="background: #4CAF50; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;">
         <span class="material-icons" style="vertical-align: middle; font-size: 1.2rem;">edit</span>
