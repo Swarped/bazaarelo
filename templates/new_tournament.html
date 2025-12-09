@@ -7,87 +7,347 @@
 
 
     <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
-      .new-tournament-page { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
-      h1 { margin-bottom: 1rem; }
-      h2 { margin-top: 2rem; }
-      form { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; }
-      textarea { width: 100%; font-family: monospace; padding: .5rem; }
+      body { font-family: system-ui, sans-serif; }
+      .page-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+      
+      .new-tournament-page {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      h1 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.8rem;
+        color: #2c3e50;
+      }
+
+      html.dark-mode h1 {
+        color: #e0e0e0;
+      }
+
+      .toggle-container {
+        position: relative;
+        display: flex;
+        width: 100%;
+        height: 60px;
+        background-color: #f2f2f2;
+        border-radius: 8px 8px 0 0;
+        border: 1px solid #ddd;
+        border-bottom: none;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      }
+
+      html.dark-mode .toggle-container {
+        background-color: #2a2a2a;
+        border-color: #444;
+      }
+
+      .toggle-container input {
+        display: none;
+      }
+
+      .toggle-container label {
+        flex: 1;
+        text-align: center;
+        line-height: 60px;
+        cursor: pointer;
+        z-index: 2;
+        color: #666;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+      }
+
+      html.dark-mode .toggle-container label {
+        color: #ccc;
+      }
+
+      .toggle-container .toggle-slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border-radius: 8px 0 0 0;
+        transition: transform 0.3s ease;
+        z-index: 1;
+        box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+      }
+
+      .toggle-container input#arena:checked ~ .toggle-slider {
+        transform: translateX(100%);
+        border-radius: 0 8px 0 0;
+      }
+
+      .toggle-container input#eventlink:checked ~ .toggle-slider {
+        border-radius: 8px 0 0 0;
+      }
+
+      .toggle-container input#eventlink:checked + label,
+      .toggle-container input#arena:checked + label {
+        color: white;
+      }
+
+      form {
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 2rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      }
+
+      html.dark-mode form {
+        background-color: #1e1e1e;
+        border-color: #444;
+      }
+
+      .arena-name-field {
+        margin-bottom: 1.5rem;
+      }
+
+      .arena-name-field label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+      }
+
+      html.dark-mode .arena-name-field label {
+        color: #e0e0e0;
+      }
+
+      .arena-name-field input {
+        width: 100%;
+        font-size: 1.1rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+      }
+
+      .arena-name-field input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+      }
+
+      html.dark-mode .arena-name-field input {
+        background-color: #2a2a2a;
+        border-color: #444;
+        color: #e0e0e0;
+      }
+
+      html.dark-mode .arena-name-field input:focus {
+        border-color: #4a9eff;
+        box-shadow: 0 0 0 3px rgba(74,158,255,0.15);
+      }
+
+      textarea {
+        width: 100%;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+        resize: vertical;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+      }
+
+      html.dark-mode textarea {
+        background-color: #2a2a2a;
+        border-color: #444;
+        color: #e0e0e0;
+      }
+
+      html.dark-mode textarea:focus {
+        border-color: #4a9eff;
+        box-shadow: 0 0 0 3px rgba(74,158,255,0.15);
+      }
+
+      .round-upload-container {
+        margin-bottom: 1.5rem;
+      }
+
+      .round-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 6px;
+        border-left: 4px solid #007bff;
+      }
+
+      html.dark-mode .round-header {
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+        border-left-color: #4a9eff;
+      }
+
+      .round-header h3 {
+        margin: 0;
+        color: #2c3e50;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      html.dark-mode .round-header h3 {
+        color: #e0e0e0;
+      }
+
+      .round-info {
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      html.dark-mode .round-info {
+        color: #ccc;
+      }
+
       .btn-submit {
-        margin-top: 1rem;
-        padding: .75rem 1.5rem;
+        margin-top: 1.5rem;
+        padding: 0.75rem 1.5rem;
         font-size: 1rem;
-        background: #4CAF50;
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
       }
-      .btn-submit:hover { background: #45a049; }
-      .format-switch { margin-bottom: 1rem; }
 
-    .toggle-container {
-  position: relative;
-  display: flex;
-  width: 300px;
-  border: 2px solid #4CAF50;
-  border-radius: 30px;
-  overflow: hidden;
-  margin-bottom: 1rem;
-}
+      .btn-submit:hover {
+        background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        transform: translateY(-2px);
+      }
 
-.toggle-container input[type="radio"] {
-  display: none;
-}
+      .btn-submit:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
 
-.toggle-container label {
-  flex: 1;
-  text-align: center;
-  padding: 0.75rem 0;
-  cursor: pointer;
-  z-index: 2;
-  font-weight: 500;
-  color: #333;
-  transition: color 0.3s;
-}
+      .btn-secondary {
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
 
-.toggle-container .toggle-slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  background-color: #4CAF50;
-  border-radius: 30px;
-  transition: transform 0.3s;
-  z-index: 1;
-}
+      .btn-secondary:hover {
+        background: #e0e0e0;
+        border-color: #999;
+      }
 
-.toggle-container input#arena:checked ~ .toggle-slider {
-  transform: translateX(100%);
-}
+      html.dark-mode .btn-secondary {
+        background: #2a2a2a;
+        color: #e0e0e0;
+        border-color: #666;
+      }
 
-.toggle-container input#eventlink:checked ~ .toggle-slider {
-  transform: translateX(0%);
-}
+      html.dark-mode .btn-secondary:hover {
+        background: #3a3a3a;
+        border-color: #888;
+      }
 
-.toggle-container input:checked + label {
-  color: white;
-}
+      .material-icons {
+        font-size: 18px;
+        vertical-align: middle;
+      }
 
+      .round-navigation {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
 
+      .progress-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #e3f2fd;
+        border-radius: 6px;
+        border-left: 4px solid #2196f3;
+      }
+
+      html.dark-mode .progress-indicator {
+        background: #1a3a52;
+        border-left-color: #4a9eff;
+      }
+
+      .progress-indicator .material-icons {
+        color: #2196f3;
+        font-size: 24px;
+      }
+
+      html.dark-mode .progress-indicator .material-icons {
+        color: #4a9eff;
+      }
+
+      .progress-text {
+        font-weight: 600;
+        color: #1565c0;
+      }
+
+      html.dark-mode .progress-text {
+        color: #4a9eff;
+      }
+
+      .eventlink-mode, .arena-mode {
+        display: none;
+      }
+
+      .eventlink-mode.active, .arena-mode.active {
+        display: block;
+      }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
-<div class="new-tournament-page"></div>
+
+<div class="page-container">
+<div class="new-tournament-page">
     <h1>Create a New Tournament</h1>
 
-    <h2>Import Tournament</h2>
-<form method="POST">
+<form method="POST" id="tournamentForm">
   <input type="hidden" name="workflow" value="import">
   <input type="hidden" name="tournament_type" value="{{ request.args.get('type', 'competitive') }}">
+  <input type="hidden" name="import_text" id="fullTournamentData">
 
 <div class="toggle-container">
   <input type="radio" id="eventlink" name="import_format" value="eventlink" checked>
@@ -98,97 +358,263 @@
 
   <div class="toggle-slider"></div>
 </div>
-<div id="arena-name-field" style="display:none; margin-bottom:1rem;">
-  <label>Tournament Name:<br>
-    <input type="text" name="arena_tournament_name"
-           placeholder="Enter tournament name"
-           style="width:100%; font-size:1.2rem; padding:.5rem; border:1px solid #ccc; border-radius:6px;">
-  </label>
+
+<div class="eventlink-mode active">
+  <div class="progress-indicator" id="progressIndicator" style="display: none;">
+    <span class="material-icons">hourglass_empty</span>
+    <span class="progress-text" id="progressText">Round 1 of ?</span>
+  </div>
+
+  <div id="roundContainer">
+    <div class="round-upload-container" id="round1Container">
+      <div class="round-header">
+        <h3>
+          <span class="material-icons">upload_file</span>
+          Round <span id="currentRoundNumber">1</span>
+        </h3>
+        <span class="round-info" id="roundInfo">Paste EventLink data</span>
+      </div>
+      <textarea id="roundTextarea" rows="20" placeholder="Paste your Round 1 data here..."></textarea>
+      <div class="round-navigation">
+        <button type="button" class="btn-secondary" id="prevRoundBtn" style="display: none;">
+          <span class="material-icons">arrow_back</span>
+          Previous Round
+        </button>
+        <button type="button" class="btn-secondary" id="nextRoundBtn">
+          <span class="material-icons">arrow_forward</span>
+          Next Round
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn-submit" id="submitBtn" style="display: none;">
+    <span class="material-icons">check_circle</span>
+    Import Tournament
+  </button>
 </div>
 
+<div class="arena-mode">
+  <div class="arena-name-field">
+    <label>Tournament Name:</label>
+    <input type="text" name="arena_tournament_name" id="arenaNameInput" placeholder="Enter tournament name">
+  </div>
+  <textarea name="import_text_arena" rows="20" placeholder="Paste your Arena tournament data here..."></textarea>
+  <button type="submit" class="btn-submit">
+    <span class="material-icons">upload</span>
+    Import Tournament
+  </button>
+</div>
 
-      <textarea name="import_text" rows="20" placeholder="Paste your tournament data here..."></textarea><br>
-      <button type="submit" class="btn-submit">Import Tournament</button>
-    </form>
-{#
-<form method="POST">
-  <input type="hidden" name="workflow" value="manual">
-  <input type="hidden" name="tournament_type" value="{{ request.args.get('type', 'competitive') }}">
+</form>
+</div>
+</div>
 
-   <h2>Manual Tournament</h2>
-    <form method="POST">
-      <input type="hidden" name="workflow" value="manual">
-
- 
-      <label>Tournament Name:<br>
-        <input type="text" name="tournament_name" required>
-      </label><br><br>
-      <label>Date:<br>
-        <input type="date" name="date" required>
-      </label><br><br>
-
-      <div id="players-container">
-        <input type="text" name="players" class="player-input" placeholder="Type player name and press Enter">
-      </div>
-      <button type="submit" class="btn-submit">Create Tournament</button>
-    </form>    
-#}
 <script>
-  function attachAutocomplete(input) {
-    $(input).autocomplete({
-      source: function(request, response) {
-        $.getJSON("/players/search", { q: request.term }, function(data) {
-          response(data);
-        });
-      },
-      minLength: 2
-    });
-  }
+// Round-by-round upload functionality
+let roundsData = [];
+let currentRound = 1;
+let totalRounds = null;
+let numPlayers = null;
 
-  attachAutocomplete(".player-input");
-
- const container = document.getElementById('players-container');
-if (container) {
-  container.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (e.target.value.trim() !== '') {
-        const newInput = document.createElement('input');
-        newInput.type = 'text';
-        newInput.name = 'players';
-        newInput.className = 'player-input';
-        newInput.placeholder = 'Type player name and press Enter';
-        container.appendChild(document.createElement('br'));
-        container.appendChild(newInput);
-        attachAutocomplete(newInput);
-        newInput.focus();
-      }
-    }
-  });
-}
-
-
-  const formatRadios = document.querySelectorAll('input[name="import_format"]');
-const arenaNameField = document.getElementById('arena-name-field');
-const arenaNameInput = arenaNameField.querySelector('input[name="arena_tournament_name"]');
+// Toggle between EventLink and Arena modes
+const formatRadios = document.querySelectorAll('input[name="import_format"]');
+const eventlinkMode = document.querySelector('.eventlink-mode');
+const arenaMode = document.querySelector('.arena-mode');
+const arenaNameInput = document.getElementById('arenaNameInput');
 
 formatRadios.forEach(radio => {
   radio.addEventListener('change', () => {
     if (radio.value === 'arena' && radio.checked) {
-      // show arena field, require it
-      arenaNameField.style.display = 'block';
+      arenaMode.classList.add('active');
+      eventlinkMode.classList.remove('active');
       arenaNameInput.required = true;
     } else if (radio.value === 'eventlink' && radio.checked) {
-      // hide arena field, clear and unrequire it
-      arenaNameField.style.display = 'none';
+      eventlinkMode.classList.add('active');
+      arenaMode.classList.remove('active');
       arenaNameInput.required = false;
-      arenaNameInput.value = "";
+      arenaNameInput.value = '';
     }
   });
 });
 
+// Calculate number of rounds based on player count
+function calculateRounds(players) {
+  if (players <= 8) return 3;
+  if (players <= 16) return 4;
+  if (players <= 32) return 5;
+  if (players <= 64) return 6;
+  if (players <= 128) return 7;
+  if (players <= 256) return 8;
+  if (players <= 512) return 9;
+  return 10;
+}
+
+// Parse round data to count players
+function parseRoundData(text) {
+  const lines = text.trim().split('\n');
+  const playerSet = new Set();
+  
+  for (const line of lines) {
+    // Skip header lines and empty lines
+    if (line.includes('Table') || line.includes('---') || !line.trim()) {
+      continue;
+    }
+    
+    // EventLink format has multiple patterns:
+    // 1. "Table# Player1 Player2 Points" (normal match)
+    // 2. "Player ***Bye*** Points" (bye)
+    
+    // First, check for bye pattern: "Player ***Bye*** Points"
+    const byeMatch = line.match(/^\s*\d*\s+(.+?)\s+\*\*\*Bye\*\*\*/i);
+    if (byeMatch) {
+      playerSet.add(byeMatch[1].trim());
+      continue;
+    }
+    
+    // Then check for normal match pattern
+    // Looking for: optional table number, player1, player2, score (like "12-9" or "6-7")
+    const matchPattern = line.match(/^\s*\d*\s+(.+?)\s+(.+?)\s+(\d+-\d+)\s*$/);
+    if (matchPattern) {
+      const player1 = matchPattern[1].trim();
+      const player2 = matchPattern[2].trim();
+      
+      // Exclude "***Bye***" from being counted as a player
+      if (!player1.includes('***Bye***')) {
+        playerSet.add(player1);
+      }
+      if (!player2.includes('***Bye***')) {
+        playerSet.add(player2);
+      }
+    }
+  }
+  
+  return playerSet.size;
+}
+
+// Next Round button
+document.getElementById('nextRoundBtn').addEventListener('click', () => {
+  const currentText = document.getElementById('roundTextarea').value.trim();
+  
+  if (!currentText) {
+    alert('Please paste round data before proceeding.');
+    return;
+  }
+  
+  // Save current round data
+  roundsData[currentRound - 1] = currentText;
+  
+  // If this is round 1, determine total rounds
+  if (currentRound === 1) {
+    numPlayers = parseRoundData(currentText);
+    totalRounds = calculateRounds(numPlayers);
+    document.getElementById('progressIndicator').style.display = 'flex';
+    updateProgressText();
+  }
+  
+  // Move to next round
+  currentRound++;
+  
+  // Update UI
+  updateRoundUI();
+});
+
+// Previous Round button
+document.getElementById('prevRoundBtn').addEventListener('click', () => {
+  // Save current round data before going back
+  const currentText = document.getElementById('roundTextarea').value.trim();
+  if (currentText) {
+    roundsData[currentRound - 1] = currentText;
+  }
+  
+  // Go to previous round
+  currentRound--;
+  
+  // Update UI
+  updateRoundUI();
+});
+
+function updateRoundUI() {
+  const roundTextarea = document.getElementById('roundTextarea');
+  const currentRoundNumber = document.getElementById('currentRoundNumber');
+  const roundInfo = document.getElementById('roundInfo');
+  const prevBtn = document.getElementById('prevRoundBtn');
+  const nextBtn = document.getElementById('nextRoundBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  
+  // Update round number
+  currentRoundNumber.textContent = currentRound;
+  
+  // Update textarea placeholder and content
+  roundTextarea.placeholder = `Paste your Round ${currentRound} data here...`;
+  roundTextarea.value = roundsData[currentRound - 1] || '';
+  
+  // Update info text
+  if (totalRounds) {
+    roundInfo.textContent = `Round ${currentRound} of ${totalRounds} (${numPlayers} players)`;
+  } else {
+    roundInfo.textContent = 'Paste EventLink data';
+  }
+  
+  // Show/hide previous button
+  prevBtn.style.display = currentRound > 1 ? 'inline-flex' : 'none';
+  
+  // Show/hide next and submit buttons
+  if (totalRounds && currentRound >= totalRounds) {
+    nextBtn.style.display = 'none';
+    submitBtn.style.display = 'inline-flex';
+  } else {
+    nextBtn.style.display = 'inline-flex';
+    submitBtn.style.display = 'none';
+  }
+  
+  // Update progress
+  updateProgressText();
+  
+  // Focus textarea
+  roundTextarea.focus();
+}
+
+function updateProgressText() {
+  if (totalRounds) {
+    const progressText = document.getElementById('progressText');
+    progressText.textContent = `Round ${currentRound} of ${totalRounds} (${numPlayers} players)`;
+  }
+}
+
+// Form submission
+document.getElementById('tournamentForm').addEventListener('submit', (e) => {
+  const selectedFormat = document.querySelector('input[name="import_format"]:checked').value;
+  
+  if (selectedFormat === 'eventlink') {
+    // Save current round data
+    const currentText = document.getElementById('roundTextarea').value.trim();
+    if (currentText) {
+      roundsData[currentRound - 1] = currentText;
+    }
+    
+    // Check if all rounds are filled
+    if (totalRounds) {
+      for (let i = 0; i < totalRounds; i++) {
+        if (!roundsData[i] || !roundsData[i].trim()) {
+          e.preventDefault();
+          alert(`Please complete Round ${i + 1} before submitting.`);
+          currentRound = i + 1;
+          updateRoundUI();
+          return;
+        }
+      }
+    } else {
+      e.preventDefault();
+      alert('Please enter at least Round 1 data.');
+      return;
+    }
+    
+    // Combine all rounds into one text
+    const fullText = roundsData.join('\n\n');
+    document.getElementById('fullTournamentData').value = fullText;
+  }
+});
 </script>
 
-
   {% endblock %}
-
