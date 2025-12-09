@@ -750,20 +750,34 @@ def admin_panel():
             match_count = Match.query.count()
             
             # Delete all players, tournaments, and their data but preserve archetypes and models
-            # Delete player deck submissions (preserve archetypes: player_id=0)
-            Deck.query.filter(Deck.player_id != 0).delete()
-            # Delete matches
-            Match.query.delete()
-            # Delete casual points history
-            CasualPointsHistory.query.delete()
-            # Delete deck submission links
-            DeckSubmissionLink.query.delete()
-            # Delete tournament players
-            TournamentPlayer.query.delete()
-            # Delete tournaments
-            Tournament.query.delete()
-            # Delete players
-            Player.query.delete()
+            # IMPORTANT: Delete in order to avoid cascade issues
+            
+            # 1. Delete player deck submissions (preserve archetypes: player_id=0, tournament_id=None)
+            Deck.query.filter(
+                db.and_(
+                    Deck.player_id != 0,
+                    Deck.tournament_id.isnot(None)
+                )
+            ).delete(synchronize_session=False)
+            
+            # 2. Delete deck submission links
+            DeckSubmissionLink.query.delete(synchronize_session=False)
+            
+            # 3. Delete matches
+            Match.query.delete(synchronize_session=False)
+            
+            # 4. Delete casual points history
+            CasualPointsHistory.query.delete(synchronize_session=False)
+            
+            # 5. Delete tournament players
+            TournamentPlayer.query.delete(synchronize_session=False)
+            
+            # 6. Delete tournaments
+            Tournament.query.delete(synchronize_session=False)
+            
+            # 7. Delete players (but not player_id=0 which is used for archetypes)
+            Player.query.filter(Player.id != 0).delete(synchronize_session=False)
+            
             db.session.commit()
             
             log_event(
