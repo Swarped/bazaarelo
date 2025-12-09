@@ -743,51 +743,100 @@ def admin_panel():
             backup_path = DB_PATH + '.backup_players_tournaments_' + datetime.now().strftime('%Y%m%d_%H%M%S')
             shutil.copy2(DB_PATH, backup_path)
             
+            # PRESERVE ARCHETYPES AND MODELS BEFORE DELETION
+            # Save archetype templates (Deck entries with player_id=0, tournament_id=None)
+            archetype_templates = Deck.query.filter_by(player_id=0, tournament_id=None).all()
+            archetype_data = [{
+                'name': deck.name,
+                'list_text': deck.list_text,
+                'colors': deck.colors,
+                'image_url': deck.image_url
+            } for deck in archetype_templates]
+            
+            # Save archetype models
+            archetype_models = ArchetypeModel.query.all()
+            model_data = [{
+                'archetype_name': model.archetype_name,
+                'model_decklist': model.model_decklist,
+                'created_at': model.created_at,
+                'updated_at': model.updated_at
+            } for model in archetype_models]
+            
+            # Save stores to preserve them
+            stores = Store.query.all()
+            store_data = [{
+                'name': store.name,
+                'location': store.location,
+                'country': store.country,
+                'premium': store.premium,
+                'image_url': store.image_url,
+                'competitive_tokens': store.competitive_tokens,
+                'premium_tokens': store.premium_tokens,
+                'default_competitive_tokens': store.default_competitive_tokens,
+                'default_premium_tokens': store.default_premium_tokens
+            } for store in stores]
+            
             # Count what will be deleted for logging
             player_count = Player.query.count()
             tournament_count = Tournament.query.count()
-            deck_count = Deck.query.filter(Deck.player_id != 0).count()
+            deck_count = Deck.query.filter(Deck.tournament_id.isnot(None)).count()
             match_count = Match.query.count()
             
-            # Delete all players, tournaments, and their data but preserve archetypes and models
-            # IMPORTANT: Delete in order to avoid cascade issues
+            # DELETE EVERYTHING EXCEPT STORES
+            db.Model.metadata.drop_all(bind=db.engine, tables=[
+                Deck.__table__,
+                Match.__table__,
+                CasualPointsHistory.__table__,
+                DeckSubmissionLink.__table__,
+                TournamentPlayer.__table__,
+                Tournament.__table__,
+                Player.__table__,
+                ArchetypeModel.__table__
+            ])
+            db.Model.metadata.create_all(bind=db.engine, tables=[
+                Player.__table__,
+                Tournament.__table__,
+                TournamentPlayer.__table__,
+                DeckSubmissionLink.__table__,
+                CasualPointsHistory.__table__,
+                Match.__table__,
+                Deck.__table__,
+                ArchetypeModel.__table__
+            ])
             
-            # 1. Delete player deck submissions (preserve archetypes: player_id=0, tournament_id=None)
-            Deck.query.filter(
-                db.and_(
-                    Deck.player_id != 0,
-                    Deck.tournament_id.isnot(None)
+            # RESTORE ARCHETYPES AND MODELS
+            # Restore archetype templates
+            for archetype in archetype_data:
+                new_deck = Deck(
+                    name=archetype['name'],
+                    list_text=archetype['list_text'],
+                    colors=archetype['colors'],
+                    image_url=archetype['image_url'],
+                    player_id=0,
+                    tournament_id=None
                 )
-            ).delete(synchronize_session=False)
+                db.session.add(new_deck)
             
-            # 2. Delete deck submission links
-            DeckSubmissionLink.query.delete(synchronize_session=False)
-            
-            # 3. Delete matches
-            Match.query.delete(synchronize_session=False)
-            
-            # 4. Delete casual points history
-            CasualPointsHistory.query.delete(synchronize_session=False)
-            
-            # 5. Delete tournament players
-            TournamentPlayer.query.delete(synchronize_session=False)
-            
-            # 6. Delete tournaments
-            Tournament.query.delete(synchronize_session=False)
-            
-            # 7. Delete players (but not player_id=0 which is used for archetypes)
-            Player.query.filter(Player.id != 0).delete(synchronize_session=False)
+            # Restore archetype models
+            for model in model_data:
+                new_model = ArchetypeModel(
+                    archetype_name=model['archetype_name'],
+                    model_decklist=model['model_decklist'],
+                    created_at=model['created_at'],
+                    updated_at=model['updated_at']
+                )
+                db.session.add(new_model)
             
             db.session.commit()
             
             log_event(
                 action_type='players_tournaments_deleted',
-                details=f"Deleted all players and tournaments. Players: {player_count}, Tournaments: {tournament_count}, Decks: {deck_count}, Matches: {match_count}. Backup saved to: {os.path.basename(backup_path)}",
+                details=f"Deleted all players and tournaments. Players: {player_count}, Tournaments: {tournament_count}, Decks: {deck_count}, Matches: {match_count}. Archetypes: {len(archetype_data)}, Models: {len(model_data)} preserved. Backup saved to: {os.path.basename(backup_path)}",
                 backup_data=backup_path,
                 recoverable=True
             )
             
-            flash("All players and tournaments deleted. Archetypes and models preserved. Backup saved.", "success")
+            flash(f"All players and tournaments deleted. {len(archetype_data)} archetypes and {len(model_data)} models preserved. Backup saved.", "success")
 
         elif action == "toggle_demo_mode":
             current_mode = is_demo_mode()
@@ -1481,7 +1530,7 @@ def recover_event(event_id):
             
             flash(f"Tournament '{tournament.name}' has been recovered successfully!", "success")
             
-        elif event.action_type == 'database_deleted':
+        elif event.action_type == 'database_deleted' or event.action_type == 'players_tournaments_deleted':
             # Recover from database backup
             backup_path = event.backup_data
             import shutil
@@ -2074,11 +2123,32 @@ def players():
         .limit(4)
         .all()
     )
+    
+    # If no tournament decks exist, show archetype templates instead
+    if not top_archetypes:
+        # Get archetype templates (player_id=0, tournament_id=None) to display
+        archetype_templates = (
+            Deck.query
+            .filter_by(player_id=0, tournament_id=None)
+            .filter(Deck.name.isnot(None))
+            .limit(4)
+            .all()
+        )
+        top_archetypes = [(deck.name, 0) for deck in archetype_templates]
+    
     # Calculate meta share for top decks
-    total_all_decks = Deck.query.count()
+    total_all_decks = Deck.query.filter(Deck.tournament_id.isnot(None)).count()  # Only count tournament decks
     top_decks = []
     for name, deck_count in top_archetypes:
-        last_deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
+        # Try to get the most recent tournament deck, fallback to archetype template
+        last_deck = (Deck.query.filter_by(name=name)
+                     .filter(Deck.tournament_id.isnot(None))
+                     .order_by(Deck.id.desc()).first())
+        
+        if not last_deck:
+            # Fallback to archetype template
+            last_deck = Deck.query.filter_by(name=name, player_id=0, tournament_id=None).first()
+        
         meta_share = round((deck_count / total_all_decks * 100), 1) if total_all_decks > 0 else 0
         top_decks.append({
             "name": name,
@@ -2096,6 +2166,12 @@ def players():
         .limit(3)
         .all()
     )
+    
+    # If no tournaments exist, show all stores instead
+    if not top_stores_data:
+        all_stores = Store.query.limit(3).all()
+        top_stores_data = [(store, 0) for store in all_stores]
+    
     top_stores = [{"store": store, "count": count} for store, count in top_stores_data]
 
     # Get latest 3 blog posts for featured section
@@ -4180,6 +4256,71 @@ def show_casual_share_links(tid):
     )
 
 
+@app.route('/tournament/<int:tid>/generate_share_links', methods=['POST'])
+@login_required
+def generate_competitive_share_links(tid):
+    """Generate deck submission share links for competitive tournament players"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Verify user has permission (admin, scorekeeper, or tournament creator)
+    if not (current_user.is_admin or current_user.is_scorekeeper or tournament.user_id == current_user.id):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+    
+    # Get players from request
+    data = request.get_json()
+    players = data.get('players', [])
+    
+    if not players:
+        return jsonify({'success': False, 'error': 'No players specified'}), 400
+    
+    # Generate share links for each player
+    share_links_created = []
+    for player_data in players:
+        player_name = player_data.get('player_name')
+        player_id = player_data.get('player_id')
+        
+        if not player_name or not player_id:
+            continue
+        
+        # Check if link already exists for this player
+        existing_link = DeckSubmissionLink.query.filter_by(
+            tournament_id=tid,
+            player_name=player_name,
+            deck_submitted=False
+        ).first()
+        
+        if existing_link:
+            # Use existing link
+            share_links_created.append({
+                'player_name': player_name,
+                'token': existing_link.submission_token
+            })
+        else:
+            # Create new link
+            submission_token = secrets.token_urlsafe(32)
+            link = DeckSubmissionLink(
+                tournament_id=tid,
+                player_name=player_name,
+                submission_token=submission_token,
+                deck_submitted=False
+            )
+            db.session.add(link)
+            share_links_created.append({
+                'player_name': player_name,
+                'token': submission_token
+            })
+    
+    db.session.commit()
+    
+    # Return success with redirect URL
+    redirect_url = url_for('show_share_links', tid=tid, token=tournament.confirm_token if tournament.confirm_token else '')
+    return jsonify({
+        'success': True,
+        'redirect_url': redirect_url,
+        'links_created': len(share_links_created)
+    })
+
+
 # --- Confirm Players ---
 @app.route('/confirm_players', methods=['POST'])
 @login_required
@@ -4353,7 +4494,7 @@ def confirm_players():
 
 @app.route('/submit_deck_public/<token>', methods=['GET', 'POST'])
 def submit_deck_public(token):
-    """Public route for players to submit their decklist via shared link"""
+    """Public route for players to submit their decklist via shared link (allows late submission/editing)"""
     # Find the submission link by token
     link = DeckSubmissionLink.query.filter_by(submission_token=token).first()
     
@@ -4361,30 +4502,56 @@ def submit_deck_public(token):
         flash("Invalid or expired submission link.", "error")
         return render_template('submit_deck_public.html', submitted=False, player_name="Unknown", tournament={'name': 'Unknown', 'date': datetime.now()}, archetypes=[])
     
-    if link.deck_submitted:
-        flash("This link has already been used. The decklist has been submitted.", "info")
-        return render_template('submit_deck_public.html', submitted=True, player_name=link.player_name, tournament=link.tournament, archetypes=[])
-    
     tournament = link.tournament
     
     # Get all deck archetypes for dropdown
     archetypes = db.session.query(Deck.name).distinct().filter(Deck.name.isnot(None), Deck.name != '').order_by(Deck.name).all()
     archetype_names = [name[0] for name in archetypes]
     
+    # Check if deck already exists for this player in this tournament
+    player = Player.query.filter_by(name=link.player_name).first()
+    existing_deck = None
+    if player:
+        existing_deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
+    
     if request.method == 'POST':
-        deck_name = html.escape(request.form.get("deck_name", "").strip())
+        user_deck_name = request.form.get("deck_name", "").strip()  # User's input (can be anything)
         deck_list = request.form.get("deck_list", "").strip()
         
-        if not deck_name or not deck_list:
+        if not user_deck_name or not deck_list:
             flash("Please provide both deck archetype and decklist.", "error")
-            return render_template('submit_deck_public.html', submitted=False, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+            return render_template('submit_deck_public.html', 
+                                 submitted=False, 
+                                 player_name=link.player_name, 
+                                 tournament=tournament, 
+                                 archetypes=archetype_names,
+                                 existing_deck=existing_deck,
+                                 is_editing=bool(existing_deck),
+                                 submission_token=token)
         
         # Find or create the player
         player = ensure_player(link.player_name)
         
         if not player:
             flash("Failed to create player record.", "error")
-            return render_template('submit_deck_public.html', submitted=False, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+            return render_template('submit_deck_public.html', 
+                                 submitted=False, 
+                                 player_name=link.player_name, 
+                                 tournament=tournament, 
+                                 archetypes=archetype_names,
+                                 existing_deck=existing_deck,
+                                 is_editing=bool(existing_deck),
+                                 submission_token=token)
+        
+        # Auto-detect archetype from decklist (regardless of what user typed)
+        detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
+        
+        # Always use detected archetype (either matched archetype or "Rogue")
+        deck_name = detected_archetype
+        if similarity > 0:
+            print(f"[AUTO-DETECT] Player '{link.player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity (user typed: '{user_deck_name}')", file=sys.stderr)
+        else:
+            print(f"[AUTO-DETECT] Player '{link.player_name}' deck classified as 'Rogue' (user typed: '{user_deck_name}')", file=sys.stderr)
         
         # Check if archetype exists and has an image
         archetype_image = None
@@ -4396,11 +4563,18 @@ def submit_deck_public(token):
         # Create or update deck
         deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
         if deck:
+            # Editing existing deck
+            old_name = deck.name
             deck.name = deck_name
             deck.list_text = deck_list
             if not deck.image_url and archetype_image:
                 deck.image_url = archetype_image
+            flash("Deck updated successfully!", "success")
+            
+            if old_name != deck_name:
+                print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{deck_name}'", file=sys.stderr)
         else:
+            # Creating new deck
             deck = Deck(
                 player_id=player.id,
                 tournament_id=tournament.id,
@@ -4409,15 +4583,34 @@ def submit_deck_public(token):
                 image_url=archetype_image
             )
             db.session.add(deck)
+            flash("Deck submitted successfully!", "success")
         
-        # Mark link as used
-        link.deck_submitted = True
+        # Mark link as used (first time submission)
+        if not link.deck_submitted:
+            link.deck_submitted = True
+        
         db.session.commit()
         
-        return render_template('submit_deck_public.html', submitted=True, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+        # Show success page with option to edit
+        return render_template('submit_deck_public.html', 
+                             submitted=True, 
+                             player_name=link.player_name, 
+                             tournament=tournament, 
+                             archetypes=archetype_names,
+                             existing_deck=deck,
+                             can_edit=True,
+                             submission_token=token)
     
-    # GET request - show the form
-    return render_template('submit_deck_public.html', submitted=False, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+    # GET request - show the form (pre-fill if editing)
+    is_editing = bool(existing_deck)
+    return render_template('submit_deck_public.html', 
+                         submitted=False, 
+                         player_name=link.player_name, 
+                         tournament=tournament, 
+                         archetypes=archetype_names,
+                         existing_deck=existing_deck,
+                         is_editing=is_editing,
+                         submission_token=token)
 
 
 
@@ -4942,6 +5135,45 @@ def apply_top_cut(tid):
         flash("Error finalizing tournament. Please try again.", "error")
         return redirect(url_for('players'))
 
+    # Check if there are any share links to generate from the form data
+    share_links_created = []
+    for key in request.form.keys():
+        if key.startswith('deck_mode_'):
+            rank = key.replace('deck_mode_', '')
+            deck_mode = request.form.get(key)
+            
+            if deck_mode == 'share':
+                player_id = request.form.get(f'player_id_{rank}')
+                player_name = request.form.get(f'player_name_{rank}')
+                
+                if player_id and player_name:
+                    # Check if link already exists
+                    existing_link = DeckSubmissionLink.query.filter_by(
+                        tournament_id=tid,
+                        player_name=player_name,
+                        deck_submitted=False
+                    ).first()
+                    
+                    if not existing_link:
+                        submission_token = secrets.token_urlsafe(32)
+                        link = DeckSubmissionLink(
+                            tournament_id=tid,
+                            player_name=player_name,
+                            submission_token=submission_token,
+                            deck_submitted=False
+                        )
+                        db.session.add(link)
+                        share_links_created.append({
+                            'player_name': player_name,
+                            'token': submission_token
+                        })
+    
+    if share_links_created:
+        db.session.commit()
+        flash(f"Tournament finalized. {len(share_links_created)} deck submission link(s) generated.", "success")
+        # Redirect to share links page instead of players page
+        return redirect(url_for('show_share_links', tid=tid))
+    
     flash("Tournament finalized. Elo updated.", "success")
     return redirect(url_for('players'))
 

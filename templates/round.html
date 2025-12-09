@@ -10,26 +10,54 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; }
+      body { font-family: system-ui, sans-serif; }
+      .page-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
       nav { margin-bottom: 1rem; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
-      th { background: #f0f0f0; }
-      .elo-pos { color: green; font-weight: bold; }
-      .elo-neg { color: red; font-weight: bold; }
+      th, td { border: 1px solid #e5e7eb; padding: .75rem; text-align: center; }
+      th { 
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+      }
+      tbody tr {
+        transition: background 0.2s ease;
+      }
+      tbody tr:hover {
+        background: #f9fafb;
+      }
+      .elo-pos { color: #10b981; font-weight: bold; }
+      .elo-neg { color: #ef4444; font-weight: bold; }
+
+      html.dark-mode .elo-pos { color: #34d399; }
+      html.dark-mode .elo-neg { color: #f87171; }
 
       .btn-confirm {
-        margin-top: 1rem;
-        padding: .75rem 1.5rem;
-        font-size: 1rem;
-        background: #4CAF50;
+        margin-bottom: 1.5rem;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         width: 100%;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
       }
-      .btn-confirm:hover { background: #45a049; }
+      .btn-confirm:hover { 
+        background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        transform: translateY(-2px);
+      }
 
       .btn-deck {
         padding: .3rem .6rem;
@@ -49,6 +77,140 @@
         color: #f8f9fa;
       }
       .btn-deck-grey:hover { background: #5a6268; }
+
+      /* Deck mode toggle (Add / Share) */
+      .deck-mode-toggle {
+        display: flex;
+        height: 100%;
+        align-items: stretch;
+        background: #f0f0f0;
+        border-radius: 0;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .deck-mode-toggle input[type="radio"] {
+        display: none;
+      }
+
+      .deck-mode-toggle label {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        z-index: 2;
+        color: #6c757d;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 10px 0;
+        margin: 0;
+        position: relative;
+        align-self: stretch;
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      }
+
+      .deck-mode-toggle label .material-icons {
+        font-size: 20px;
+        transition: transform 0.3s ease;
+      }
+
+      /* Add mode selected */
+      .deck-mode-toggle input[value="add"]:checked + label {
+        flex: 1.4;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      .deck-mode-toggle input[value="add"]:checked + label .material-icons {
+        transform: scale(1.1);
+      }
+
+      .deck-mode-toggle input[value="add"]:checked ~ label[for*="shareMode"] {
+        flex: 0.6;
+        color: #adb5bd;
+        font-size: 0.8rem;
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      }
+
+      .deck-mode-toggle input[value="add"]:checked ~ label[for*="shareMode"] .material-icons {
+        font-size: 16px;
+      }
+
+      /* Share mode selected */
+      .deck-mode-toggle input[value="share"]:checked + label[for*="shareMode"] {
+        flex: 1.4;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      .deck-mode-toggle input[value="share"]:checked + label[for*="shareMode"] .material-icons {
+        transform: scale(1.1);
+      }
+
+      .deck-mode-toggle input[value="share"]:checked ~ label[for*="addMode"] {
+        flex: 0.6;
+        color: #adb5bd;
+        font-size: 0.8rem;
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      }
+
+      .deck-mode-toggle input[value="share"]:checked ~ label[for*="addMode"] .material-icons {
+        font-size: 16px;
+      }
+
+      /* Edit/Delete buttons after deck is added */
+      .deck-edit-btn,
+      .deck-delete-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 10px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+
+      .deck-edit-btn {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+      }
+
+      .deck-edit-btn:hover {
+        background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+      }
+
+      .deck-delete-btn {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+      }
+
+      .deck-delete-btn:hover {
+        background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+      }
+
+      .deck-edit-btn .material-icons,
+      .deck-delete-btn .material-icons {
+        font-size: 18px;
+      }
+
+      .deck-mode-toggle label:hover {
+        opacity: 0.9;
+      }
+
+      .deck-mode-toggle input:checked + label:hover {
+        opacity: 0.95;
+      }
 
       .icon { margin-right: 4px; }
 
@@ -133,14 +295,57 @@
         font-size: 1.2rem;
         cursor: pointer;
       }
-      tr.highlight { background-color: #ffeeba; font-weight: bold; }
+      tr.highlight { 
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+        font-weight: 600;
+        border-left: 3px solid #f59e0b;
+      }
+
+      html.dark-mode tr.highlight {
+        background: linear-gradient(135deg, #78350f 0%, #92400e 100%) !important;
+        border-left-color: #fbbf24;
+      }
+
+      html.dark-mode tbody tr:hover {
+        background: #1f2937;
+      }
+
+      html.dark-mode th {
+        background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+      }
 
       .side-panel {
-        flex:0 0 200px;
-        background:#f9f9f9;
-        padding:1rem;
-        border:1px solid #ccc;
-        border-radius:6px;
+        flex:0 0 220px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding:1.5rem;
+        border:2px solid #dee2e6;
+        border-radius:8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      html.dark-mode .side-panel {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border-color: #374151;
+      }
+
+      html.dark-mode table {
+        border-color: #374151;
+      }
+
+      html.dark-mode th, html.dark-mode td {
+        border-color: #374151;
+      }
+
+      html.dark-mode .modal-content {
+        background: #1f2937;
+        color: #e5e5e5;
+      }
+
+      html.dark-mode .modal-content input,
+      html.dark-mode .modal-content textarea {
+        background: #111827;
+        color: #e5e5e5;
+        border-color: #374151;
       }
 
   .deck-editor-wrap {
@@ -201,27 +406,69 @@ html.dark-mode .deck-editor .hl-sideboard { color: #ffffff !important; }
 html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
 
 
-      .side-panel h3 { margin-top:0; }
+      .side-panel h3 { 
+        margin-top:0;
+        color: #7c3aed;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #7c3aed;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+      }
 
-      .option-group { display: flex; flex-direction: column; gap: .5rem; }
+      html.dark-mode .side-panel h3 {
+        color: #c084fc;
+        border-bottom-color: #c084fc;
+      }
+
+      .option-group { display: flex; flex-direction: column; gap: .75rem; }
       .option input[type="radio"] { display: none; }
       .option span {
         display: block;
-        padding: .6rem 1rem;
-        border: 1px solid #ccc;
+        padding: .75rem 1rem;
+        border: 2px solid #e5e7eb;
         border-radius: 6px;
         cursor: pointer;
-        background: #f9f9f9;
-        transition: all 0.2s ease;
+        background: white;
+        transition: all 0.3s ease;
         text-align: center;
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       }
       .option input[type="radio"]:checked + span {
-        background: #4CAF50;
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
         color: white;
-        border-color: #4CAF50;
-        font-weight: bold;
+        border-color: #7c3aed;
+        box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
+        transform: translateY(-1px);
       }
-      .option span:hover { background: #e0e0e0; }
+      .option span:hover { 
+        background: linear-gradient(135deg, #bfdbfe 0%, #dbeafe 100%);
+        border-color: #93c5fd;
+        color: #1f2937;
+        transform: translateY(-1px);
+      }
+
+      html.dark-mode .option span {
+        background: #1a1a1a !important;
+        border-color: #374151 !important;
+        color: #e5e5e5 !important;
+      }
+
+      html.dark-mode .option input[type="radio"]:checked + span {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+        color: white !important;
+        border-color: #a855f7 !important;
+        box-shadow: 0 4px 8px rgba(168, 85, 247, 0.4) !important;
+      }
+
+      html.dark-mode .option span:hover {
+        background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%) !important;
+        border-color: #c084fc !important;
+        color: white !important;
+      }
 
       .btn-toggle-rounds {
         padding: .75rem 1.5rem;
@@ -755,7 +1002,7 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
       }
     </style>
 
-
+<div class="page-container">
     <form class="tournament-header-form" method="POST" action="{{ url_for('update_tournament_metadata', tid=tournament.id) }}">
       <input type="hidden" name="current_round" value="{{ round_num }}">
       <div class="tournament-header-inputs">
@@ -900,9 +1147,8 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
               <th>Deck</th>
             </tr>
             {% for s in standings %}
-            {% set in_cut = (tournament.top_cut is not none) and (loop.index <= tournament.top_cut|int) %}
 
-            <tr data-rank="{{ loop.index }}" class="{% if in_cut %}highlight{% endif %}">
+            <tr data-rank="{{ loop.index }}" data-in-cut="true" class="highlight">
               <td>{{ loop.index }}</td>
               <td>{{ s.player.name }}</td>
               <td>{{ s.wins }}</td>
@@ -914,34 +1160,39 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
                   {{ s.elo_delta }}
                 </span>
               </td>
-<td>
+<td style="padding: 0;">
   {% if s.deck %}
-    <!-- Edit deck button (always blue) -->
-    <button class="btn-deck"
-            data-player-id="{{ s.player.id }}"
-            data-player-name="{{ s.player.name|e }}"
-            data-deck-name="{{ s.deck.name|e }}"
-            data-deck-list="{{ s.deck.list_text|e }}"
-            onclick="openDeckModal(this)">
-      <span class="material-icons" style="font-size: 16px;">edit</span>Edit
-    </button>
-    <!-- Remove deck button (always blue) -->
-    <form method="POST" action="{{ url_for('remove_deck') }}" style="display:inline;">
-      <input type="hidden" name="player_id" value="{{ s.player.id }}">
-      <input type="hidden" name="tournament_id" value="{{ tid }}">
-      <button type="submit" class="btn-deck">
-        <span class="material-icons" style="font-size: 16px;">delete</span>Remove
+    <!-- Deck already submitted: show Edit/Delete buttons -->
+    <div class="deck-mode-toggle" id="deckToggle_{{ loop.index }}" style="display: flex; height: 100%;">
+      <button type="button" class="deck-edit-btn" 
+              data-player-id="{{ s.player.id }}"
+              data-player-name="{{ s.player.name|e }}"
+              data-deck-name="{{ s.deck.name|e }}"
+              data-deck-list="{{ s.deck.list_text|e }}"
+              data-rank="{{ loop.index }}"
+              onclick="openDeckModal(this)">
+        <i class="material-icons">edit</i> Edit
       </button>
-    </form>
-    
+      <button type="button" class="deck-delete-btn" onclick="removeDeckFromStandings({{ s.player.id }}, {{ loop.index }})">
+        <i class="material-icons">delete</i> Delete
+      </button>
+    </div>
   {% else %}
-    <!-- Add deck button: blue if in cut, grey if out -->
-    <button class="btn-deck {% if not in_cut %}btn-deck-grey{% endif %}"
-            data-player-id="{{ s.player.id }}"
-            data-player-name="{{ s.player.name|e }}"
-            onclick="openDeckModal(this)">
-      <span class="material-icons" style="font-size: 16px;">add</span>Add Deck
-    </button>
+    <!-- No deck yet: show Add/Share toggle (JavaScript will control visibility based on top cut) -->
+    <div class="deck-mode-toggle" id="deckToggle_{{ loop.index }}">
+      <input type="radio" id="addMode_{{ loop.index }}" name="mode_toggle_{{ loop.index }}" value="add" checked onchange="toggleDeckMode({{ loop.index }})">
+      <label for="addMode_{{ loop.index }}" onclick="event.preventDefault(); event.stopPropagation(); openDeckModalFromToggle({{ loop.index }}, '{{ s.player.id }}', '{{ s.player.name|e }}');">
+        <i class="material-icons">add</i> Add Deck
+      </label>
+      <input type="radio" id="shareMode_{{ loop.index }}" name="mode_toggle_{{ loop.index }}" value="share" onchange="toggleDeckMode({{ loop.index }})">
+      <label for="shareMode_{{ loop.index }}">
+        <i class="material-icons">link</i> Share Link
+      </label>
+    </div>
+    <input type="hidden" id="deckMode_{{ loop.index }}" value="add">
+    <input type="hidden" id="playerId_{{ loop.index }}" value="{{ s.player.id }}">
+    <input type="hidden" id="playerName_{{ loop.index }}" value="{{ s.player.name|e }}">
+    <span class="outside-cut-message" style="display: none; color: #9ca3af; font-style: italic;">Outside Top Cut</span>
   {% endif %}
 </td>
 
@@ -951,10 +1202,16 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
           </table>
         </div>
 {% if tournament.pending and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
+<form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
+  <button type="submit" class="btn-confirm" onclick="return syncDeckModeToForm()">
+    <i class="material-icons">save</i>
+    Save Tournament
+    <span style="margin-left: auto;">&raquo;</span>
+  </button>
+
 <div class="side-panel">
   <!-- New imported tournament awaiting confirmation -->
-  <h3>Playoff Cut</h3>
-  <form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
+    <h3>Playoff Cut</h3>
     <div class="option-group">
       <label class="option">
         <input type="radio" name="top_cut" value="" {% if not tournament.top_cut %}checked{% endif %}>
@@ -989,8 +1246,7 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
       </label>
       {% endif %}
     </div>
-    <button type="submit" class="btn-confirm">Confirm and Apply Elo</button>
-  </form>
+</div>
 
   {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
   <div class="store-selector-wrapper required" id="storeWrapper">
@@ -1034,6 +1290,19 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
   <div id="storeStatus"></div>
   {% endif %}
 </div>
+
+  <!-- Hidden inputs to pass deck mode data (only for players in top cut) -->
+  <div id="deckDataContainer">
+    {% for s in standings %}
+      {% set in_cut = (tournament.top_cut is not none) and (loop.index <= tournament.top_cut|int) %}
+      {% if in_cut %}
+        <input type="hidden" name="deck_mode_{{ loop.index }}" id="formDeckMode_{{ loop.index }}" value="add">
+        <input type="hidden" name="player_id_{{ loop.index }}" id="formPlayerId_{{ loop.index }}" value="{{ s.player.id }}">
+        <input type="hidden" name="player_name_{{ loop.index }}" id="formPlayerName_{{ loop.index }}" value="{{ s.player.name|e }}">
+      {% endif %}
+    {% endfor %}
+  </div>
+</form>
 {% elif is_editing and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
 <div class="side-panel">
   <!-- Editing existing confirmed tournament -->
@@ -1272,8 +1541,284 @@ if (document.getElementById('storeWrapperEdit')) {
       </div>
 
 <script>
+  let currentRank = null;
+  let currentPlayerId = null;
+
+  // Toggle between Add Deck and Share Link modes
+  function toggleDeckMode(rank) {
+    const addModeRadio = document.getElementById(`addMode_${rank}`);
+    const shareModeRadio = document.getElementById(`shareMode_${rank}`);
+    const deckModeInput = document.getElementById(`deckMode_${rank}`);
+    
+    if (shareModeRadio && shareModeRadio.checked) {
+      deckModeInput.value = 'share';
+    } else if (addModeRadio && addModeRadio.checked) {
+      deckModeInput.value = 'add';
+    }
+  }
+
+  // Open deck modal from Add Deck toggle button
+  function openDeckModalFromToggle(rank, playerId, playerName) {
+    // Ensure Add Deck mode is selected
+    const addModeRadio = document.getElementById(`addMode_${rank}`);
+    const deckModeInput = document.getElementById(`deckMode_${rank}`);
+    
+    if (addModeRadio && !addModeRadio.checked) {
+      addModeRadio.checked = true;
+      deckModeInput.value = 'add';
+    }
+    
+    // Create a mock button element to pass to openDeckModal
+    const mockButton = {
+      dataset: { 
+        playerId: playerId,
+        playerName: playerName,
+        rank: rank
+      }
+    };
+    openDeckModal(mockButton);
+  }
+
+  // Remove deck from standings table
+  function removeDeckFromStandings(playerId, rank) {
+    if (!confirm('Are you sure you want to remove this deck?')) return;
+    
+    fetch('{{ url_for("remove_deck") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        'player_id': playerId,
+        'tournament_id': '{{ tid }}'
+      })
+    })
+    .then(response => {
+      if (response.ok) {
+        // Reload the page to reflect changes
+        location.reload();
+      } else {
+        alert('Failed to remove deck. Please try again.');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while removing the deck.');
+    });
+  }
+
+  // Persistent storage for deck data across top cut changes
+  const deckDataStore = {};
+
+  // Save deck data for a specific rank
+  function saveDeckData(rank) {
+    const deckMode = document.getElementById(`deckMode_${rank}`);
+    const playerId = document.getElementById(`playerId_${rank}`);
+    const playerName = document.getElementById(`playerName_${rank}`);
+    
+    if (deckMode && playerId && playerName) {
+      deckDataStore[rank] = {
+        deckMode: deckMode.value,
+        playerId: playerId.value,
+        playerName: playerName.value
+      };
+    }
+  }
+
+  // Restore deck data for a specific rank
+  function restoreDeckData(rank) {
+    if (deckDataStore[rank]) {
+      const addModeRadio = document.getElementById(`addMode_${rank}`);
+      const shareModeRadio = document.getElementById(`shareMode_${rank}`);
+      const deckModeInput = document.getElementById(`deckMode_${rank}`);
+      
+      if (deckDataStore[rank].deckMode === 'share' && shareModeRadio) {
+        shareModeRadio.checked = true;
+        if (deckModeInput) deckModeInput.value = 'share';
+      } else if (addModeRadio) {
+        addModeRadio.checked = true;
+        if (deckModeInput) deckModeInput.value = 'add';
+      }
+    }
+  }
+
+  // Sync deck mode data from toggles to form hidden inputs before submission
+  function syncDeckModeToForm() {
+    // Save all current deck data
+    const standings = document.querySelectorAll('table tr[data-rank]');
+    standings.forEach(row => {
+      const rank = row.getAttribute('data-rank');
+      saveDeckData(rank);
+    });
+    
+    // Update form hidden inputs for players in top cut
+    standings.forEach(row => {
+      const rank = row.getAttribute('data-rank');
+      const inCut = row.getAttribute('data-in-cut') === 'true';
+      const deckModeInput = document.getElementById(`deckMode_${rank}`);
+      const formDeckModeInput = document.getElementById(`formDeckMode_${rank}`);
+      
+      if (inCut && deckModeInput && formDeckModeInput) {
+        formDeckModeInput.value = deckModeInput.value;
+      }
+    });
+    
+    // Form will submit normally after this
+    return true;
+  }
+
+  // Calculate default top cut based on number of players (matches Python logic)
+  function calculateDefaultTopCut(numPlayers) {
+    let cut = 0;
+    
+    if (numPlayers >= 9 && numPlayers <= 16) {
+      cut = 4;
+    } else if (numPlayers >= 17 && numPlayers <= 32) {
+      cut = 8;
+    } else if (numPlayers >= 33 && numPlayers <= 64) {
+      cut = 8;
+    } else if (numPlayers >= 65 && numPlayers <= 128) {
+      cut = 8;
+    } else if (numPlayers >= 129 && numPlayers <= 216) {
+      cut = 8;
+    } else if (numPlayers >= 217 && numPlayers <= 256) {
+      cut = 16;
+    } else if (numPlayers >= 257 && numPlayers <= 512) {
+      cut = 16;
+    } else if (numPlayers >= 513 && numPlayers <= 1024) {
+      cut = 32;
+    } else if (numPlayers >= 1025 && numPlayers <= 2048) {
+      cut = 32;
+    }
+    
+    return Math.min(cut, numPlayers);
+  }
+
+  // Update deck toggle visibility based on top cut selection
+  function updateDeckToggleVisibility() {
+    const standings = document.querySelectorAll('table tr[data-rank]');
+    
+    standings.forEach(row => {
+      const rank = parseInt(row.getAttribute('data-rank'));
+      const inCut = row.getAttribute('data-in-cut') === 'true';
+      const deckToggle = row.querySelector('.deck-mode-toggle');
+      const outsideMessage = row.querySelector('.outside-cut-message');
+      
+      // Only update if there's no deck already submitted (toggle exists)
+      if (deckToggle && outsideMessage) {
+        if (inCut) {
+          deckToggle.style.display = 'flex';
+          outsideMessage.style.display = 'none';
+        } else {
+          deckToggle.style.display = 'none';
+          outsideMessage.style.display = 'block';
+        }
+      }
+    });
+  }
+
+  // Handle top cut selection change
+  function handleTopCutChange() {
+    // Save current deck data before any changes
+    const standings = document.querySelectorAll('table tr[data-rank]');
+    standings.forEach(row => {
+      const rank = row.getAttribute('data-rank');
+      saveDeckData(rank);
+    });
+    
+    // Get selected top cut value
+    let selectedTopCut = parseInt(document.querySelector('input[name="top_cut"]:checked')?.value || '0');
+    
+    // Save to localStorage for persistence across page reloads
+    const tournamentId = '{{ tid }}';
+    localStorage.setItem(`topCut_${tournamentId}`, selectedTopCut);
+    
+    // If Auto (0), calculate based on number of players
+    if (selectedTopCut === 0) {
+      const numPlayers = standings.length;
+      selectedTopCut = calculateDefaultTopCut(numPlayers);
+    }
+    
+    // Update visibility and restore data
+    standings.forEach(row => {
+      const rank = parseInt(row.getAttribute('data-rank'));
+      const inCut = selectedTopCut === 0 || rank <= selectedTopCut;
+      
+      // Update data-in-cut attribute
+      row.setAttribute('data-in-cut', inCut ? 'true' : 'false');
+      
+      // Update highlight class
+      if (inCut) {
+        row.classList.add('highlight');
+      } else {
+        row.classList.remove('highlight');
+      }
+      
+      // Restore saved deck data if available
+      if (inCut) {
+        restoreDeckData(rank);
+      }
+    });
+    
+    // Update deck toggle visibility
+    updateDeckToggleVisibility();
+    
+    // Rebuild form hidden inputs container
+    rebuildDeckDataContainer();
+  }
+
+  // Rebuild the hidden inputs container based on current top cut
+  function rebuildDeckDataContainer() {
+    const container = document.getElementById('deckDataContainer');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const standings = document.querySelectorAll('table tr[data-rank]');
+    standings.forEach(row => {
+      const rank = row.getAttribute('data-rank');
+      const inCut = row.getAttribute('data-in-cut') === 'true';
+      const playerId = document.getElementById(`playerId_${rank}`)?.value;
+      const playerName = document.getElementById(`playerName_${rank}`)?.value;
+      
+      if (inCut && playerId && playerName) {
+        const deckModeValue = deckDataStore[rank]?.deckMode || 'add';
+        
+        container.innerHTML += `
+          <input type="hidden" name="deck_mode_${rank}" id="formDeckMode_${rank}" value="${deckModeValue}">
+          <input type="hidden" name="player_id_${rank}" id="formPlayerId_${rank}" value="${playerId}">
+          <input type="hidden" name="player_name_${rank}" id="formPlayerName_${rank}" value="${playerName}">
+        `;
+      }
+    });
+  }
+
+  // Attach event listeners to top cut radio buttons
+  document.addEventListener('DOMContentLoaded', () => {
+    const topCutRadios = document.querySelectorAll('input[name="top_cut"]');
+    topCutRadios.forEach(radio => {
+      radio.addEventListener('change', handleTopCutChange);
+    });
+    
+    // Restore top cut selection from localStorage
+    const tournamentId = '{{ tid }}';
+    const savedTopCut = localStorage.getItem(`topCut_${tournamentId}`);
+    if (savedTopCut !== null) {
+      const savedValue = savedTopCut === '0' ? '' : savedTopCut;
+      const radioToSelect = document.querySelector(`input[name="top_cut"][value="${savedValue}"]`);
+      if (radioToSelect) {
+        radioToSelect.checked = true;
+      }
+    }
+    
+    // Calculate initial top cut on page load
+    handleTopCutChange();
+  });
+
   // Modal open/close + populate
   function openDeckModal(button) {
+    currentRank = button.dataset.rank || null;
+    currentPlayerId = button.dataset.playerId;
     const playerId   = button.dataset.playerId;
     const playerName = button.dataset.playerName;
     const deckName   = button.dataset.deckName;
@@ -2026,6 +2571,6 @@ if (document.getElementById('storeWrapperEdit')) {
         <button type="submit">Submit Round {{ round_num }}</button>
       </form>
     {% endif %}
-
+</div>
   {% endblock %}
 

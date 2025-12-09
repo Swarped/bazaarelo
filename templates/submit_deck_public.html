@@ -294,7 +294,7 @@
     <div class="header">
       <h1>
         <span class="material-icons">style</span>
-        Submit Your Decklist
+        {% if is_editing %}Edit Your Decklist{% else %}Submit Your Decklist{% endif %}
       </h1>
       <p>{{ tournament.name }} - {{ tournament.date.strftime('%B %d, %Y') }}</p>
     </div>
@@ -303,13 +303,27 @@
       {% if submitted %}
         <div class="success-container">
           <span class="material-icons success-icon">check_circle</span>
-          <h2>Decklist Submitted Successfully!</h2>
-          <p>Your decklist for <strong>{{ player_name }}</strong> has been recorded.</p>
-          <p style="margin-top: 1rem;">You can now close this page.</p>
+          <h2>{% if existing_deck %}Deck Updated!{% else %}Deck Submitted!{% endif %}</h2>
+          <p>Thank you, <strong>{{ player_name }}</strong>! Your decklist has been {% if existing_deck %}updated{% else %}received{% endif %}.</p>
+          {% if can_edit and submission_token %}
+            <p style="margin-top: 1.5rem; color: #666;">
+              <a href="{{ url_for('submit_deck_public', token=submission_token) }}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">
+                Click here to edit your deck again
+              </a>
+            </p>
+          {% endif %}
         </div>
       {% else %}
         <div class="form-container">
-          <p><strong>Player:</strong> {{ player_name }}</p>
+          {% if is_editing %}
+            <div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+              <p style="color: #856404;">You are editing your existing decklist. Make your changes and click Submit to update.</p>
+            </div>
+          {% else %}
+            <div class="info-box">
+              <p>Welcome, <strong>{{ player_name }}</strong>! Please submit your decklist for this tournament.</p>
+            </div>
+          {% endif %}
         </div>
         
         <form method="POST">
@@ -319,9 +333,12 @@
               Deck Archetype
             </label>
             <div class="deck-name-wrapper">
-              <input type="text" id="deckName" name="deck_name" placeholder="Type to search archetypes..." autocomplete="off" required>
-              <div id="deckNameDropdown" class="deck-name-dropdown"></div>
+              <input type="text" id="deckName" name="deck_name" placeholder="Enter deck name (e.g., Sligh, UW Control)..." 
+                     autocomplete="off" value="{% if existing_deck %}{{ existing_deck.name }}{% endif %}" required>
             </div>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+              💡 Your deck will be automatically classified based on the decklist you provide.
+            </p>
           </div>
           
           <div class="form-group">
@@ -356,100 +373,30 @@ Sideboard
   
   {% if not submitted %}
   <script>
-    // Deck archetype dropdown functionality
-    const allArchetypes = {{ archetypes | tojson }};
-    console.log('Loaded archetypes:', allArchetypes.length, allArchetypes);
-    
-    // Filter and display matching archetypes
-    function showArchetypeDropdown(searchText) {
-      const dropdown = document.getElementById('deckNameDropdown');
-      const input = document.getElementById('deckName');
-      
-      if (!dropdown) {
-        console.error('Dropdown element not found');
-        return;
-      }
-      
-      // Clear previous content
-      dropdown.innerHTML = '';
-      
-      // If no search text, show all archetypes (limited to first 20)
-      const filtered = searchText.trim() 
-        ? allArchetypes.filter(arch => arch.toLowerCase().includes(searchText.toLowerCase()))
-        : allArchetypes.slice(0, 20);
-      
-      console.log('Filtered archetypes:', filtered.length);
-      
-      // Mark input as invalid if user typed something but no matches found
-      if (searchText.trim() && filtered.length === 0) {
-        input.classList.add('invalid-archetype');
-      } else {
-        input.classList.remove('invalid-archetype');
-      }
-      
-      // Show existing archetypes
-      if (filtered.length > 0) {
-        filtered.forEach(arch => {
-          const item = document.createElement('div');
-          item.className = 'deck-name-dropdown-item';
-          item.textContent = arch;
-          item.onclick = () => {
-            document.getElementById('deckName').value = arch;
-            input.classList.remove('invalid-archetype');
-            dropdown.style.display = 'none';
-          };
-          dropdown.appendChild(item);
-        });
-        dropdown.style.display = 'block';
-        console.log('Dropdown shown');
-      } else {
-        dropdown.style.display = 'none';
-        console.log('No matches, dropdown hidden');
-      }
-    }
-    
     // Wait for DOM to be ready
     document.addEventListener('DOMContentLoaded', () => {
       const deckNameInput = document.getElementById('deckName');
-      const dropdown = document.getElementById('deckNameDropdown');
+      const editor = document.getElementById('deckEditor');
       
-      console.log('DOM loaded. Elements:', { 
-        deckNameInput, 
-        dropdown,
-        dropdownParent: dropdown?.parentElement,
-        inputParent: deckNameInput?.parentElement
-      });
-      
-      if (deckNameInput && dropdown) {
-        console.log('Setup archetype dropdown listeners');
-        
-        // Show dropdown on input
-        deckNameInput.addEventListener('input', (e) => {
-          console.log('Input event:', e.target.value);
-          showArchetypeDropdown(e.target.value);
+      // Pre-populate deck editor if editing existing deck
+      {% if existing_deck and existing_deck.list_text %}
+      const existingDeckList = {{ existing_deck.list_text | tojson }};
+      if (editor && existingDeckList) {
+        editor.innerHTML = '';
+        const lines = existingDeckList.split('\\n');
+        lines.forEach(line => {
+          const div = document.createElement('div');
+          const span = document.createElement('span');
+          span.textContent = line;
+          div.appendChild(span);
+          editor.appendChild(div);
         });
-        
-        // Show dropdown on focus
-        deckNameInput.addEventListener('focus', (e) => {
-          console.log('Focus event:', e.target.value);
-          showArchetypeDropdown(e.target.value);
-        });
-        
-        // Show dropdown on click
-        deckNameInput.addEventListener('click', (e) => {
-          console.log('Click event:', e.target.value);
-          showArchetypeDropdown(e.target.value);
-        });
-        
-        // Hide dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-          if (!deckNameInput.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.style.display = 'none';
-          }
-        });
-      } else {
-        console.error('Elements not found:', { deckNameInput, dropdown });
+        // Trigger validation after populating
+        setTimeout(() => {
+          validateAndHighlight(true);
+        }, 100);
       }
+      {% endif %}
     });
     
     // Deck validation logic (from new_tournament_casual.html)
@@ -791,13 +738,7 @@ Sideboard
       const deckName = deckNameInput.value.trim();
       
       if (!deckName) {
-        alert('Please enter a deck archetype.');
-        return;
-      }
-      
-      // Only allow existing archetypes
-      if (!allArchetypes.includes(deckName)) {
-        alert('Please select an archetype from the dropdown list. You cannot create new archetypes via this link.');
+        alert('Please enter a deck name.');
         return;
       }
       
@@ -814,7 +755,7 @@ Sideboard
         return;
       }
       
-      // Submit the form
+      // Submit the form (archetype will be auto-detected on server)
       this.submit();
     });
   </script>
