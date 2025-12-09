@@ -1056,20 +1056,20 @@
     </form>
   </div>
 
-  <!-- Delete All Players -->
+  <!-- Delete All Players and Tournaments -->
   <div style="background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-      <span class="material-icons" style="color: #856404;">person_remove</span>
-      <h3 style="margin: 0; color: #856404;">Delete All Players</h3>
+      <span class="material-icons" style="color: #856404;">delete_sweep</span>
+      <h3 style="margin: 0; color: #856404;">Delete All Players and Tournaments</h3>
     </div>
     <p style="margin: 0.5rem 0; color: #856404; font-size: 0.9rem;">
-      Remove all player records from the database. Tournaments will remain but player data will be lost.
+      Remove all players, tournaments, matches, and related data. Archetypes and deck models will be preserved.
     </p>
-    <form method="POST" style="margin-top: 1rem;" onsubmit="return confirm('Are you sure you want to delete all players? This cannot be undone!');">
+    <form method="POST" style="margin-top: 1rem;" onsubmit="return confirm('⚠️ WARNING: This will delete ALL players and tournaments! Archetypes will be preserved. Continue?');">
       <input type="hidden" name="action" value="delete_all_players">
       <button type="submit" class="btn" style="background-color: #ffc107; color: #856404; border: 1px solid #856404;">
-        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person_remove</span>
-        Delete All Players
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">delete_sweep</span>
+        Delete All Players & Tournaments
       </button>
     </form>
   </div>

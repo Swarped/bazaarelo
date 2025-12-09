@@ -738,11 +738,23 @@ def admin_panel():
             flash("Tournament database deleted and recreated. Backup saved. Archetypes and models preserved.", "success")
 
         elif action == "delete_all_players":
-            # Delete all player submissions but preserve archetype templates
+            # Delete all players, tournaments, and their data but preserve archetypes and models
+            # Delete player deck submissions (preserve archetypes: player_id=0)
             Deck.query.filter(Deck.player_id != 0).delete()
+            # Delete matches
+            Match.query.delete()
+            # Delete casual points history
+            CasualPointsHistory.query.delete()
+            # Delete deck submission links
+            DeckSubmissionLink.query.delete()
+            # Delete tournament players
+            TournamentPlayer.query.delete()
+            # Delete tournaments
+            Tournament.query.delete()
+            # Delete players
             Player.query.delete()
             db.session.commit()
-            flash("All players have been deleted. Archetype templates preserved.", "success")
+            flash("All players and tournaments deleted. Archetypes and models preserved.", "success")
 
         elif action == "toggle_demo_mode":
             current_mode = is_demo_mode()
