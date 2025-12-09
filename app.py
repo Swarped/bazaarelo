@@ -2167,10 +2167,32 @@ def decks_list():
         archetypes.setdefault(d.name, []).append(d)
     
     # Add archetypes from ArchetypeModel that don't have any decks yet
+    # Create placeholder deck entries for them
     models = ArchetypeModel.query.all()
     for model in models:
         if model.archetype_name not in archetypes:
-            archetypes[model.archetype_name] = []
+            # Check if a placeholder deck already exists
+            placeholder = Deck.query.filter_by(
+                name=model.archetype_name,
+                player_id=0,
+                tournament_id=None
+            ).first()
+            
+            if not placeholder:
+                # Create a placeholder deck with the model decklist
+                placeholder = Deck(
+                    name=model.archetype_name,
+                    list_text=model.model_decklist,
+                    colors="",
+                    image_url=None,
+                    player_id=0,
+                    tournament_id=None
+                )
+                db.session.add(placeholder)
+                db.session.commit()
+                print(f"DEBUG: Created placeholder deck for '{model.archetype_name}'")
+            
+            archetypes[model.archetype_name] = [placeholder]
             print(f"DEBUG: Added empty archetype '{model.archetype_name}' from model")
     
     print(f"DEBUG: Found {len(archetypes)} archetypes (including empty ones)")

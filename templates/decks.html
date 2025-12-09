@@ -580,6 +580,7 @@ th:nth-child(6), td:nth-child(6) {
 </tr>
 
     {% for name, decks in archetypes.items() %}
+    {% if decks|length > 0 %}
     {% set last_deck = decks[-1] %}
     <tr class="clickable-row"
         data-href="{{ url_for('deck_detail', deck_name=name) }}"
@@ -629,6 +630,7 @@ th:nth-child(6), td:nth-child(6) {
 {% endif %}
 
     </tr>
+    {% endif %}
     {% endfor %}
 
 {% if current_user.is_authenticated and current_user.is_admin %}
