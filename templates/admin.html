@@ -1035,27 +1035,6 @@
     </form>
   </div>
 
-  <!-- Delete Tournament Database -->
-  <div style="background-color: #f8d7da; border: 2px solid #dc3545; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-      <span class="material-icons" style="color: #721c24;">delete_sweep</span>
-      <h3 style="margin: 0; color: #721c24;">Delete Tournament Database</h3>
-    </div>
-    <p style="margin: 0.5rem 0; color: #721c24; font-size: 0.9rem;">
-      Permanently delete all tournaments, matches, decks, players, and stores. A backup will be created automatically.
-    </p>
-    <form method="POST" style="margin-top: 1rem;" onsubmit="return confirm('⚠️ WARNING: This will delete ALL tournament data! A backup will be saved. Continue?');">
-      <input type="hidden" name="action" value="delete_tournament_db">
-      <button type="submit" class="btn btn-danger">
-        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">delete_sweep</span>
-        Delete Tournament Database
-      </button>
-      <span style="margin-left: 0.5rem; color: #721c24; font-size: 0.85rem; font-style: italic;">
-        ⚠️ Backup will be saved
-      </span>
-    </form>
-  </div>
-
   <!-- Delete All Players and Tournaments -->
   <div style="background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">

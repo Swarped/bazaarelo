@@ -387,6 +387,7 @@ def tournaments_played(player_id: int) -> int:
         .join(Tournament, TournamentPlayer.tournament_id == Tournament.id)
         .filter(TournamentPlayer.player_id == player_id)
         .filter(Tournament.pending == False)
+        .filter(Tournament.casual == False)  # Only count competitive tournaments
         .count()
     )
 
@@ -1959,13 +1960,20 @@ def players():
     
     # Helper: get previous rank for a player
     def get_previous_rank(player_id):
-        # Get the second most recent snapshot for this player (skip the current one)
+        # Get the last 3 snapshots for this player to calculate trend
         snapshots = CasualRankingSnapshot.query.filter_by(
             player_id=player_id
-        ).order_by(CasualRankingSnapshot.snapshot_date.desc()).limit(2).all()
+        ).order_by(CasualRankingSnapshot.snapshot_date.desc()).limit(3).all()
         
-        # Return the second snapshot's rank if it exists
-        return snapshots[1].rank if len(snapshots) > 1 else None
+        # If we have at least 2 snapshots, calculate average rank change
+        if len(snapshots) >= 2:
+            # Calculate the average rank from previous snapshots (excluding the most recent)
+            previous_ranks = [s.rank for s in snapshots[1:]]
+            avg_previous_rank = sum(previous_ranks) / len(previous_ranks)
+            return avg_previous_rank
+        
+        # If only 1 snapshot exists, return None (new entry)
+        return None
     
     # Helper: update ranking snapshots
     def update_ranking_snapshots(casual_ranked):
@@ -2117,6 +2125,7 @@ def players():
         db.session.query(Deck.name, func.count(Deck.id).label("count"))
         .join(Tournament, Deck.tournament_id == Tournament.id)
         .filter(Deck.name.isnot(None))
+        .filter(Deck.name != "Rogue")  # Exclude Rogue archetype
         .filter(Tournament.pending == False)
         .group_by(Deck.name)
         .order_by(func.count(Deck.id).desc())
