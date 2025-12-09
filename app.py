@@ -692,6 +692,15 @@ def admin_panel():
                 'image_url': deck.image_url
             } for deck in archetype_templates]
             
+            # Preserve archetype models before deletion
+            archetype_models = ArchetypeModel.query.all()
+            model_data = [{
+                'archetype_name': model.archetype_name,
+                'model_decklist': model.model_decklist,
+                'created_at': model.created_at,
+                'updated_at': model.updated_at
+            } for model in archetype_models]
+            
             log_event(
                 action_type='database_deleted',
                 details=f"Deleted tournament database. Backup saved to: {os.path.basename(backup_path)}",
@@ -713,9 +722,20 @@ def admin_panel():
                     tournament_id=None
                 )
                 db.session.add(new_deck)
+            
+            # Restore archetype models
+            for model in model_data:
+                new_model = ArchetypeModel(
+                    archetype_name=model['archetype_name'],
+                    model_decklist=model['model_decklist'],
+                    created_at=model['created_at'],
+                    updated_at=model['updated_at']
+                )
+                db.session.add(new_model)
+            
             db.session.commit()
             
-            flash("Tournament database deleted and recreated. Backup saved. Archetype templates preserved.", "success")
+            flash("Tournament database deleted and recreated. Backup saved. Archetypes and models preserved.", "success")
 
         elif action == "delete_all_players":
             # Delete all player submissions but preserve archetype templates
