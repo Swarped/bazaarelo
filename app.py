@@ -683,6 +683,15 @@ def admin_panel():
             backup_path = DB_PATH + '.backup_' + datetime.now().strftime('%Y%m%d_%H%M%S')
             shutil.copy2(DB_PATH, backup_path)
             
+            # Preserve archetype templates before deletion
+            archetype_templates = Deck.query.filter_by(player_id=0, tournament_id=None).all()
+            archetype_data = [{
+                'name': deck.name,
+                'list_text': deck.list_text,
+                'colors': deck.colors,
+                'image_url': deck.image_url
+            } for deck in archetype_templates]
+            
             log_event(
                 action_type='database_deleted',
                 details=f"Deleted tournament database. Backup saved to: {os.path.basename(backup_path)}",
@@ -692,12 +701,28 @@ def admin_panel():
             
             db.Model.metadata.drop_all(bind=db.engine)
             db.Model.metadata.create_all(bind=db.engine)
-            flash("Tournament database deleted and recreated. Backup saved.", "success")
+            
+            # Restore archetype templates
+            for archetype in archetype_data:
+                new_deck = Deck(
+                    name=archetype['name'],
+                    list_text=archetype['list_text'],
+                    colors=archetype['colors'],
+                    image_url=archetype['image_url'],
+                    player_id=0,
+                    tournament_id=None
+                )
+                db.session.add(new_deck)
+            db.session.commit()
+            
+            flash("Tournament database deleted and recreated. Backup saved. Archetype templates preserved.", "success")
 
         elif action == "delete_all_players":
+            # Delete all player submissions but preserve archetype templates
+            Deck.query.filter(Deck.player_id != 0).delete()
             Player.query.delete()
             db.session.commit()
-            flash("All players have been deleted.", "success")
+            flash("All players have been deleted. Archetype templates preserved.", "success")
 
         elif action == "toggle_demo_mode":
             current_mode = is_demo_mode()
@@ -2232,11 +2257,13 @@ def recalculate_archetypes():
     
     try:
         # First, delete all decks with empty decklists (placeholder/empty submissions)
+        # BUT preserve archetype templates (player_id=0, tournament_id=None)
         empty_decks = Deck.query.filter(
             db.or_(
                 Deck.list_text.is_(None),
                 Deck.list_text == ''
-            )
+            ),
+            db.not_(db.and_(Deck.player_id == 0, Deck.tournament_id.is_(None)))
         ).all()
         
         deleted_count = 0

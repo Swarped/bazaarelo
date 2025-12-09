@@ -1362,6 +1362,13 @@ html.dark-mode .featured-posts-section h2 {
               <span class="fi fi-{{ item.store.country|lower }}" style="font-size: 1.2rem;"></span>
             {% endif %}
           </div>
+          <div style="
+            font-size: 0.8rem;
+            color: #007bff;
+            margin-top: 0.5rem;
+            font-weight: 600;">
+            {{ item.count }} tournament{{ 's' if item.count != 1 else '' }}
+          </div>
         </div>
       </a>
       {% endfor %}
@@ -1538,6 +1545,7 @@ function resortCasualTable() {
 
 function applyFilters() {
   const searchFilter = searchBar.value.toLowerCase();
+  const countryFilter = countrySelect ? countrySelect.value : '';
 
   const rowsToHide = [];
   const rowsToShow = [];
@@ -1546,10 +1554,12 @@ function applyFilters() {
   const compRows = document.querySelectorAll("#playersTable tr:not(:first-child)");
   compRows.forEach(row => {
     const nameCell = row.cells[1].textContent.toLowerCase();
+    const rowCountry = row.getAttribute('data-country') || '';
     
     const matchesSearch = nameCell.includes(searchFilter);
+    const matchesCountry = !countryFilter || rowCountry === countryFilter;
     
-    const shouldBeHidden = !matchesSearch;
+    const shouldBeHidden = !matchesSearch || !matchesCountry;
     const isCurrentlyHidden = row.classList.contains('hidden');
     
     if (shouldBeHidden && !isCurrentlyHidden) {
@@ -1562,13 +1572,15 @@ function applyFilters() {
   // Casual rows - also check if they have 0 points with current store filter
   const casualRows = document.querySelectorAll("#casualPlayersTable tr:not(:first-child)");
   casualRows.forEach(row => {
-    const nameCell = row.cells[1].textContent.toLowerCase();
+    const nameCell = row.cells[2].textContent.toLowerCase();
     const points = parseInt(row.querySelector('.points-value').textContent) || 0;
+    const rowCountry = row.getAttribute('data-country') || '';
     
     const matchesSearch = nameCell.includes(searchFilter);
+    const matchesCountry = !countryFilter || rowCountry === countryFilter;
     const hasPoints = points > 0;
     
-    const shouldBeHidden = !matchesSearch || !hasPoints;
+    const shouldBeHidden = !matchesSearch || !hasPoints || !matchesCountry;
     const isCurrentlyHidden = row.classList.contains('hidden');
     
     if (shouldBeHidden && !isCurrentlyHidden) {
