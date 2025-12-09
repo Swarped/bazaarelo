@@ -738,6 +738,17 @@ def admin_panel():
             flash("Tournament database deleted and recreated. Backup saved. Archetypes and models preserved.", "success")
 
         elif action == "delete_all_players":
+            # Backup tournament database before deleting players and tournaments
+            import shutil
+            backup_path = DB_PATH + '.backup_players_tournaments_' + datetime.now().strftime('%Y%m%d_%H%M%S')
+            shutil.copy2(DB_PATH, backup_path)
+            
+            # Count what will be deleted for logging
+            player_count = Player.query.count()
+            tournament_count = Tournament.query.count()
+            deck_count = Deck.query.filter(Deck.player_id != 0).count()
+            match_count = Match.query.count()
+            
             # Delete all players, tournaments, and their data but preserve archetypes and models
             # Delete player deck submissions (preserve archetypes: player_id=0)
             Deck.query.filter(Deck.player_id != 0).delete()
@@ -754,7 +765,15 @@ def admin_panel():
             # Delete players
             Player.query.delete()
             db.session.commit()
-            flash("All players and tournaments deleted. Archetypes and models preserved.", "success")
+            
+            log_event(
+                action_type='players_tournaments_deleted',
+                details=f"Deleted all players and tournaments. Players: {player_count}, Tournaments: {tournament_count}, Decks: {deck_count}, Matches: {match_count}. Backup saved to: {os.path.basename(backup_path)}",
+                backup_data=backup_path,
+                recoverable=True
+            )
+            
+            flash("All players and tournaments deleted. Archetypes and models preserved. Backup saved.", "success")
 
         elif action == "toggle_demo_mode":
             current_mode = is_demo_mode()
