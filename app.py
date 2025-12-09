@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import logging
 import time
 from datetime import datetime
@@ -159,6 +160,49 @@ class Deck(db.Model):
 
     player = db.relationship('Player', backref='decks')
     tournament = db.relationship('Tournament', backref='decks')
+
+class DeckSubmissionLink(db.Model):
+    __tablename__ = 'deck_submission_links'
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
+    player_name = db.Column(db.String(120), nullable=False)
+    submission_token = db.Column(db.String(64), unique=True, nullable=False)
+    deck_submitted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    tournament = db.relationship('Tournament', backref='deck_submission_links')
+
+class CasualPointsHistory(db.Model):
+    __tablename__ = 'casual_points_history'
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
+    store_id = db.Column(db.Integer, db.ForeignKey('stores.id'), nullable=True)
+    points = db.Column(db.Integer, nullable=False)
+    rank = db.Column(db.Integer, nullable=False)
+    awarded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    player = db.relationship('Player', backref='casual_points_history')
+    tournament = db.relationship('Tournament', backref='casual_points_awards')
+    store = db.relationship('Store', backref='casual_points_awards')
+
+class CasualRankingSnapshot(db.Model):
+    __tablename__ = 'casual_ranking_snapshot'
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+    rank = db.Column(db.Integer, nullable=False)
+    points = db.Column(db.Integer, nullable=False)
+    snapshot_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    player = db.relationship('Player', backref='casual_ranking_snapshots')
+
+class ArchetypeModel(db.Model):
+    __tablename__ = 'archetype_models'
+    id = db.Column(db.Integer, primary_key=True)
+    archetype_name = db.Column(db.String(120), unique=True, nullable=False)
+    model_decklist = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 class Store(db.Model):
     __tablename__ = 'stores'   # default bind (tournament.db)
@@ -1698,8 +1742,9 @@ def players():
             flash("Player name cannot be empty.", "error")
         return redirect(url_for('players'))
 
-    # --- Optional country filter ---
+    # --- Optional country and store filters ---
     country_filter = request.args.get("country")
+    store_filter = request.args.get("store")
 
     # Helper: compute a player's "home country" based on tournaments played
     def player_country_local(player_id):
@@ -1722,6 +1767,90 @@ def players():
             if c in tied:
                 return c
         return None
+
+    # Helper: check if player played at a specific store
+    def player_played_at_store(player_id, store_id):
+        tps = TournamentPlayer.query.filter_by(player_id=player_id).all()
+        for tp in tps:
+            tournament = Tournament.query.filter_by(id=tp.tournament_id, pending=False).first()
+            if tournament and tournament.store_id == int(store_id):
+                return True
+        return False
+    
+    # Helper: get all store IDs where player has played
+    def player_stores(player_id):
+        tps = TournamentPlayer.query.filter_by(player_id=player_id).all()
+        store_ids = set()
+        for tp in tps:
+            tournament = Tournament.query.filter_by(id=tp.tournament_id, pending=False).first()
+            if tournament and tournament.store_id:
+                store_ids.add(tournament.store_id)
+        return list(store_ids)
+    
+    # Helper: calculate casual points for a player at a specific store
+    def player_casual_points_at_store(player_id, store_id):
+        # Sum all casual points earned at this store from history
+        total_points = db.session.query(func.sum(CasualPointsHistory.points)).filter(
+            CasualPointsHistory.player_id == player_id,
+            CasualPointsHistory.store_id == int(store_id)
+        ).scalar() or 0
+        
+        print(f"DEBUG: Player {player_id} has {total_points} casual points at store {store_id} (from history)", file=sys.stderr)
+        return total_points
+    
+    # Helper: get points breakdown by store for a player
+    def player_points_by_store(player_id):
+        # Get all points grouped by store
+        results = db.session.query(
+            CasualPointsHistory.store_id,
+            func.sum(CasualPointsHistory.points).label('total_points')
+        ).filter(
+            CasualPointsHistory.player_id == player_id
+        ).group_by(CasualPointsHistory.store_id).all()
+        
+        breakdown = {}
+        for store_id, total_points in results:
+            if store_id:
+                store = Store.query.get(store_id)
+                breakdown[store_id] = {
+                    'store_name': store.name if store else f'Store {store_id}',
+                    'points': int(total_points)
+                }
+        return breakdown
+    
+    # Helper: get previous rank for a player
+    def get_previous_rank(player_id):
+        # Get the second most recent snapshot for this player (skip the current one)
+        snapshots = CasualRankingSnapshot.query.filter_by(
+            player_id=player_id
+        ).order_by(CasualRankingSnapshot.snapshot_date.desc()).limit(2).all()
+        
+        # Return the second snapshot's rank if it exists
+        return snapshots[1].rank if len(snapshots) > 1 else None
+    
+    # Helper: update ranking snapshots
+    def update_ranking_snapshots(casual_ranked):
+        # Keep the last 3 snapshots per player for rank change tracking
+        for player_rank in casual_ranked:
+            player_id = player_rank['player'].id
+            
+            # Delete all but the most recent 2 snapshots (we'll add a new one, making it 3 total)
+            old_snapshots = CasualRankingSnapshot.query.filter_by(
+                player_id=player_id
+            ).order_by(CasualRankingSnapshot.snapshot_date.desc()).offset(2).all()
+            
+            for snapshot in old_snapshots:
+                db.session.delete(snapshot)
+            
+            # Create new snapshot
+            new_snapshot = CasualRankingSnapshot(
+                player_id=player_id,
+                rank=player_rank['rank'],
+                points=player_rank['points']
+            )
+            db.session.add(new_snapshot)
+        
+        db.session.commit()
 
     # === Competitive ranking (Elo) ===
     all_competitive_players = (
@@ -1746,6 +1875,12 @@ def players():
             p for p in all_competitive_players
             if player_country_local(p.id) and player_country_local(p.id).upper() == country_filter.upper()
         ]
+    
+    if store_filter:
+        all_competitive_players = [
+            p for p in all_competitive_players
+            if player_played_at_store(p.id, store_filter)
+        ]
 
     competitive_ranked = []
     rank = 1
@@ -1764,20 +1899,79 @@ def players():
     )
 
     # === Casual ranking (points) ===
-    casual_players = (
-        db.session.query(Player)
-        .join(TournamentPlayer, Player.id == TournamentPlayer.player_id)
-        .join(Tournament, Tournament.id == TournamentPlayer.tournament_id)
-        .filter(Tournament.pending == False)   # 🔒 only finalized tournaments
-        .order_by(Player.casual_points.desc())
-        .all()
-    )
-    if country_filter:
-        casual_players = [
-            p for p in casual_players
-            if player_country_local(p.id) and player_country_local(p.id).upper() == country_filter.upper()
-        ]
-    casual_ranked = [{"player": p, "rank": idx} for idx, p in enumerate(casual_players, start=1)]
+    if store_filter:
+        # When filtering by store, get players directly from history table
+        player_ids_with_points = (
+            db.session.query(CasualPointsHistory.player_id)
+            .filter(CasualPointsHistory.store_id == int(store_filter))
+            .distinct()
+            .all()
+        )
+        player_ids = [pid[0] for pid in player_ids_with_points]
+        casual_players = Player.query.filter(Player.id.in_(player_ids)).all() if player_ids else []
+        
+        if country_filter:
+            casual_players = [
+                p for p in casual_players
+                if player_country_local(p.id) and player_country_local(p.id).upper() == country_filter.upper()
+            ]
+    else:
+        # No store filter - get all players who played casual tournaments
+        casual_players = (
+            db.session.query(Player)
+            .join(TournamentPlayer, Player.id == TournamentPlayer.player_id)
+            .join(Tournament, Tournament.id == TournamentPlayer.tournament_id)
+            .filter(Tournament.pending == False)   # 🔒 only finalized tournaments
+            .filter(Tournament.casual == True)  # Only casual tournaments
+            .distinct()
+            .all()
+        )
+        
+        if country_filter:
+            casual_players = [
+                p for p in casual_players
+                if player_country_local(p.id) and player_country_local(p.id).upper() == country_filter.upper()
+            ]
+    
+    # Calculate points (dynamic if store filter is active, otherwise use stored total)
+    casual_players_with_points = []
+    for p in casual_players:
+        if store_filter:
+            points = player_casual_points_at_store(p.id, store_filter)
+            print(f"DEBUG: Filtering by store {store_filter} - Player {p.id} ({p.name}) has {points} points", file=sys.stderr)
+            # Only include players who have points at this store
+            if points > 0:
+                casual_players_with_points.append((p, points))
+        else:
+            points = p.casual_points
+            casual_players_with_points.append((p, points))
+    
+    # Sort by points descending
+    casual_players_with_points.sort(key=lambda x: x[1], reverse=True)
+    
+    # Create ranked list with dynamic points
+    casual_ranked = []
+    for idx, (player, points) in enumerate(casual_players_with_points, start=1):
+        # Get points breakdown by store for debug display
+        points_by_store = player_points_by_store(player.id)
+        
+        # Get previous rank for rank change indicator
+        previous_rank = get_previous_rank(player.id)
+        rank_change = None
+        if previous_rank is not None:
+            rank_change = previous_rank - idx  # Positive = moved up, negative = moved down
+        
+        casual_ranked.append({
+            "player": player,
+            "rank": idx,
+            "points": points,  # Dynamic points based on filter
+            "points_by_store": points_by_store,  # Debug info
+            "rank_change": rank_change  # For trend arrows
+        })
+    
+    # Update snapshots with current rankings (only when not filtering by store)
+    if not store_filter:
+        update_ranking_snapshots(casual_ranked)
 
     # === Top 4 archetypes by number of decks ===
     top_archetypes = (
@@ -1790,12 +1984,16 @@ def players():
         .limit(4)
         .all()
     )
+    # Calculate meta share for top decks
+    total_all_decks = Deck.query.count()
     top_decks = []
-    for name, _ in top_archetypes:
+    for name, deck_count in top_archetypes:
         last_deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
+        meta_share = round((deck_count / total_all_decks * 100), 1) if total_all_decks > 0 else 0
         top_decks.append({
             "name": name,
-            "image_url": last_deck.image_url if last_deck and last_deck.image_url else ""
+            "image_url": last_deck.image_url if last_deck and last_deck.image_url else "",
+            "meta_share": meta_share
         })
 
     # === Top 3 stores by number of tournaments ===
@@ -1813,6 +2011,27 @@ def players():
     # Get latest 3 blog posts for featured section
     featured_posts = BlogPost.query.order_by(BlogPost.created_at.desc()).limit(3).all()
 
+    # Get all stores grouped by country for filtering
+    stores_by_country = {}
+    all_stores_query = (
+        db.session.query(Store)
+        .join(Tournament, Tournament.store_id == Store.id)
+        .filter(Tournament.pending == False)
+        .distinct()
+        .order_by(Store.country, Store.name)
+        .all()
+    )
+    for store in all_stores_query:
+        country = store.country or 'Unknown'
+        if country not in stores_by_country:
+            stores_by_country[country] = []
+        # Convert store to dict for JSON serialization
+        stores_by_country[country].append({
+            'id': store.id,
+            'name': store.name,
+            'country': store.country
+        })
+
     # === Render template ===
     return render_template(
         'players.html',
@@ -1823,7 +2042,9 @@ def players():
         player_country=player_country,
         tournaments_played=tournaments_played,
         featured_posts=featured_posts,
-        available_countries=available_countries
+        available_countries=available_countries,
+        stores_by_country=stores_by_country,
+        player_stores=player_stores
     )
 
 
@@ -1855,7 +2076,14 @@ def decks_list():
     for d in decks:
         archetypes.setdefault(d.name, []).append(d)
     
-    print(f"DEBUG: Found {len(archetypes)} archetypes")
+    # Add archetypes from ArchetypeModel that don't have any decks yet
+    models = ArchetypeModel.query.all()
+    for model in models:
+        if model.archetype_name not in archetypes:
+            archetypes[model.archetype_name] = []
+            print(f"DEBUG: Added empty archetype '{model.archetype_name}' from model")
+    
+    print(f"DEBUG: Found {len(archetypes)} archetypes (including empty ones)")
 
     # Calculate archetype metrics for sorting and tier assignment
     archetype_stats = []
@@ -1919,7 +2147,9 @@ def decks_list():
     
     archetype_tiers = {}
     for idx, stat in enumerate(archetype_stats):
-        if idx < tier_1_cutoff:
+        if stat["name"] == "Rogue":
+            archetype_tiers[stat["name"]] = "Rogue"
+        elif idx < tier_1_cutoff:
             archetype_tiers[stat["name"]] = "Tier 1"
         elif idx < tier_2_cutoff:
             archetype_tiers[stat["name"]] = "Tier 2"
@@ -1955,15 +2185,218 @@ def decks_list():
             archetype_colors[name] = ""
             print(f"  Result: empty (no colors found)")
 
-    # Re-order archetypes dict by sorted order
-    sorted_archetypes = {stat["name"]: archetypes[stat["name"]] for stat in archetype_stats}
+    # Re-order archetypes dict by sorted order, with "Rogue" always at the bottom
+    rogue_decks = None
+    sorted_archetypes = {}
+    for stat in archetype_stats:
+        if stat["name"] == "Rogue":
+            rogue_decks = archetypes[stat["name"]]
+        else:
+            sorted_archetypes[stat["name"]] = archetypes[stat["name"]]
+    
+    # Add empty archetypes that weren't in archetype_stats (no decks yet)
+    for name, deck_list in archetypes.items():
+        if name not in sorted_archetypes and name != "Rogue":
+            # Add empty archetype, create a placeholder deck for template
+            if len(deck_list) == 0:
+                # Create a placeholder deck object for display purposes only
+                placeholder = type('obj', (object,), {
+                    'id': 0,
+                    'name': name,
+                    'list_text': '',
+                    'colors': '',
+                    'image_url': None,
+                    'player_id': 0,
+                    'tournament_id': None
+                })()
+                sorted_archetypes[name] = [placeholder]
+            else:
+                sorted_archetypes[name] = deck_list
+            # Assign default tier for empty archetypes
+            archetype_tiers[name] = "Tier 3"
+            archetype_colors[name] = ""
+    
+    # Add Rogue at the end if it exists
+    if rogue_decks is not None:
+        sorted_archetypes["Rogue"] = rogue_decks
 
     return render_template("decks.html", archetypes=sorted_archetypes, archetype_colors=archetype_colors, archetype_tiers=archetype_tiers)
+
+
+@app.route('/decks/recalculate', methods=['POST'])
+@login_required
+def recalculate_archetypes():
+    """Recalculate all deck archetypes based on similarity to model decklists"""
+    if not current_user.is_admin:
+        return jsonify({"error": "Admin access required"}), 403
+    
+    try:
+        # First, delete all decks with empty decklists (placeholder/empty submissions)
+        empty_decks = Deck.query.filter(
+            db.or_(
+                Deck.list_text.is_(None),
+                Deck.list_text == ''
+            )
+        ).all()
+        
+        deleted_count = 0
+        deleted_log = []
+        
+        for empty_deck in empty_decks:
+            player = Player.query.get(empty_deck.player_id) if empty_deck.player_id else None
+            tournament = Tournament.query.get(empty_deck.tournament_id) if empty_deck.tournament_id else None
+            
+            deleted_detail = {
+                'deck_id': empty_deck.id,
+                'player': player.name if player else 'Unknown',
+                'tournament': tournament.name if tournament else 'Unknown',
+                'archetype': empty_deck.name
+            }
+            deleted_log.append(deleted_detail)
+            
+            print(f"[RECALCULATE] Deleting empty deck ID {empty_deck.id}: {empty_deck.name} (player: {player.name if player else 'Unknown'})")
+            db.session.delete(empty_deck)
+            deleted_count += 1
+        
+        # Now get all decks with decklists for validation and recalculation
+        all_decks = Deck.query.filter(Deck.list_text.isnot(None), Deck.list_text != '').all()
+        
+        # Delete decks with less than 60 cards in main deck
+        for deck in all_decks[:]:  # Use slice to avoid modifying list during iteration
+            if deck.list_text:
+                # Count main deck cards (exclude sideboard)
+                lines = deck.list_text.strip().split('\n')
+                in_sideboard = False
+                main_deck_count = 0
+                
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # Check if we've entered sideboard section
+                    if line.lower() in ['sideboard', 'sb']:
+                        in_sideboard = True
+                        continue
+                    
+                    # Skip sideboard cards
+                    if in_sideboard:
+                        continue
+                    
+                    # Skip section headers
+                    if line.lower() in ['mainboard', 'maindeck', 'main']:
+                        continue
+                    
+                    # Count cards in main deck
+                    match = re.match(r'^(\d+)x?\s+', line)
+                    if match:
+                        count = int(match.group(1))
+                        main_deck_count += count
+                
+                # Delete if less than 60 cards
+                if main_deck_count < 60:
+                    player = Player.query.get(deck.player_id) if deck.player_id else None
+                    tournament = Tournament.query.get(deck.tournament_id) if deck.tournament_id else None
+                    
+                    deleted_detail = {
+                        'deck_id': deck.id,
+                        'player': player.name if player else 'Unknown',
+                        'tournament': tournament.name if tournament else 'Unknown',
+                        'archetype': deck.name,
+                        'reason': f'Incomplete deck ({main_deck_count} cards)'
+                    }
+                    deleted_log.append(deleted_detail)
+                    
+                    print(f"[RECALCULATE] Deleting incomplete deck ID {deck.id}: {deck.name} ({main_deck_count} cards)")
+                    db.session.delete(deck)
+                    deleted_count += 1
+                    all_decks.remove(deck)
+        
+        # Get all available model decklists
+        models = ArchetypeModel.query.all()
+        if not models:
+            return jsonify({"error": "No archetype models found. Please create model decklists first."}), 400
+        
+        updated_count = 0
+        unchanged_count = 0
+        rogue_count = 0
+        skipped_count = 0
+        changes_log = []
+        
+        for deck in all_decks:
+            old_archetype = deck.name
+            
+            # Detect new archetype based on similarity with 20% threshold
+            # Use require_threshold=True to classify as Rogue if below 20%
+            new_archetype, similarity = detect_archetype_from_decklist(
+                deck.list_text, 
+                similarity_threshold=0.2,   # 20% threshold (same as imports)
+                require_threshold=True      # Classify as Rogue if below threshold
+            )
+            
+            if new_archetype != old_archetype:
+                # Log the change
+                player = Player.query.get(deck.player_id) if deck.player_id else None
+                tournament = Tournament.query.get(deck.tournament_id) if deck.tournament_id else None
+                
+                change_detail = {
+                    'deck_id': deck.id,
+                    'player': player.name if player else 'Unknown',
+                    'tournament': tournament.name if tournament else 'Unknown',
+                    'old_archetype': old_archetype,
+                    'new_archetype': new_archetype,
+                    'similarity': round(similarity * 100, 2)
+                }
+                changes_log.append(change_detail)
+                
+                # ONLY update the deck's archetype name - do NOT modify image_url, colors, or any other fields
+                # Archetype images and other properties should remain unchanged
+                deck.name = new_archetype
+                updated_count += 1
+                print(f"[RECALCULATE] Updated deck ID {deck.id}: {old_archetype} -> {new_archetype} (similarity: {similarity:.2%})")
+            else:
+                unchanged_count += 1
+            
+            if new_archetype == "Rogue":
+                rogue_count += 1
+        
+        # Log the recalculation event
+        log_event(
+            action_type='archetype_recalculation',
+            details=f'Recalculated {len(all_decks)} decks. Updated: {updated_count}, Unchanged: {unchanged_count}, Rogue: {rogue_count}, Deleted empty: {deleted_count}',
+            backup_data=json.dumps({'changes': changes_log, 'deleted': deleted_log}, indent=2),
+            recoverable=True
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "updated": updated_count,
+            "unchanged": unchanged_count,
+            "rogue": rogue_count,
+            "deleted": deleted_count,
+            "skipped": skipped_count,
+            "total": len(all_decks),
+            "changes": changes_log
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[RECALCULATE] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/decks/<deck_name>')
 def deck_detail(deck_name):
     decks = Deck.query.filter_by(name=deck_name).all()
+    
+    # Get the model decklist for this archetype
+    model = ArchetypeModel.query.filter_by(archetype_name=deck_name).first()
+    model_decklist = model.model_decklist if model else None
+    
     rows = []
     for d in decks:
         player = Player.query.get(d.player_id) if d.player_id else None
@@ -2022,7 +2455,10 @@ def deck_detail(deck_name):
     colors = last_deck.colors if last_deck else None
     
     # Calculate tier and meta share (placeholder logic - you can enhance this)
-    tier = "Tier 1" if total_decks >= 10 else "Tier 2" if total_decks >= 5 else "Tier 3"
+    if deck_name == "Rogue":
+        tier = "Rogue"
+    else:
+        tier = "Tier 1" if total_decks >= 10 else "Tier 2" if total_decks >= 5 else "Tier 3"
     
     # Meta share calculation (example: based on total decks in database)
     total_all_decks = Deck.query.count()
@@ -2035,7 +2471,139 @@ def deck_detail(deck_name):
                            total_decks=total_decks,
                            tier=tier,
                            meta_share=meta_share,
-                           colors=colors)
+                           colors=colors,
+                           model_decklist=model_decklist)
+
+
+@app.route('/archetype/<archetype_name>/model', methods=['GET'])
+@login_required
+def calculate_deck_similarity(deck_list_1, deck_list_2):
+    """
+    Calculate similarity between two decklists (0.0 to 1.0)
+    Uses Jaccard similarity on card names (mainboard only, excludes sideboard)
+    """
+    def parse_decklist(decklist_text):
+        """Extract card names from decklist text (mainboard only)"""
+        cards = set()
+        lines = decklist_text.strip().split('\n')
+        in_sideboard = False
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Check if we've entered sideboard section
+            if line.lower() in ['sideboard', 'sb']:
+                in_sideboard = True
+                continue
+            
+            # Skip sideboard cards
+            if in_sideboard:
+                continue
+            
+            # Skip section headers
+            if line.lower() in ['mainboard', 'maindeck', 'main']:
+                continue
+            
+            # Match "4 Card Name" or "4x Card Name" format
+            match = re.match(r'^\d+x?\s+(.+)$', line)
+            if match:
+                card_name = match.group(1).strip().lower()
+                cards.add(card_name)
+        return cards
+    
+    cards_1 = parse_decklist(deck_list_1)
+    cards_2 = parse_decklist(deck_list_2)
+    
+    if not cards_1 or not cards_2:
+        return 0.0
+    
+    intersection = len(cards_1 & cards_2)
+    union = len(cards_1 | cards_2)
+    
+    return intersection / union if union > 0 else 0.0
+
+
+def detect_archetype_from_decklist(deck_list_text, similarity_threshold=0.2, require_threshold=True):
+    """
+    Auto-detect archetype by comparing deck to all model decklists
+    Returns (archetype_name, similarity_score)
+    
+    Default threshold: 20% (0.2)
+    If require_threshold=True: Returns "Rogue" if no match above threshold
+    If require_threshold=False: Returns best match regardless of threshold (unless all are 0)
+    """
+    if not deck_list_text or not deck_list_text.strip():
+        return "Rogue", 0.0
+    
+    models = ArchetypeModel.query.all()
+    if not models:
+        return "Rogue", 0.0
+    
+    best_match = None
+    best_similarity = 0.0
+    
+    for model in models:
+        similarity = calculate_deck_similarity(deck_list_text, model.model_decklist)
+        if similarity > best_similarity:
+            best_similarity = similarity
+            best_match = model.archetype_name
+    
+    # If we don't require threshold, return best match as long as similarity > 0
+    if not require_threshold:
+        if best_similarity > 0 and best_match:
+            return best_match, best_similarity
+        return "Rogue", 0.0
+    
+    # Original behavior: require threshold
+    if best_similarity >= similarity_threshold:
+        return best_match, best_similarity
+    
+    # No match found - classify as Rogue
+    return "Rogue", 0.0
+
+
+def get_archetype_model(archetype_name):
+    """Get the model decklist for an archetype"""
+    model = ArchetypeModel.query.filter_by(archetype_name=archetype_name).first()
+    if model:
+        return jsonify({
+            'success': True,
+            'decklist': model.model_decklist
+        })
+    return jsonify({
+        'success': False,
+        'message': 'No model decklist found for this archetype'
+    })
+
+
+@app.route('/archetype/<archetype_name>/model', methods=['POST'])
+@login_required
+def save_archetype_model(archetype_name):
+    """Save or update the model decklist for an archetype"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+    
+    decklist = request.form.get('decklist', '').strip()
+    
+    if not decklist:
+        return jsonify({'success': False, 'message': 'Decklist cannot be empty'}), 400
+    
+    model = ArchetypeModel.query.filter_by(archetype_name=archetype_name).first()
+    if model:
+        model.model_decklist = decklist
+        model.updated_at = datetime.utcnow()
+    else:
+        model = ArchetypeModel(
+            archetype_name=archetype_name,
+            model_decklist=decklist
+        )
+        db.session.add(model)
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Model decklist saved successfully'})
 
 
 @app.route('/store/<int:store_id>')
@@ -2403,6 +2971,352 @@ def player_country(player_id):
         return first_tournament[0] if first_tournament else None
 
 
+@app.route('/fetch_tcdecks', methods=['POST'])
+@login_required
+def fetch_tcdecks():
+    """Fetch TCDecks tournament page content using headless browser"""
+    from urllib.parse import urlparse
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    
+    data = request.get_json()
+    url = data.get('url', '').strip()
+    
+    if not url:
+        return jsonify({'success': False, 'error': 'No URL provided'}), 400
+    
+    # Validate URL is from tcdecks.net
+    try:
+        parsed = urlparse(url)
+        if not parsed.hostname or not parsed.hostname.endswith('tcdecks.net'):
+            return jsonify({'success': False, 'error': 'URL must be from tcdecks.net'}), 400
+    except Exception:
+        return jsonify({'success': False, 'error': 'Invalid URL format'}), 400
+    
+    # Use Playwright to fetch and render the page with JavaScript
+    try:
+        with sync_playwright() as p:
+            # Launch browser in headless mode with realistic settings
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox'
+                ]
+            )
+            
+            # Create context with realistic browser headers and settings
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1920, 'height': 1080},
+                locale='en-US',
+                timezone_id='America/New_York',
+                extra_http_headers={
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"'
+                }
+            )
+            
+            # Override navigator.webdriver property
+            page = context.new_page()
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            """)
+            
+            # Navigate to the page and wait for content to load
+            page.goto(url, wait_until='domcontentloaded', timeout=20000)
+            
+            # Wait for dynamic content to load
+            page.wait_for_timeout(1000)
+            
+            # Get the fully rendered HTML
+            html_content = page.content()
+            
+            browser.close()
+        
+        return jsonify({
+            'success': True,
+            'html': html_content
+        })
+    except PlaywrightTimeout:
+        return jsonify({'success': False, 'error': 'Request timed out. Please try again.'}), 408
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Failed to fetch page: {str(e)}'}), 500
+
+
+@app.route('/fetch_tcdecks_decklist', methods=['POST'])
+@login_required
+def fetch_tcdecks_decklist():
+    """Fetch individual decklist from TCDecks"""
+    from urllib.parse import urlparse
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    from bs4 import BeautifulSoup
+    import re
+    
+    data = request.get_json()
+    url = data.get('url', '').strip()
+    
+    if not url:
+        return jsonify({'success': False, 'error': 'No URL provided'}), 400
+    
+    # Validate URL is from tcdecks.net
+    try:
+        parsed = urlparse(url)
+        if not parsed.hostname or not parsed.hostname.endswith('tcdecks.net'):
+            return jsonify({'success': False, 'error': 'URL must be from tcdecks.net'}), 400
+    except Exception:
+        return jsonify({'success': False, 'error': 'Invalid URL format'}), 400
+    
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox'
+                ]
+            )
+            
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1920, 'height': 1080},
+                locale='en-US',
+                timezone_id='America/New_York',
+                extra_http_headers={
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'same-origin',
+                    'Sec-Fetch-User': '?1',
+                    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"'
+                }
+            )
+            
+            page = context.new_page()
+            
+            # Override navigator.webdriver
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            """)
+            
+            # Set cookies if needed (TCDecks cookie consent)
+            page.context.add_cookies([
+                {
+                    'name': 'cookieconsent_status',
+                    'value': 'dismiss',
+                    'domain': '.tcdecks.net',
+                    'path': '/'
+                }
+            ])
+            
+            # Navigate directly to deck page
+            page.goto(url, wait_until='networkidle', timeout=30000)
+            
+            # Wait for dynamic content to load - increase wait time for full deck
+            page.wait_for_timeout(2500)
+            
+            html_content = page.content()
+            browser.close()
+        
+        # Parse the decklist from HTML
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Check if we got a 403 or access denied message
+        text = soup.get_text()
+        if '403' in text or 'Acceso Denegado' in text or 'Access Denied' in text:
+            print(f"[DECKLIST] Access denied for {url}", file=sys.stderr)
+            return jsonify({'success': False, 'error': 'Access denied by TCDecks. Try again later.'}), 403
+        
+        mainboard_cards = []
+        sideboard_cards = []
+        
+        # TCDecks shows decklist in 3 columns: Column 1, Column 2, Column 3 (Sideboard)
+        # The actual decklist is in a specific table/div structure, not the summary counts
+        
+        # Strategy: Look for the actual card list by finding elements with card data
+        # TCDecks typically has the deck in a table with 3 columns side by side
+        
+        # First, replace <br> tags with newlines to preserve structure
+        for br in soup.find_all('br'):
+            br.replace_with('\n')
+        
+        # Look for tables that contain actual card lists (not just totals)
+        tables = soup.find_all('table')
+        deck_table = None
+        
+        for idx, table in enumerate(tables):
+            text_preview = table.get_text()
+            # Check if table has multiple card entries (not just "60 Cards", "15 Cards")
+            card_pattern_matches = re.findall(r'\d+\s+[A-Z][a-z]', text_preview)
+            
+            # We want a table with many card entries, not just totals
+            if len(card_pattern_matches) > 5:  # Real decklist will have many cards
+                deck_table = table
+                break
+        
+        if deck_table:
+            # Parse table with 3 columns (or rows with multiple cells)
+            # TCDecks can use either TR with 3 TD cells, or nested tables
+            
+            # Get all text and try to find column structure
+            all_tds = deck_table.find_all('td')
+            print(f"DEBUG: Found table with {len(all_tds)} total TD cells")
+            
+            # Check if cells are arranged in groups (columns)
+            if len(all_tds) >= 3:
+                # Common pattern: 3 TD cells in one row containing the 3 columns
+                rows = deck_table.find_all('tr')
+                print(f"DEBUG: Table has {len(rows)} rows")
+                
+                rows_processed = 0
+                for row in rows:
+                    cells = row.find_all('td')
+                    print(f"DEBUG: Row has {len(cells)} cells")
+                    
+                    if len(cells) >= 3:
+                        rows_processed += 1
+                        
+                        # Process first 3 cells as columns
+                        for col_idx in range(min(3, len(cells))):
+                            cell = cells[col_idx]
+                            is_sideboard = (col_idx == 2)  # Only third column is sideboard
+                            
+                            cell_text = cell.get_text()
+                            cell_lines = [l.strip() for l in cell_text.split('\n') if l.strip()]
+                            
+                            for line in cell_lines:
+                                # Handle combined lines like "Creatures [13]4 Weathered Wayfarer"
+                                # Split section header from card line
+                                combined_match = re.match(r'^([A-Za-z\s]+\s*\[\d+\])(.+)$', line)
+                                if combined_match:
+                                    # Split into separate lines and process the card part
+                                    line = combined_match.group(2).strip()
+                                    print(f"DEBUG: Split combined line, processing: '{line}'")
+                                
+                                # Skip section headers (e.g., "Creatures [4]", "Land [20]")
+                                if re.match(r'^[A-Za-z\s]+\s*\[\d+\]$', line):
+                                    continue
+                                if line.lower() in ['sideboard', 'mainboard', 'maindeck', 'main deck']:
+                                    continue
+                                # Skip total count lines
+                                if re.match(r'^\d+\s+cards?$', line.lower()):
+                                    continue
+                                # Skip standalone section names without brackets
+                                if line.lower() in ['creatures', 'instants', 'sorceries', 'artifacts', 'enchantments', 'planeswalkers', 'land', 'lands']:
+                                    continue
+                                
+                                # Parse card line: "4 Card Name" or "4x Card Name"
+                                card_match = re.match(r'^(\d+)x?\s+(.+)$', line)
+                                if card_match:
+                                    quantity = card_match.group(1)
+                                    card_name = card_match.group(2).strip()
+                                    
+                                    # Skip if card name is too short or looks like metadata
+                                    if len(card_name) < 2:
+                                        continue
+                                    if card_name.lower() in ['cards', 'total', 'deck value', 'card']:
+                                        continue
+                                    
+                                    card_line = f"{quantity} {card_name}"
+                                    print(f"DEBUG: Matched card: {card_line} (sideboard={is_sideboard})")
+                                    
+                                    if is_sideboard:
+                                        sideboard_cards.append(card_line)
+                                    else:
+                                        mainboard_cards.append(card_line)
+                                else:
+                                    print(f"DEBUG: Line did not match card pattern: '{line}'")
+                
+                print(f"DEBUG: Processed {rows_processed} rows with 3+ cells")
+            else:
+                # Try alternative: cells might be in separate rows
+                pass
+        
+        print(f"DEBUG: After table parsing - mainboard: {len(mainboard_cards)}, sideboard: {len(sideboard_cards)}")
+        
+        # If table parsing didn't work, try finding divs with specific structure
+        if len(mainboard_cards) == 0 and len(sideboard_cards) == 0:
+            
+            # Look for divs or other containers that might hold columns
+            # Get all text and parse linearly, but skip known non-card lines
+            text = soup.get_text()
+            lines = [l.strip() for l in text.split('\n') if l.strip()]
+            
+            in_deck_section = False
+            
+            for line in lines:
+                line_lower = line.lower()
+                
+                # Skip headers, metadata, and totals
+                if re.match(r'^[A-Za-z\s]+\s*\[\d+\]$', line):
+                    in_deck_section = True  # We're in a card type section
+                    continue
+                if re.search(r'^\d+\s+cards?$', line_lower):
+                    continue  # Skip "60 Cards", "15 Cards"
+                if any(kw in line_lower for kw in ['format', 'modern', 'legacy', 'vintage', 'event', 'player', 'ranking', 'position', 'deck value']):
+                    continue
+                
+                # Parse card lines
+                card_match = re.match(r'^(\d+)x?\s+(.+)$', line)
+                if card_match and in_deck_section:
+                    quantity = card_match.group(1)
+                    card_name = card_match.group(2).strip()
+                    
+                    if len(card_name) >= 2 and card_name.lower() not in ['cards', 'total']:
+                        mainboard_cards.append(f"{quantity} {card_name}")
+        
+        # Construct the decklist text
+        decklist = ""
+        if mainboard_cards:
+            decklist += "\n".join(mainboard_cards)
+        if sideboard_cards:
+            decklist += "\n\nSideboard:\n" + "\n".join(sideboard_cards)
+        
+        if not decklist.strip():
+            # Log failure for debugging
+            print(f"[DECKLIST] Could not parse decklist from {url}", file=sys.stderr)
+            print(f"[DECKLIST] Page text length: {len(text)}", file=sys.stderr)
+            print(f"[DECKLIST] First 500 chars: {text[:500]}", file=sys.stderr)
+            return jsonify({'success': False, 'error': 'Could not parse decklist from page'}), 400
+        
+        print(f"[DECKLIST] Successfully parsed {len(mainboard_cards)} mainboard + {len(sideboard_cards)} sideboard cards", file=sys.stderr)
+        
+        return jsonify({
+            'success': True,
+            'decklist': decklist.strip()
+        })
+        
+    except PlaywrightTimeout:
+        print(f"[DECKLIST] Timeout fetching {url}", file=sys.stderr)
+        return jsonify({'success': False, 'error': 'Request timed out'}), 408
+    except Exception as e:
+        print(f"[DECKLIST] Error: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'Failed to fetch decklist: {str(e)}'}), 500
+
+
 @app.route('/tournament/new_casual', methods=['GET', 'POST'])
 @login_required
 def new_tournament_casual():
@@ -2459,10 +3373,12 @@ def new_tournament_casual():
             return 0
 
         # Loop through final standings rows
+        share_links_created = []
         for rank in range(1, top_cut + 1):
             player_name = request.form.get(f"player_{rank}", "").strip()
             deck_name = html.escape(request.form.get(f"deck_name_{rank}", "").strip())
             deck_list = html.escape(request.form.get(f"deck_list_{rank}", "").strip())
+            deck_mode = request.form.get(f"deck_mode_{rank}", "add")
 
             if player_name:
                 player = ensure_player(player_name)
@@ -2472,19 +3388,73 @@ def new_tournament_casual():
                 pts = award_casual_points(player_count, rank)
                 if pts > 0:
                     player.casual_points = (player.casual_points or 0) + pts
+                    
+                    # Create history record for per-store tracking
+                    history_record = CasualPointsHistory(
+                        player_id=player.id,
+                        tournament_id=tournament.id,
+                        store_id=tournament.store_id,
+                        points=pts,
+                        rank=rank,
+                        awarded_at=datetime.utcnow()
+                    )
+                    db.session.add(history_record)
 
-                # Save deck if provided
-                if deck_name or deck_list:
+                # Handle deck submission mode
+                if deck_mode == "share":
+                    # Generate share link for this player
+                    submission_token = secrets.token_urlsafe(32)
+                    link = DeckSubmissionLink(
+                        tournament_id=tournament.id,
+                        player_name=player_name,
+                        submission_token=submission_token,
+                        deck_submitted=False
+                    )
+                    db.session.add(link)
+                    share_links_created.append({
+                        'player_name': player_name,
+                        'token': submission_token
+                    })
+                elif deck_name or deck_list:
+                    # Auto-detect archetype from decklist
+                    detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
+                    
+                    # Always use detected archetype (either matched archetype or "Rogue")
+                    final_deck_name = detected_archetype
+                    if similarity > 0:
+                        print(f"[AUTO-DETECT] Player '{player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
+                    else:
+                        print(f"[AUTO-DETECT] Player '{player_name}' deck classified as 'Rogue'", file=sys.stderr)
+                    
+                    # Save deck if provided
                     deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
                     if deck:
-                        deck.name = deck_name
+                        old_name = deck.name
+                        deck.name = final_deck_name
                         deck.list_text = deck_list
+                        
+                        if old_name != final_deck_name:
+                            print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{final_deck_name}'", file=sys.stderr)
+                        
+                        # Preserve existing image if archetype has one and current deck doesn't
+                        if not deck.image_url and final_deck_name:
+                            existing_archetype = Deck.query.filter_by(name=final_deck_name).filter(Deck.image_url.isnot(None)).first()
+                            if existing_archetype:
+                                deck.image_url = existing_archetype.image_url
                     else:
+                        # Get archetype image if available
+                        archetype_image = None
+                        if final_deck_name:
+                            existing_archetype = Deck.query.filter_by(name=final_deck_name).filter(Deck.image_url.isnot(None)).first()
+                            if existing_archetype:
+                                archetype_image = existing_archetype.image_url
+                        
                         deck = Deck(
                             player_id=player.id,
                             tournament_id=tournament.id,
-                            name=deck_name,
-                            list_text=deck_list
+                            name=final_deck_name,
+                            list_text=deck_list,
+                            image_url=archetype_image
                         )
                         db.session.add(deck)
 
@@ -2496,6 +3466,11 @@ def new_tournament_casual():
             details=f"Created Casual tournament: {tournament_name}",
             recoverable=False
         )
+        
+        # If there are share links, redirect to share links page
+        if share_links_created:
+            flash(f"Casual tournament created! {len(share_links_created)} deck submission link(s) generated.", "success")
+            return redirect(url_for('show_casual_share_links', tid=tournament.id))
         
         flash("Casual tournament final standings saved!", "success")
         return redirect(url_for('players'))
@@ -2584,6 +3559,9 @@ def edit_casual_tournament(tid):
                 if old_pts > 0:
                     player.casual_points = max(0, (player.casual_points or 0) - old_pts)
         
+        # Delete old history records for this tournament
+        CasualPointsHistory.query.filter_by(tournament_id=tid).delete()
+        
         # Update tournament metadata
         tournament.name = request.form.get('tournament_name')
         tournament.date = datetime.strptime(request.form.get('date'), "%Y-%m-%d")
@@ -2619,13 +3597,34 @@ def edit_casual_tournament(tid):
                 pts = award_casual_points(tournament.player_count, rank)
                 if pts > 0:
                     player.casual_points = (player.casual_points or 0) + pts
+                    
+                    # Create new history record for per-store tracking
+                    history_record = CasualPointsHistory(
+                        player_id=player.id,
+                        tournament_id=tid,
+                        store_id=tournament.store_id,
+                        points=pts,
+                        rank=rank,
+                        awarded_at=datetime.utcnow()
+                    )
+                    db.session.add(history_record)
                 
                 # Save deck if provided
                 if deck_name or deck_list:
+                    # Auto-detect archetype from decklist
+                    detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
+                    
+                    # Always use detected archetype (either matched archetype or "Rogue")
+                    final_deck_name = detected_archetype
+                    if similarity > 0:
+                        print(f"[AUTO-DETECT] Player '{player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
+                    else:
+                        print(f"[AUTO-DETECT] Player '{player_name}' deck classified as 'Rogue'", file=sys.stderr)
+                    
                     deck = Deck(
                         player_id=player.id,
                         tournament_id=tid,
-                        name=deck_name,
+                        name=final_deck_name,
                         list_text=deck_list
                     )
                     db.session.add(deck)
@@ -2895,12 +3894,82 @@ def player_info(pid):
 
         history.append({"tournament": t, "deck": deck, "rank": rank})
 
+    # Calculate total casual points
+    total_casual_points = db.session.query(db.func.sum(CasualPointsHistory.points)).filter_by(player_id=pid).scalar() or 0
+
+    # Calculate most played stores (max 3)
+    store_counts = db.session.query(
+        Store.name,
+        db.func.count(Tournament.id).label('tournament_count')
+    ).join(Tournament, Tournament.store_id == Store.id) \
+     .join(TournamentPlayer, Tournament.id == TournamentPlayer.tournament_id) \
+     .filter(TournamentPlayer.player_id == pid) \
+     .filter(Tournament.pending == False) \
+     .group_by(Store.id, Store.name) \
+     .order_by(db.desc('tournament_count')) \
+     .limit(3) \
+     .all()
+    
+    most_played_stores = [{'name': name, 'count': count} for name, count in store_counts]
+
     stats = {
         "tournaments_played": len(tournaments),
         "top1": top1,
         "top4": top4,
         "top8": top8,
+        "casual_points": total_casual_points,
     }
+
+    # Calculate player's rank among all ranked players for badge tier
+    all_players_with_rank = db.session.query(Player).filter(Player.elo.isnot(None)).order_by(Player.elo.desc()).all()
+    player_rank = None
+    total_ranked = len(all_players_with_rank)
+    for idx, p in enumerate(all_players_with_rank, 1):
+        if p.id == pid:
+            player_rank = idx
+            break
+
+    # Prepare data for statistics graphs
+    # 1. Top rate over time (chronological tournaments with top placements)
+    top_rate_data = []
+    for item in sorted(history, key=lambda x: x['tournament'].date):
+        t = item['tournament']
+        rank = item['rank']
+        if rank and t.top_cut and rank <= t.top_cut:
+            top_rate_data.append({
+                'date': t.date.strftime('%Y-%m-%d'),
+                'tournament': t.name,
+                'rank': rank,
+                'top_cut': t.top_cut
+            })
+    
+    # 2. Color distribution across all decks
+    from collections import Counter
+    color_counts = Counter()
+    archetype_counts = Counter()
+    
+    for item in history:
+        deck = item['deck']
+        if deck:
+            # Count archetypes
+            if deck.name:
+                archetype_counts[deck.name] += 1
+            
+            # Count colors from deck list
+            if deck.list_text:
+                for line in deck.list_text.split('\n'):
+                    line = line.strip()
+                    if not line or line.startswith('//') or line.startswith('Sideboard'):
+                        continue
+                    # Skip quantity prefix (e.g., "4 Lightning Bolt")
+                    parts = line.split(' ', 1)
+                    if len(parts) >= 2 and parts[0].isdigit():
+                        card_name = parts[1].strip()
+                        # We'll count colors client-side using Scryfall API
+    
+    # Get most played archetypes (top 5)
+    most_played_archetypes = [{'archetype': arch, 'count': count} 
+                              for arch, count in archetype_counts.most_common(5)]
 
     # Helper: get most recent tournament country for a player
     def player_country(player_id):
@@ -2920,11 +3989,81 @@ def player_info(pid):
         player=player,
         history=history,
         stats=stats,
-        player_country=player_country   # <-- pass helper
+        most_played_stores=most_played_stores,
+        player_rank=player_rank,
+        total_ranked=total_ranked,
+        player_country=player_country,   # <-- pass helper
+        top_rate_data=top_rate_data,
+        most_played_archetypes=most_played_archetypes
     )
 
 
+@app.route('/share_links/<int:tid>')
+@login_required
+def show_share_links(tid):
+    """Display deck submission share links after tournament creation"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Verify user has permission (admin, scorekeeper, or tournament creator)
+    if not (current_user.is_admin or current_user.is_scorekeeper or tournament.user_id == current_user.id):
+        flash("You don't have permission to view these links.", "error")
+        return redirect(url_for('players'))
+    
+    # Verify token for pending tournaments
+    if tournament.pending and tournament.confirm_token:
+        url_token = request.args.get("token")
+        session_token = session.get(f"tok_{tid}")
+        
+        if url_token and url_token == tournament.confirm_token:
+            session[f"tok_{tid}"] = url_token
+        elif not session_token or session_token != tournament.confirm_token:
+            flash("Invalid or expired link.", "error")
+            return redirect(url_for('players'))
+    
+    # Get all deck submission links for this tournament
+    share_links = DeckSubmissionLink.query.filter_by(
+        tournament_id=tid,
+        deck_submitted=False
+    ).all()
+    
+    if not share_links:
+        flash("No deck submission links found for this tournament.", "info")
+        return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
+    
+    return render_template(
+        'share_links.html',
+        tournament=tournament,
+        share_links=share_links,
+        token=tournament.confirm_token
+    )
 
+
+@app.route('/casual_share_links/<int:tid>')
+@login_required
+def show_casual_share_links(tid):
+    """Display deck submission share links for casual tournaments"""
+    tournament = Tournament.query.get_or_404(tid)
+    
+    # Verify user has permission (admin or tournament creator)
+    if not (current_user.is_admin or tournament.user_id == current_user.id):
+        flash("You don't have permission to view these links.", "error")
+        return redirect(url_for('players'))
+    
+    # Get all deck submission links for this tournament
+    share_links = DeckSubmissionLink.query.filter_by(
+        tournament_id=tid,
+        deck_submitted=False
+    ).all()
+    
+    if not share_links:
+        flash("No deck submission links found for this tournament.", "info")
+        return redirect(url_for('players'))
+    
+    return render_template(
+        'casual_share_links.html',
+        tournament=tournament,
+        share_links=share_links
+    )
 
 
 # --- Confirm Players ---
@@ -3098,9 +4237,73 @@ def confirm_players():
     return redirect(confirm_url)
 
 
-
-
-
+@app.route('/submit_deck_public/<token>', methods=['GET', 'POST'])
+def submit_deck_public(token):
+    """Public route for players to submit their decklist via shared link"""
+    # Find the submission link by token
+    link = DeckSubmissionLink.query.filter_by(submission_token=token).first()
+    
+    if not link:
+        flash("Invalid or expired submission link.", "error")
+        return render_template('submit_deck_public.html', submitted=False, player_name="Unknown", tournament={'name': 'Unknown', 'date': datetime.now()}, archetypes=[])
+    
+    if link.deck_submitted:
+        flash("This link has already been used. The decklist has been submitted.", "info")
+        return render_template('submit_deck_public.html', submitted=True, player_name=link.player_name, tournament=link.tournament, archetypes=[])
+    
+    tournament = link.tournament
+    
+    # Get all deck archetypes for dropdown
+    archetypes = db.session.query(Deck.name).distinct().filter(Deck.name.isnot(None), Deck.name != '').order_by(Deck.name).all()
+    archetype_names = [name[0] for name in archetypes]
+    
+    if request.method == 'POST':
+        deck_name = html.escape(request.form.get("deck_name", "").strip())
+        deck_list = request.form.get("deck_list", "").strip()
+        
+        if not deck_name or not deck_list:
+            flash("Please provide both deck archetype and decklist.", "error")
+            return render_template('submit_deck_public.html', submitted=False, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+        
+        # Find or create the player
+        player = ensure_player(link.player_name)
+        
+        if not player:
+            flash("Failed to create player record.", "error")
+            return render_template('submit_deck_public.html', submitted=False, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+        
+        # Check if archetype exists and has an image
+        archetype_image = None
+        if deck_name:
+            existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
+            if existing_archetype:
+                archetype_image = existing_archetype.image_url
+        
+        # Create or update deck
+        deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
+        if deck:
+            deck.name = deck_name
+            deck.list_text = deck_list
+            if not deck.image_url and archetype_image:
+                deck.image_url = archetype_image
+        else:
+            deck = Deck(
+                player_id=player.id,
+                tournament_id=tournament.id,
+                name=deck_name,
+                list_text=deck_list,
+                image_url=archetype_image
+            )
+            db.session.add(deck)
+        
+        # Mark link as used
+        link.deck_submitted = True
+        db.session.commit()
+        
+        return render_template('submit_deck_public.html', submitted=True, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
+    
+    # GET request - show the form
+    return render_template('submit_deck_public.html', submitted=False, player_name=link.player_name, tournament=tournament, archetypes=archetype_names)
 
 
 
@@ -3128,14 +4331,29 @@ def submit_deck():
         return redirect(url_for("players"))
 
     # === Prepare deck data ===
-    deck_name = html.escape(request.form.get("deck_name", "").strip())
+    user_provided_name = html.escape(request.form.get("deck_name", "").strip())
     deck_list = request.form.get("deck_list", "").strip()  # store raw text
+
+    # Auto-detect archetype from decklist
+    detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
+    
+    # Always use detected archetype (either matched archetype or "Rogue")
+    deck_name = detected_archetype
+    if similarity > 0:
+        print(f"[AUTO-DETECT] Matched deck to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
+    else:
+        print(f"[AUTO-DETECT] No archetype match, classified as 'Rogue'", file=sys.stderr)
 
     # === Save or update deck ===
     deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament_id).first()
     if deck:
+        old_name = deck.name
         deck.name = deck_name
         deck.list_text = deck_list
+        
+        if old_name != deck_name:
+            print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{deck_name}'", file=sys.stderr)
+        
         # Preserve existing image if archetype has one and current deck doesn't
         if not deck.image_url and deck_name:
             existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
@@ -3754,6 +4972,7 @@ def delete_tournament(tid):
     Match.query.filter_by(tournament_id=tournament.id).delete()
     Deck.query.filter_by(tournament_id=tournament.id).delete()
     TournamentPlayer.query.filter_by(tournament_id=tournament.id).delete()
+    CasualPointsHistory.query.filter_by(tournament_id=tournament.id).delete()
 
     # Delete the tournament itself
     tournament_name = tournament.name
@@ -3905,7 +5124,19 @@ def casual_final(tid):
                     # Award casual points based on rank and player count
                     pts = award_casual_points_by_rank(players_in_tournament, rank)
                     if pts > 0:
+                        # Update player's total points
                         player.casual_points = (player.casual_points or 0) + pts
+                        
+                        # Create history record for per-store tracking
+                        history_record = CasualPointsHistory(
+                            player_id=player.id,
+                            tournament_id=tournament.id,
+                            store_id=tournament.store_id,
+                            points=pts,
+                            rank=rank,
+                            awarded_at=datetime.utcnow()
+                        )
+                        db.session.add(history_record)
                     
                     # Save deck if provided
                     if deck_name and deck_list:
@@ -3971,12 +5202,23 @@ def tournament_standings(tid):
                     draws += 1; points += 1
                 else:
                     losses += 1
+        
+        # For casual tournaments, get casual points from history
+        casual_pts = 0
+        if tournament.casual:
+            history = CasualPointsHistory.query.filter_by(
+                tournament_id=tid,
+                player_id=p.id
+            ).first()
+            if history:
+                casual_pts = history.points
+        
         standings.append({
             "player": p,
             "wins": wins,
             "draws": draws,
             "losses": losses,
-            "points": points,
+            "points": casual_pts if tournament.casual else points,
             "elo_delta": elo_changes[p.id],
             "deck": Deck.query.filter_by(player_id=p.id, tournament_id=tid).first()
         })
@@ -3994,11 +5236,26 @@ def tournament_standings(tid):
     if tournament.user_id:
         submitted_by = User.query.get(tournament.user_id)
     
+    # Get deck submission links for this tournament
+    deck_links = DeckSubmissionLink.query.filter_by(tournament_id=tid).all()
+    deck_links_by_player = {link.player_name: link for link in deck_links}
+    
+    # Get model decklists for uniqueness calculation
+    model_decklists = {}
+    for s in standings:
+        if s["deck"] and s["deck"].name:
+            archetype_name = s["deck"].name
+            if archetype_name not in model_decklists:
+                model = ArchetypeModel.query.filter_by(archetype_name=archetype_name).first()
+                model_decklists[archetype_name] = model.model_decklist if model else None
+    
     return render_template('tournament_standings.html',
                            tournament=tournament,
                            standings=standings,
                            can_edit=can_edit,
-                           submitted_by=submitted_by)
+                           submitted_by=submitted_by,
+                           deck_links_by_player=deck_links_by_player,
+                           model_decklists=model_decklists)
 
 
 

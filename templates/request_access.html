@@ -82,18 +82,6 @@
     <h1>Request Scorekeeper Access</h1>
     <p style="color: #6c757d; margin-bottom: 2rem;">Please fill out all required fields to submit your access request.</p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          {% if category == 'error' %}
-            <div class="flash-error" style="padding: 1rem; background: #f8d7da; color: #721c24; border-radius: 4px; margin-bottom: 1rem;">{{ message }}</div>
-          {% elif category == 'success' %}
-            <div class="flash-success" style="padding: 1rem; background: #d4edda; color: #155724; border-radius: 4px; margin-bottom: 1rem;">{{ message }}</div>
-          {% endif %}
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
     <form method="POST" action="{{ url_for('request_access') }}" enctype="multipart/form-data">
       
       <!-- User Information Section -->

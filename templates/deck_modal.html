@@ -3,9 +3,22 @@
     <span class="close" onclick="closeDeckModal()">&times;</span>
     <h3 id="deckModalTitle">Add Deck</h3>
     <label>Deck Name</label>
-    <input type="text" id="deckName">
+    <div class="deck-name-wrapper">
+      <input type="text" id="deckName" autocomplete="off" placeholder="Search or create archetype...">
+      <input type="hidden" id="deckNameConfirmed" value="false">
+      <div id="deckNameDropdown" class="deck-name-dropdown"></div>
+    </div>
     <label>Deck List</label>
-    <textarea id="deckList" rows="10"></textarea>
+    <div class="deck-editor-wrap">
+      <div id="deckEditor" contenteditable="true" class="deck-editor" spellcheck="false" autocomplete="off"></div>
+      <div id="deckLoadingOverlay" class="deck-loading-overlay">
+        <div class="deck-spinner"></div>
+        <div class="deck-loading-text">Checking Cards...</div>
+      </div>
+    </div>
+    <!-- hidden field to store plain text -->
+    <input type="hidden" id="deckList">
+    <div id="deckErrors" style="color:red; margin-top:0.5rem;"></div>
     <button type="button" class="btn-deck" onclick="saveDeckTemp()">
       <i class="material-icons">save</i> Save
     </button>

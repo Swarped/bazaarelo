@@ -6,24 +6,10 @@
     <style>
       body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
       textarea { width: 100%; height: 300px; }
-      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
-      .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
     </style>
   </head>
   <body>
     <h1>Import EventLink Text for Tournament {{ tournament.id }}</h1>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          {% if category == 'error' %}
-            <div class="flash-error">{{ message }}</div>
-          {% elif category == 'success' %}
-            <div class="flash-success">{{ message }}</div>
-          {% endif %}
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
 
     <form method="POST">
       <label for="eventlink_text">Paste EventLink Export:</label><br>

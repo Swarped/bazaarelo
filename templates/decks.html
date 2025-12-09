@@ -152,6 +152,12 @@ td.archetype-cell {
   box-shadow: 0 2px 8px rgba(184, 115, 51, 0.4);
 }
 
+.tier-box.tier-rogue {
+  background: linear-gradient(135deg, #7a9a8a 0%, #a8c8b8 100%);
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(122, 154, 138, 0.4);
+}
+
 .tier-box input {
   border: none;
   background: transparent;
@@ -180,6 +186,11 @@ html.dark-mode .tier-box.tier-2 {
 
 html.dark-mode .tier-box.tier-3 {
   background: linear-gradient(135deg, #b87333 0%, #d4956e 100%) !important;
+  color: #1a1a1a !important;
+}
+
+html.dark-mode .tier-box.tier-rogue {
+  background: linear-gradient(135deg, #7a9a8a 0%, #a8c8b8 100%) !important;
   color: #1a1a1a !important;
 }
 
@@ -554,6 +565,7 @@ th:nth-child(6), td:nth-child(6) {
     <button class="tier-filter-btn" data-tier="1">TIER 1</button>
     <button class="tier-filter-btn" data-tier="2">TIER 2</button>
     <button class="tier-filter-btn" data-tier="3">TIER 3</button>
+    <button class="tier-filter-btn" data-tier="rogue">ROGUE</button>
   </div>
 </div>
 
@@ -598,23 +610,36 @@ th:nth-child(6), td:nth-child(6) {
       </td>
 <td class="tier-cell">
   {% set tier = archetype_tiers.get(name, 'Tier 3') %}
-  {% set tier_class = 'tier-' + tier.split()[1] %}
+  {% if name == 'Rogue' %}
+    {% set tier = 'Rogue' %}
+    {% set tier_class = 'tier-rogue' %}
+  {% else %}
+    {% set tier_class = 'tier-' + tier.split()[1] %}
+  {% endif %}
   <div class="tier-box {{ tier_class }}">
     <input type="text" value="{{ tier }}" readonly>
   </div>
 </td>
 <td class="count-cell">{{ decks|length }}</td>
 <td class="colors-cell"></td>
+{% if name != 'Rogue' %}
 <td class="price-cell">Calculating...</td>
+{% else %}
+<td class="price-cell">–</td>
+{% endif %}
 
     </tr>
     {% endfor %}
 
 {% if current_user.is_authenticated and current_user.is_admin %}
-<div style="margin-bottom:1rem;">
+<div style="margin-bottom:1rem; display: flex; gap: 0.5rem;">
   <button type="button" class="btn btn-primary" onclick="openCreateArchetypeModal()">
     <span class="material-icons" style="font-size: 16px; vertical-align: middle;">add</span>
     Create New Archetype
+  </button>
+  <button type="button" class="btn btn-primary" onclick="recalculateArchetypes()" id="recalculateBtn">
+    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">refresh</span>
+    Recalculate Archetypes
   </button>
 </div>
 {% endif %}
@@ -1035,7 +1060,7 @@ th:nth-child(6), td:nth-child(6) {
       gallery.innerHTML = '<p>Loading images...</p>';
       
       try {
-        const response = await fetch('/api/deck_images');
+        const response = await fetch('/get_available_images');
         const images = await response.json();
         
         if (images.length === 0) {
@@ -1142,6 +1167,36 @@ th:nth-child(6), td:nth-child(6) {
     // Render colors
     let symbolMap = {};
     let cardCache = {}; // Cache for card lookups
+    
+    // Cache symbology data in localStorage
+    const SYMBOLOGY_CACHE_KEY = 'scryfall_symbology';
+    const SYMBOLOGY_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+    
+    function getCachedSymbology() {
+      try {
+        const cached = localStorage.getItem(SYMBOLOGY_CACHE_KEY);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < SYMBOLOGY_CACHE_DURATION) {
+            return data.symbology;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load cached symbology:', e);
+      }
+      return null;
+    }
+    
+    function setCachedSymbology(symbology) {
+      try {
+        localStorage.setItem(SYMBOLOGY_CACHE_KEY, JSON.stringify({
+          symbology: symbology,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache symbology:', e);
+      }
+    }
     
     // Compute colors from deck list
     function computeDeckColors(deckList, row) {
@@ -1253,14 +1308,22 @@ th:nth-child(6), td:nth-child(6) {
       rows.forEach(row => {
         const tierInput = row.querySelector('.tier-box input');
         const tierText = tierInput ? tierInput.value : '';
-        const tierNum = tierText.split(' ')[1]; // Extract "1", "2", or "3" from "Tier 1"
+        const tierLower = tierText.toLowerCase();
+        
+        // Extract tier value: "1", "2", "3" from "Tier 1" or "rogue" from "Rogue"
+        let tierValue;
+        if (tierLower === 'rogue') {
+          tierValue = 'rogue';
+        } else {
+          tierValue = tierText.split(' ')[1]; // Extract "1", "2", or "3"
+        }
         
         const archetypeName = row.querySelector('.archetype-cell').textContent.trim().toLowerCase();
         
         let showRow = true;
         
         // Tier filter
-        if (currentTierFilter !== 'all' && tierNum !== currentTierFilter) {
+        if (currentTierFilter !== 'all' && tierValue !== currentTierFilter) {
           showRow = false;
         }
         
@@ -1288,6 +1351,57 @@ th:nth-child(6), td:nth-child(6) {
       currentNameFilter = e.target.value;
       applyFilters();
     });
+
+    // Recalculate archetypes function
+    async function recalculateArchetypes() {
+      const btn = document.getElementById('recalculateBtn');
+      if (!confirm('This will recalculate the archetype for all decks based on similarity to model decklists. This may take a while. Continue?')) {
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">hourglass_empty</span> Processing...';
+      
+      try {
+        const response = await fetch('/decks/recalculate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          let message = `Recalculation complete!\n\nTotal processed: ${result.total}\nUpdated: ${result.updated}\nUnchanged: ${result.unchanged}\nRogue: ${result.rogue}`;
+          
+          if (result.deleted && result.deleted > 0) {
+            message += `\nDeleted empty: ${result.deleted}`;
+          }
+          
+          if (result.changes && result.changes.length > 0 && result.changes.length <= 10) {
+            message += '\n\nChanges:\n';
+            result.changes.forEach(change => {
+              message += `\n- ${change.player} (${change.tournament}): ${change.old_archetype} → ${change.new_archetype} (${change.similarity}%)`;
+            });
+          } else if (result.changes && result.changes.length > 10) {
+            message += `\n\n${result.changes.length} changes made. Check admin event logs for details.`;
+          }
+          
+          message += '\n\nThis action has been logged in the admin panel for recovery if needed.';
+          
+          alert(message);
+          location.reload();
+        } else {
+          alert('Error: ' + (result.error || 'Failed to recalculate archetypes'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">refresh</span> Recalculate Archetypes';
+      }
+    }
   </script>
 
 {% endblock %}

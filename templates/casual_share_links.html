@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Deck Submission Links{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+  .share-links-page {
+    max-width: 900px;
+    margin: 2rem auto;
+    font-family: system-ui, sans-serif;
+  }
+  
+  .header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  .header h1 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+  
+  html.dark-mode .header h1 {
+    color: #f8f9fa;
+  }
+  
+  .header p {
+    color: #666;
+    font-size: 1.1rem;
+  }
+  
+  html.dark-mode .header p {
+    color: #adb5bd;
+  }
+  
+  .links-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #7c3aed;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  html.dark-mode .links-container {
+    background: linear-gradient(135deg, #2d1b4e 0%, #1e1332 100%);
+    border-color: #9d5cff;
+  }
+  
+  .link-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  
+  html.dark-mode .link-item {
+    background: #1a1a2e;
+    border-color: #404050;
+  }
+  
+  .link-item:hover {
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .player-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  html.dark-mode .player-name {
+    color: #f8f9fa;
+  }
+  
+  .player-name .material-icons {
+    color: #7c3aed;
+  }
+  
+  html.dark-mode .player-name .material-icons {
+    color: #9d5cff;
+  }
+  
+  .link-url {
+    flex: 1;
+    margin: 0 1rem;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #495057;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  html.dark-mode .link-url {
+    background: #0d0d14;
+    border-color: #404050;
+    color: #adb5bd;
+  }
+  
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.5rem 1rem;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+  }
+  
+  .copy-btn:hover {
+    background: #6d28d9;
+  }
+  
+  .copy-btn.copied {
+    background: #10b981;
+  }
+  
+  .copy-btn .material-icons {
+    font-size: 18px;
+  }
+  
+  .actions {
+    text-align: center;
+    margin-top: 2rem;
+  }
+  
+  .btn-continue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  
+  .btn-continue:hover {
+    background: #45a049;
+  }
+  
+  .btn-continue .material-icons {
+    font-size: 20px;
+  }
+  
+  .info-box {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    border-radius: 4px;
+  }
+  
+  html.dark-mode .info-box {
+    background: #1a2332;
+    border-color: #42a5f5;
+  }
+  
+  .info-box p {
+    margin: 0;
+    color: #0d47a1;
+  }
+  
+  html.dark-mode .info-box p {
+    color: #90caf9;
+  }
+</style>
+
+<div class="share-links-page">
+  <div class="header">
+    <h1><span class="material-icons" style="vertical-align: middle; font-size: 2rem;">link</span> Deck Submission Links</h1>
+    <p>Share these links with players so they can submit their decklists</p>
+  </div>
+  
+  <div class="info-box">
+    <p><strong>Note:</strong> Each link can only be used once. After a player submits their decklist, the link will expire.</p>
+  </div>
+  
+  <div class="links-container">
+    {% for link in share_links %}
+    <div class="link-item">
+      <div class="player-name">
+        <span class="material-icons">person</span>
+        {{ link.player_name }}
+      </div>
+      <input type="text" class="link-url" readonly value="{{ request.url_root }}submit_deck_public/{{ link.submission_token }}" id="link-{{ loop.index }}">
+      <button class="copy-btn" onclick="copyLink({{ loop.index }}, this)">
+        <span class="material-icons">content_copy</span>
+        Copy
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  
+  <div class="actions">
+    <a href="{{ url_for('players') }}" class="btn-continue">
+      <span class="material-icons">home</span>
+      Back to Home
+    </a>
+  </div>
+</div>
+
+<script>
+function copyLink(index, button) {
+  const input = document.getElementById('link-' + index);
+  input.select();
+  input.setSelectionRange(0, 99999); // For mobile devices
+  
+  navigator.clipboard.writeText(input.value).then(() => {
+    // Change button text and style
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<span class="material-icons">check</span>Copied!';
+    button.classList.add('copied');
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      button.innerHTML = originalHTML;
+      button.classList.remove('copied');
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    alert('Failed to copy link. Please copy manually.');
+  });
+}
+</script>
+
+{% endblock %}

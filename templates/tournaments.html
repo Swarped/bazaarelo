@@ -151,31 +151,36 @@ td.store-cell img {
       /* Column widths for casual table */
       #casual-table th:nth-child(1),
       #casual-table td:nth-child(1) {
-        width: auto; /* Tournament - takes remaining space */
+        width: 120px; /* Store */
       }
 
       #casual-table th:nth-child(2),
       #casual-table td:nth-child(2) {
-        width: 100px; /* Date */
+        width: auto; /* Tournament - takes remaining space */
       }
 
       #casual-table th:nth-child(3),
       #casual-table td:nth-child(3) {
-        width: 70px; /* Rounds */
+        width: 100px; /* Date */
       }
 
       #casual-table th:nth-child(4),
       #casual-table td:nth-child(4) {
-        width: 100px; /* Player Count */
+        width: 70px; /* Rounds */
       }
 
       #casual-table th:nth-child(5),
       #casual-table td:nth-child(5) {
-        width: 80px; /* Top Cut */
+        width: 100px; /* Player Count */
       }
 
       #casual-table th:nth-child(6),
       #casual-table td:nth-child(6) {
+        width: 80px; /* Top Cut */
+      }
+
+      #casual-table th:nth-child(7),
+      #casual-table td:nth-child(7) {
         width: 70px; /* Country */
       }
 
@@ -605,6 +610,7 @@ td.store-cell img {
       <h2>Casual Tournaments</h2>
       <table>
 <tr>
+  <th>Store</th>
   <th>Tournament</th>
   <th>Date</th>
   <th>Rounds</th>
@@ -621,6 +627,14 @@ td.store-cell img {
             aria-label="Open standings for {{ t.name if t.name else ('Tournament on ' ~ t.date) }}"
             data-href="{{ url_for('tournament_standings', tid=t.id) }}"
             data-user-id="{{ t.user_id }}">
+<td class="store-cell">
+  {% if t.store and t.store.image_url %}
+    <img src="{{ url_for('static', filename=t.store.image_url) }}"
+         alt="{{ t.store.name }}">
+  {% else %}
+      –
+    {% endif %}
+  </td>
           <td>{{ t.name if t.name else ('Tournament on ' ~ t.date) }}</td>
           <td>{{ t.date }}</td>
           <td>{{ t.rounds }}</td>

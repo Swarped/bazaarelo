@@ -7,24 +7,10 @@
       body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
-      .flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; }
-      .flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; }
     </style>
   </head>
   <body>
     <h1>Import Round for Tournament {{ tournament.id }}</h1>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          {% if category == 'error' %}
-            <div class="flash-error">{{ message }}</div>
-          {% elif category == 'success' %}
-            <div class="flash-success">{{ message }}</div>
-          {% endif %}
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
 
     {% if preview %}
       <h2>Preview Round {{ round_num }}</h2>

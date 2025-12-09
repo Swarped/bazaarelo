@@ -167,7 +167,11 @@
     .colors-cell {
       text-align: center;
       min-height: 28px;
-      min-width: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
     }
     .card-list li {
       display: flex;
@@ -176,6 +180,130 @@
     }
     .card-list li span {
       margin-left: auto;
+    }
+    .pending-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #ff9800;
+      font-style: italic;
+    }
+    .copy-link-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      padding: 0.5rem 1rem;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .copy-link-btn:hover {
+      background: #6d28d9;
+    }
+    .copy-link-btn.copied {
+      background: #10b981;
+    }
+    .copy-link-btn .material-icons {
+      font-size: 18px;
+    }
+    
+    /* Dark mode hover gradient */
+    html.dark-mode tr.clickable-row:hover {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+      color: white !important;
+    }
+    html.dark-mode tr.clickable-row:hover td {
+      background: transparent !important;
+      color: white !important;
+    }
+    
+    /* Player cell clickable */
+    .player-cell {
+      cursor: pointer;
+    }
+    .player-cell:hover {
+      text-decoration: underline;
+      font-weight: 600;
+    }
+    
+    /* Column widths */
+    table { table-layout: fixed; }
+    th:nth-child(1), td:nth-child(1) { width: 60px; } /* Rank */
+    th:nth-child(2), td:nth-child(2) { width: 220px; } /* Player - larger */
+    
+    /* Competitive columns */
+    .competitive-table th:nth-child(3), .competitive-table td:nth-child(3) { width: 70px; } /* Wins */
+    .competitive-table th:nth-child(4), .competitive-table td:nth-child(4) { width: 70px; } /* Draws */
+    .competitive-table th:nth-child(5), .competitive-table td:nth-child(5) { width: 80px; } /* Losses */
+    .competitive-table th:nth-child(6), .competitive-table td:nth-child(6) { width: 70px; } /* Points */
+    .competitive-table th:nth-child(7), .competitive-table td:nth-child(7) { width: 140px; } /* Deck - fixed smaller */
+    .competitive-table th:nth-child(8), .competitive-table td:nth-child(8) { width: 140px; } /* Colors */
+    .competitive-table th:nth-child(9), .competitive-table td:nth-child(9) { width: 100px; } /* Uniqueness */
+    .competitive-table th:nth-child(10), .competitive-table td:nth-child(10) { width: 80px; } /* Price */
+    
+    /* Casual columns */
+    .casual-table th:nth-child(3), .casual-table td:nth-child(3) { width: 80px; } /* Points */
+    .casual-table th:nth-child(4), .casual-table td:nth-child(4) { width: 140px; } /* Deck - fixed smaller */
+    .casual-table th:nth-child(5), .casual-table td:nth-child(5) { width: 140px; } /* Colors */
+    .casual-table th:nth-child(6), .casual-table td:nth-child(6) { width: 100px; } /* Uniqueness */
+    .casual-table th:nth-child(7), .casual-table td:nth-child(7) { width: 80px; } /* Price */
+    
+    .colors-cell { 
+      text-align: center;
+    }
+    .price-cell { text-align: center; }
+    
+    .mana-icon {
+      width: 20px;
+      height: 20px;
+      vertical-align: middle;
+      margin: 0;
+    }
+    
+    .uniqueness-bar-container {
+      position: relative;
+      width: 100%;
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .uniqueness-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+    
+    .uniqueness-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    html.dark-mode .uniqueness-bar-container {
+      background: #444;
+    }
+    
+    html.dark-mode .uniqueness-bar {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     }
   </style>
 </head>
@@ -242,16 +370,20 @@
   </div>
   {% endif %}
   
-  <table>
+  <table class="{% if tournament.casual %}casual-table{% else %}competitive-table{% endif %}">
     <tr>
       <th>Rank</th>
       <th>Player</th>
+      {% if not tournament.casual %}
       <th>Wins</th>
       <th>Draws</th>
       <th>Losses</th>
+      {% endif %}
       <th>Points</th>
       <th>Deck</th>
       <th>Colors</th>
+      <th>Uniqueness</th>
+      <th>Est. Price</th>
     </tr>
     {% for s in standings %}
     <tr
@@ -263,13 +395,40 @@
       data-deck-name='{{ (s.deck.name if s.deck else "")|tojson }}'
       data-deck-list='{{ (s.deck.list_text if s.deck else "")|tojson }}'>
       <td>{{ loop.index }}</td>
-      <td>{{ s.player.name }}</td>
+      <td class="clickable-cell player-cell" data-player-id="{{ s.player.id }}">{{ s.player.name }}</td>
+      {% if not tournament.casual %}
       <td>{{ s.wins }}</td>
       <td>{{ s.draws }}</td>
       <td>{{ s.losses }}</td>
+      {% endif %}
       <td>{{ s.points }}</td>
-      <td>{% if s.deck %}{{ s.deck.name }}{% else %}–{% endif %}</td>
-      <td class="colors-cell"></td>
+      <td>
+        {% if s.deck %}
+          {{ s.deck.name }}
+        {% elif deck_links_by_player.get(s.player.name) and not deck_links_by_player.get(s.player.name).deck_submitted %}
+          <span class="pending-badge">
+            <span class="material-icons" style="font-size: 16px;">schedule</span>
+            Pending
+          </span>
+        {% else %}
+          –
+        {% endif %}
+      </td>
+      <td class="colors-cell">
+        {% if can_edit and deck_links_by_player.get(s.player.name) and not deck_links_by_player.get(s.player.name).deck_submitted %}
+          <button class="copy-link-btn" onclick="copySubmissionLink('{{ deck_links_by_player.get(s.player.name).submission_token }}', this); event.stopPropagation();">
+            <span class="material-icons">content_copy</span>
+            Copy Link
+          </button>
+        {% endif %}
+      </td>
+      <td class="uniqueness-cell">
+        <div class="uniqueness-bar-container">
+          <div class="uniqueness-bar" style="width: 0%"></div>
+          <span class="uniqueness-text">N/A</span>
+        </div>
+      </td>
+      <td class="price-cell">Calculating...</td>
     </tr>
     {% endfor %}
   </table>
@@ -281,7 +440,18 @@
 {% include '_deck_view_modal.html' %}
   <script>
     document.querySelectorAll('tr.clickable-row').forEach(row => {
-      row.addEventListener('click', () => openDeckModal(row));
+      row.addEventListener('click', (e) => {
+        // Check if player cell was clicked
+        const playerCell = e.target.closest('.player-cell');
+        if (playerCell) {
+          const playerId = playerCell.getAttribute('data-player-id');
+          window.location.href = `/player/${playerId}`;
+          return;
+        }
+        
+        // Otherwise open deck modal
+        openDeckModal(row);
+      });
       row.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -291,21 +461,136 @@
     });
 
     let symbolMap = {};
-    fetch("https://api.scryfall.com/symbology")
-      .then(res => res.json())
-      .then(data => {
-        data.data.forEach(sym => {
-          symbolMap[sym.symbol] = sym.svg_uri;
-        });
-        // Now compute colors for each row
-        document.querySelectorAll('tr.clickable-row').forEach(row => {
-          const deckListRaw = row.dataset.deckList;
-          if (deckListRaw) {
-            const deckList = JSON.parse(deckListRaw || '""');
-            computeDeckColors(deckList, row);
+    let cardCache = {};
+    const modelDecklists = {{ model_decklists|tojson }};
+    
+    // Cache symbology data in localStorage
+    const SYMBOLOGY_CACHE_KEY = 'scryfall_symbology';
+    const SYMBOLOGY_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+    
+    function getCachedSymbology() {
+      try {
+        const cached = localStorage.getItem(SYMBOLOGY_CACHE_KEY);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < SYMBOLOGY_CACHE_DURATION) {
+            return data.symbology;
           }
-        });
+        }
+      } catch (e) {
+        console.warn('Failed to load cached symbology:', e);
+      }
+      return null;
+    }
+    
+    function setCachedSymbology(symbology) {
+      try {
+        localStorage.setItem(SYMBOLOGY_CACHE_KEY, JSON.stringify({
+          symbology: symbology,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache symbology:', e);
+      }
+    }
+    
+    // Try to load from cache first
+    const cachedSymbology = getCachedSymbology();
+    
+    function processRows() {
+      // Collect all unique card names from all decks
+      const allCardNames = new Set();
+      document.querySelectorAll('tr.clickable-row').forEach(row => {
+        const deckListRaw = row.dataset.deckList;
+        if (deckListRaw) {
+          const deckList = JSON.parse(deckListRaw || '""');
+          extractCardNames(deckList).forEach(name => allCardNames.add(name));
+        }
       });
+      
+      // Batch fetch all cards
+      if (allCardNames.size > 0) {
+        batchFetchCards([...allCardNames]).then(() => {
+          // Now compute colors, prices, and uniqueness using cached data
+          document.querySelectorAll('tr.clickable-row').forEach(row => {
+            const deckListRaw = row.dataset.deckList;
+            const deckNameRaw = row.dataset.deckName;
+            if (deckListRaw) {
+              const deckList = JSON.parse(deckListRaw || '""');
+              const deckName = JSON.parse(deckNameRaw || '""');
+              computeDeckColors(deckList, row);
+              computeDeckPrice(deckList, row);
+              
+              // Calculate uniqueness if model deck exists for this archetype
+              if (deckName && modelDecklists && modelDecklists[deckName]) {
+                const modelDeck = modelDecklists[deckName];
+                const uniqueness = calculateUniqueness(deckList, modelDeck);
+                const bar = row.querySelector('.uniqueness-bar');
+                const text = row.querySelector('.uniqueness-text');
+                
+                if (bar && text) {
+                  bar.style.width = uniqueness + '%';
+                  text.textContent = uniqueness + '%';
+                }
+              }
+            }
+          });
+        });
+      }
+    }
+    
+    if (cachedSymbology) {
+      cachedSymbology.forEach(sym => {
+        symbolMap[sym.symbol] = sym.svg_uri;
+      });
+      processRows();
+    } else {
+      // Fetch from API if not cached
+      fetch("https://api.scryfall.com/symbology")
+        .then(res => res.json())
+        .then(data => {
+          setCachedSymbology(data.data);
+          data.data.forEach(sym => {
+            symbolMap[sym.symbol] = sym.svg_uri;
+          });
+          processRows();
+        })
+        .catch(err => console.warn('Failed to fetch symbology:', err));
+    }
+    
+    async function batchFetchCards(cardNames, timeout = 5000) {
+      const uniqueNames = [...new Set(cardNames)];
+      
+      const promises = uniqueNames.map(name => 
+        Promise.race([
+          fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+            .then(res => res.json())
+            .then(card => {
+              if (card.name) {
+                cardCache[name] = card;
+              }
+            }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), timeout)
+          )
+        ])
+        .catch(err => console.warn('Card fetch error:', err))
+      );
+      
+      await Promise.all(promises);
+    }
+    
+    function extractCardNames(deckList) {
+      const names = [];
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
+        const parts = line.trim().split(/\s+/, 2);
+        const name = line.trim().substring(parts[0].length).trim();
+        if (name) names.push(name);
+      });
+      return names;
+    }
 
     function renderManaCost(manaCost) {
       if (!manaCost) return "";
@@ -321,34 +606,153 @@
     function computeDeckColors(deckList, row) {
       const colors = new Set();
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-      const promises = lines.map(line => {
-        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
         const parts = line.trim().split(/\s+/, 2);
         const name = line.trim().substring(parts[0].length).trim();
-        if (!name) return Promise.resolve();
-        return fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
-          .then(res => res.json())
-          .then(card => {
-            if (card.color_identity) {
-              card.color_identity.forEach(c => colors.add(c));
-            }
-          });
+        if (!name) return;
+        
+        const card = cardCache[name];
+        if (card && card.color_identity) {
+          card.color_identity.forEach(c => colors.add(c));
+        }
       });
 
-      Promise.all(promises).then(() => {
-        const cell = row.querySelector(".colors-cell");
-        if (cell) {
-          cell.innerHTML = "";
-          ["W","U","B","R","G"].forEach(c => {
-            if (colors.has(c)) {
-              const token = `{${c}}`;
-              const uri = symbolMap[token];
-              if (uri) {
-                cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
-              }
-            }
-          });
+      const cell = row.querySelector(".colors-cell");
+      if (cell) {
+        // Check if there's a copy button to preserve
+        const copyButton = cell.querySelector(".copy-link-btn");
+        
+        // Build color icons HTML
+        let colorsHTML = "";
+        ["W","U","B","R","G"].forEach(c => {
+          if (colors.has(c)) {
+            colorsHTML += `<img src="https://svgs.scryfall.io/card-symbols/${c}.svg" alt="${c}" class="mana-icon">`;
+          }
+        });
+        
+        // Set innerHTML preserving the button if it exists
+        if (copyButton) {
+          cell.innerHTML = colorsHTML;
+          cell.appendChild(copyButton);
+        } else {
+          cell.innerHTML = colorsHTML;
         }
+      }
+    }
+    
+    function computeDeckPrice(deckList, row) {
+      let totalPrice = 0;
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
+        const parts = line.trim().split(/\s+/, 2);
+        const count = parseInt(parts[0]) || 0;
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name || count === 0) return;
+        
+        const card = cardCache[name];
+        if (card && card.prices) {
+          const usd = parseFloat(card.prices.usd);
+          const usdFoil = parseFloat(card.prices.usd_foil);
+          
+          let cheapestPrice = null;
+          if (!isNaN(usd) && usd > 0) {
+            cheapestPrice = usd;
+          }
+          if (!isNaN(usdFoil) && usdFoil > 0) {
+            if (cheapestPrice === null || usdFoil < cheapestPrice) {
+              cheapestPrice = usdFoil;
+            }
+          }
+          
+          if (cheapestPrice !== null) {
+            totalPrice += cheapestPrice * count;
+          }
+        }
+      });
+
+      const cell = row.querySelector(".price-cell");
+      if (cell) {
+        cell.textContent = totalPrice > 0 ? `$${Math.round(totalPrice)}` : 'N/A';
+      }
+    }
+
+    // Calculate uniqueness for each deck
+    function calculateUniqueness(deckList, modelDeck) {
+      if (!modelDeck) return 0;
+      
+      const parseDecklist = (decklist) => {
+        const cards = {};
+        const lines = decklist.split(/\r?\n/).filter(l => l.trim() !== "");
+        let inSideboard = false;
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+            inSideboard = true;
+            continue;
+          }
+          
+          // Skip sideboard cards
+          if (inSideboard) continue;
+          
+          const parts = trimmed.split(/\s+/);
+          let count = 1;
+          let name = trimmed;
+          
+          if (/^\d+$/.test(parts[0])) {
+            count = parseInt(parts[0]);
+            name = parts.slice(1).join(' ');
+          }
+          
+          if (name) {
+            const key = name.toLowerCase().trim();
+            cards[key] = (cards[key] || 0) + count;
+          }
+        }
+        
+        return cards;
+      };
+      
+      const deck1 = parseDecklist(deckList);
+      const deck2 = parseDecklist(modelDeck);
+      
+      const allCards = new Set([...Object.keys(deck1), ...Object.keys(deck2)]);
+      let totalDiff = 0;
+      let totalCards = 0;
+      
+      for (const card of allCards) {
+        const count1 = deck1[card] || 0;
+        const count2 = deck2[card] || 0;
+        totalDiff += Math.abs(count1 - count2);
+        totalCards += Math.max(count1, count2);
+      }
+      
+      if (totalCards === 0) return 0;
+      
+      // Uniqueness as percentage (higher = more different from model)
+      return Math.round((totalDiff / totalCards) * 100);
+    }
+    
+    function copySubmissionLink(token, button) {
+      const link = `${window.location.origin}/submit_deck_public/${token}`;
+      navigator.clipboard.writeText(link).then(() => {
+        // Change button text and style
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<span class="material-icons">check</span>Copied!';
+        button.classList.add('copied');
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+          button.innerHTML = originalHTML;
+          button.classList.remove('copied');
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy link:', err);
+        alert('Failed to copy link. Please try again.');
       });
     }
   </script>

@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Your Decklist</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      padding: 2rem;
+      color: white;
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .header .material-icons {
+      font-size: 2.5rem;
+    }
+    
+    .header p {
+      opacity: 0.95;
+      font-size: 1.1rem;
+    }
+    
+    .content {
+      padding: 2rem;
+    }
+    
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196F3;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      border-radius: 4px;
+    }
+    
+    .info-box p {
+      margin: 0;
+      color: #0d47a1;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+    
+    .deck-name-wrapper {
+      position: relative;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+    
+    input[type="text"].invalid-archetype {
+      border-color: #dc3545;
+      background-color: #fff5f5;
+    }
+    
+    .deck-name-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ccc;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 9999;
+    }
+    
+    .deck-name-dropdown-item {
+      padding: 0.5rem;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .deck-name-dropdown-item:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .deck-name-dropdown-item:last-child {
+      border-bottom: none;
+    }
+    
+    .deck-editor-wrap {
+      position: relative;
+      border: 2px solid #dee2e6;
+      border-radius: 4px;
+      background: #fff;
+      overflow: hidden;
+    }
+    
+    .deck-editor {
+      min-height: 300px;
+      max-height: 500px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-y: auto;
+      outline: none;
+    }
+    
+    .deck-editor:focus {
+      border-color: #7c3aed;
+    }
+    
+    .hl-valid   { color: #2e7d32; }
+    .hl-invalid { background: #f8d7da; color: #c0392b; }
+    .hl-not-legal { background: #fff3cd; color: #856404; }
+    .quantity-error { color: #c0392b; font-weight: bold; }
+    .hl-sideboard { 
+      color: #333; 
+      font-weight: bold; 
+      display: block;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #888;
+      margin-bottom: 0.5rem;
+    }
+    
+    .deck-loading-overlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.95);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 10;
+    }
+    
+    .deck-loading-overlay.active {
+      display: flex;
+    }
+    
+    .deck-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #7c3aed;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .deck-loading-text {
+      margin-top: 1rem;
+      color: #666;
+      font-weight: 600;
+    }
+    
+    #deckErrors {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      border-radius: 4px;
+      display: none;
+      color: #856404;
+    }
+    
+    #deckErrors.active {
+      display: block;
+    }
+    
+    .submit-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .submit-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+    }
+    
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .submit-btn .material-icons {
+      font-size: 24px;
+    }
+    
+    .flash-message {
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  </style>
+    .success-container {
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+    
+    .success-icon {
+      font-size: 5rem !important;
+      color: #10b981;
+      margin-bottom: 1rem;
+    }
+    
+    .success-container h2 {
+      color: #155724;
+      margin-bottom: 1rem;
+    }
+    
+    .success-container p {
+      color: #666;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <span class="material-icons">style</span>
+        Submit Your Decklist
+      </h1>
+      <p>{{ tournament.name }} - {{ tournament.date.strftime('%B %d, %Y') }}</p>
+    </div>
+    
+    <div class="content">
+      {% if submitted %}
+        <div class="success-container">
+          <span class="material-icons success-icon">check_circle</span>
+          <h2>Decklist Submitted Successfully!</h2>
+          <p>Your decklist for <strong>{{ player_name }}</strong> has been recorded.</p>
+          <p style="margin-top: 1rem;">You can now close this page.</p>
+        </div>
+      {% else %}
+        <div class="form-container">
+          <p><strong>Player:</strong> {{ player_name }}</p>
+        </div>
+        
+        <form method="POST">
+          <div class="form-group">
+            <label for="deckName">
+              <span class="material-icons" style="vertical-align: middle; font-size: 20px;">label</span>
+              Deck Archetype
+            </label>
+            <div class="deck-name-wrapper">
+              <input type="text" id="deckName" name="deck_name" placeholder="Type to search archetypes..." autocomplete="off" required>
+              <div id="deckNameDropdown" class="deck-name-dropdown"></div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="deckEditor">
+              <span class="material-icons" style="vertical-align: middle; font-size: 20px;">list_alt</span>
+              Decklist
+            </label>
+            <div class="deck-editor-wrap">
+              <div id="deckEditor" contenteditable="true" class="deck-editor" spellcheck="false" autocomplete="off" placeholder="4 Lightning Bolt
+4 Counterspell
+12 Island
+
+Sideboard
+3 Pyroblast"></div>
+              <div id="deckLoadingOverlay" class="deck-loading-overlay">
+                <div class="deck-spinner"></div>
+                <div class="deck-loading-text">Validating cards...</div>
+              </div>
+            </div>
+            <input type="hidden" id="deckList" name="deck_list">
+            <div id="deckErrors"></div>
+          </div>
+          
+          <button type="submit" class="submit-btn" id="saveBtn">
+            <span class="material-icons">save</span>
+            Submit Decklist
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+  
+  {% if not submitted %}
+  <script>
+    // Deck archetype dropdown functionality
+    const allArchetypes = {{ archetypes | tojson }};
+    console.log('Loaded archetypes:', allArchetypes.length, allArchetypes);
+    
+    // Filter and display matching archetypes
+    function showArchetypeDropdown(searchText) {
+      const dropdown = document.getElementById('deckNameDropdown');
+      const input = document.getElementById('deckName');
+      
+      if (!dropdown) {
+        console.error('Dropdown element not found');
+        return;
+      }
+      
+      // Clear previous content
+      dropdown.innerHTML = '';
+      
+      // If no search text, show all archetypes (limited to first 20)
+      const filtered = searchText.trim() 
+        ? allArchetypes.filter(arch => arch.toLowerCase().includes(searchText.toLowerCase()))
+        : allArchetypes.slice(0, 20);
+      
+      console.log('Filtered archetypes:', filtered.length);
+      
+      // Mark input as invalid if user typed something but no matches found
+      if (searchText.trim() && filtered.length === 0) {
+        input.classList.add('invalid-archetype');
+      } else {
+        input.classList.remove('invalid-archetype');
+      }
+      
+      // Show existing archetypes
+      if (filtered.length > 0) {
+        filtered.forEach(arch => {
+          const item = document.createElement('div');
+          item.className = 'deck-name-dropdown-item';
+          item.textContent = arch;
+          item.onclick = () => {
+            document.getElementById('deckName').value = arch;
+            input.classList.remove('invalid-archetype');
+            dropdown.style.display = 'none';
+          };
+          dropdown.appendChild(item);
+        });
+        dropdown.style.display = 'block';
+        console.log('Dropdown shown');
+      } else {
+        dropdown.style.display = 'none';
+        console.log('No matches, dropdown hidden');
+      }
+    }
+    
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', () => {
+      const deckNameInput = document.getElementById('deckName');
+      const dropdown = document.getElementById('deckNameDropdown');
+      
+      console.log('DOM loaded. Elements:', { 
+        deckNameInput, 
+        dropdown,
+        dropdownParent: dropdown?.parentElement,
+        inputParent: deckNameInput?.parentElement
+      });
+      
+      if (deckNameInput && dropdown) {
+        console.log('Setup archetype dropdown listeners');
+        
+        // Show dropdown on input
+        deckNameInput.addEventListener('input', (e) => {
+          console.log('Input event:', e.target.value);
+          showArchetypeDropdown(e.target.value);
+        });
+        
+        // Show dropdown on focus
+        deckNameInput.addEventListener('focus', (e) => {
+          console.log('Focus event:', e.target.value);
+          showArchetypeDropdown(e.target.value);
+        });
+        
+        // Show dropdown on click
+        deckNameInput.addEventListener('click', (e) => {
+          console.log('Click event:', e.target.value);
+          showArchetypeDropdown(e.target.value);
+        });
+        
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!deckNameInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+          }
+        });
+      } else {
+        console.error('Elements not found:', { deckNameInput, dropdown });
+      }
+    });
+    
+    // Deck validation logic (from new_tournament_casual.html)
+    const editor = document.getElementById('deckEditor');
+    const errorsDiv = document.getElementById('deckErrors');
+    const loadingOverlay = document.getElementById('deckLoadingOverlay');
+    const saveBtn = document.getElementById('saveBtn');
+    
+    const basicLands = new Set(['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes']);
+    
+    let debounceTimer = null;
+    let isValidating = false;
+    
+    function normalizeEditor() {
+      Array.from(editor.childNodes).forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const div = document.createElement('div');
+          const span = document.createElement('span');
+          span.textContent = node.textContent;
+          div.appendChild(span);
+          editor.replaceChild(div, node);
+        } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'DIV') {
+          const div = document.createElement('div');
+          const span = document.createElement('span');
+          span.textContent = node.textContent;
+          div.appendChild(span);
+          editor.replaceChild(div, node);
+        } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'DIV') {
+          let span = node.querySelector('span');
+          if (!span) {
+            span = document.createElement('span');
+            span.textContent = node.textContent;
+            node.innerHTML = '';
+            node.appendChild(span);
+          }
+        }
+      });
+      if (!editor.firstChild) {
+        const div = document.createElement('div');
+        const span = document.createElement('span');
+        div.appendChild(span);
+        editor.appendChild(div);
+      }
+    }
+    
+    function extractNamesFromLine(rawLine) {
+      const trimmed = rawLine.trim();
+      
+      // Empty lines
+      if (!trimmed) {
+        return [];
+      }
+      
+      // Sideboard marker line
+      if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+        return [{ name: '__SIDEBOARD__', count: 0, isSideboard: true }];
+      }
+      
+      const tokens = trimmed.split(/\s+/);
+      const cards = [];
+      let currentCount = null;
+      let currentName = [];
+
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        const next = tokens[i + 1];
+
+        if (/^-?\d+$/.test(tok)) {
+          // count token: push any accumulated card before starting the next
+          if (currentName.length > 0) {
+            cards.push({ name: currentName.join(" "), count: currentCount || 1 });
+            currentName = [];
+          }
+          currentCount = parseInt(tok);
+          continue;
+        } else {
+          currentName.push(tok);
+          // if next token is a count or end of line, finalize current card
+          if (!next || /^-?\d+$/.test(next)) {
+            cards.push({ name: currentName.join(" "), count: currentCount || 1 });
+            currentName = [];
+            currentCount = null;
+          }
+        }
+      }
+      return cards;
+    }
+    
+    async function validateNames(names) {
+      const invalid = new Set();
+      const notLegal = new Set();
+      const cardData = new Map();
+      
+      for (const name of names) {
+        if (basicLands.has(name.toLowerCase())) {
+          continue;
+        }
+        
+        try {
+          const url = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`;
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            invalid.add(name.toLowerCase());
+          } else {
+            const card = await response.json();
+            cardData.set(name.toLowerCase(), card);
+            if (card.legalities && card.legalities.premodern !== 'legal') {
+              notLegal.add(name.toLowerCase());
+            }
+          }
+        } catch (err) {
+          invalid.add(name.toLowerCase());
+        }
+        
+        // Add delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 75));
+      }
+      return { invalid, notLegal, cardData };
+    }
+    
+    async function validateAndHighlight(showLoading = false) {
+      if (isValidating) return;
+      isValidating = true;
+      
+      if (showLoading) {
+        loadingOverlay.classList.add('active');
+      }
+      
+      normalizeEditor();
+      
+      const lines = Array.from(editor.children).map(div => div.querySelector("span").textContent);
+      const hidden = document.getElementById('deckList');
+      hidden.value = lines.join("\n");
+      
+      // Build full list of names and count sideboards
+      const names = [];
+      const seen = new Set();
+      let sideboardCount = 0;
+      
+      const perLineCards = lines.map(line => extractNamesFromLine(line));
+      for (const arr of perLineCards) {
+        for (const card of arr) {
+          if (card.isSideboard) {
+            sideboardCount++;
+            continue;
+          }
+          const key = card.name.toLowerCase();
+          if (!seen.has(key)) {
+            names.push(card.name);
+            seen.add(key);
+          }
+        }
+      }
+      
+      const { invalid, notLegal, cardData } = await validateNames(names);
+      
+      // Hide loading overlay
+      if (showLoading) {
+        loadingOverlay.classList.remove('active');
+      }
+      
+      // Check for quantity errors
+      let hasQuantityError = false;
+      const quantityErrors = [];
+      
+      // Check for multiple sideboards
+      if (sideboardCount > 1) {
+        hasQuantityError = true;
+        quantityErrors.push('Multiple sideboard sections found - only one is allowed');
+      }
+      
+      perLineCards.forEach(arr => {
+        for (const card of arr) {
+          if (card.isSideboard) continue;
+          
+          const key = card.name.toLowerCase();
+          const isBasic = basicLands.has(key);
+          const count = card.count;
+          
+          if (count <= 0 || count > (isBasic ? 999 : 4)) {
+            hasQuantityError = true;
+            if (count <= 0) {
+              quantityErrors.push(`${card.name}: quantity must be at least 1`);
+            } else {
+              quantityErrors.push(`${card.name}: maximum 4 copies allowed (${count} specified)`);
+            }
+          }
+        }
+      });
+      
+      // Update submit button state
+      const submitBtn = document.getElementById('submitBtn');
+      if (submitBtn) {
+        if (invalid.size > 0 || hasQuantityError) {
+          submitBtn.disabled = true;
+        } else {
+          submitBtn.disabled = false;
+        }
+      }
+      
+      // Apply highlighting to each line
+      perLineCards.forEach((arr, i) => {
+        // Check if this is a sideboard line
+        if (arr.length > 0 && arr[0].isSideboard) {
+          const span = editor.children[i].querySelector("span");
+          if (span) span.className = "hl-sideboard";
+          return;
+        }
+        
+        let isInvalid = false;
+        let hasQtyError = false;
+        let isNotLegal = false;
+        
+        for (const card of arr) {
+          const key = card.name.toLowerCase();
+          const count = card.count;
+          const isBasic = basicLands.has(key);
+          
+          if (invalid.has(key)) {
+            isInvalid = true;
+            break;
+          }
+          if (count <= 0 || count > (isBasic ? 999 : 4)) {
+            hasQtyError = true;
+          }
+          if (notLegal.has(key)) {
+            isNotLegal = true;
+          }
+        }
+        
+        let cls = "hl-valid";
+        if (isInvalid || hasQtyError) {
+          cls = "hl-invalid";
+        } else if (isNotLegal) {
+          cls = "hl-not-legal";
+        }
+        
+        const span = editor.children[i].querySelector("span");
+        
+        // Handle quantity errors by wrapping the number in a span
+        if (hasQtyError && !isInvalid) {
+          const text = span.textContent;
+          const match = text.match(/^(-?\d+)\s+(.+)$/);
+          if (match) {
+            span.innerHTML = `<span class="quantity-error">${match[1]}</span> ${match[2]}`;
+          }
+        }
+        
+        if (span.className !== cls) span.className = cls;
+      });
+      
+      // Display errors
+      errorsDiv.innerHTML = "";
+      
+      // Quantity errors
+      if (quantityErrors.length > 0) {
+        quantityErrors.forEach(err => {
+          const div = document.createElement("div");
+          div.style.color = "#c0392b";
+          div.textContent = err;
+          errorsDiv.appendChild(div);
+        });
+        errorsDiv.style.display = 'block';
+      }
+      
+      // Invalid card names
+      if (invalid.size > 0) {
+        const done = new Set();
+        for (const nm of names) {
+          const key = nm.toLowerCase();
+          if (invalid.has(key) && !done.has(key)) {
+            const div = document.createElement("div");
+            div.textContent = `${nm} → not found (exact match)`;
+            errorsDiv.appendChild(div);
+            done.add(key);
+          }
+        }
+        errorsDiv.style.display = 'block';
+      }
+      
+      // Not legal in premodern
+      if (notLegal.size > 0) {
+        const done = new Set();
+        for (const nm of names) {
+          const key = nm.toLowerCase();
+          if (notLegal.has(key) && !done.has(key)) {
+            const div = document.createElement("div");
+            div.textContent = `${nm} → not legal in Premodern`;
+            errorsDiv.appendChild(div);
+            done.add(key);
+          }
+        }
+        errorsDiv.style.display = 'block';
+      }
+      
+      if (errorsDiv.innerHTML === "") {
+        errorsDiv.style.display = 'none';
+      }
+      
+      isValidating = false;
+    }
+    
+    editor.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        validateAndHighlight(false);
+      }, 300);
+    });
+    
+    editor.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      const lines = text.replace(/\r/g, '').split('\n');
+      
+      // Clear existing content
+      editor.innerHTML = '';
+      
+      // Insert each line as its own div/span
+      lines.forEach(line => {
+        const div = document.createElement('div');
+        const span = document.createElement('span');
+        span.textContent = line;
+        div.appendChild(span);
+        editor.appendChild(div);
+      });
+      
+      // Validate immediately with loading overlay
+      setTimeout(() => {
+        validateAndHighlight(true);
+      }, 100);
+    });
+    
+    // Form submission handler
+    document.querySelector('form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const deckNameInput = document.getElementById('deckName');
+      const deckName = deckNameInput.value.trim();
+      
+      if (!deckName) {
+        alert('Please enter a deck archetype.');
+        return;
+      }
+      
+      // Only allow existing archetypes
+      if (!allArchetypes.includes(deckName)) {
+        alert('Please select an archetype from the dropdown list. You cannot create new archetypes via this link.');
+        return;
+      }
+      
+      // Extract deck lines properly (same as round.html)
+      const lines = Array.from(editor.children).map(div => {
+        const span = div.querySelector("span");
+        return span ? span.textContent : '';
+      });
+      const deckText = lines.join("\n").trim();
+      document.getElementById('deckList').value = deckText;
+      
+      if (!deckText) {
+        alert('Please enter a decklist.');
+        return;
+      }
+      
+      // Submit the form
+      this.submit();
+    });
+  </script>
+  {% endif %}
+</body>
+</html>

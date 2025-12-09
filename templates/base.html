@@ -2,7 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>PremodernRating - {% block title %}{% endblock %}</title>
+    <title>ChallengerMTG - {% block title %}{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script>
       // Apply dark mode immediately based on browser preference or user setting
@@ -216,6 +217,10 @@
       html.dark-mode div[style*="Background"] {
         background-color: #2a2a2a !important;
       }
+      /* Preserve gradient overlays in deck cards */
+      html.dark-mode .deck-card-link div[style*="linear-gradient"] {
+        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 70%, transparent 100%) !important;
+      }
       html.dark-mode ul[style*="list-style"] li {
         border-bottom-color: #505050 !important;
       }
@@ -279,6 +284,115 @@
       html.dark-mode .btn-danger,
       html.dark-mode .btn {
         border-color: transparent !important;
+      }
+      
+      /* Flash messages - base styles */
+      #flash-container {
+        position: fixed;
+        top: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        width: auto;
+      }
+      
+      .flash-message {
+        padding: 1rem 2.5rem 1rem 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: 4px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        position: relative;
+        animation: slideDown 0.3s ease-out;
+        font-size: 0.95rem;
+      }
+      
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+      
+      .flash-message.fade-out {
+        animation: fadeOut 0.3s ease-out;
+      }
+      
+      .flash-close {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.6;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .flash-close:hover {
+        opacity: 1;
+      }
+      
+      .flash-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      
+      .flash-error .flash-close {
+        color: #721c24;
+      }
+      
+      .flash-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      
+      .flash-success .flash-close {
+        color: #155724;
+      }
+      
+      .flash-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+      }
+      
+      .flash-warning .flash-close {
+        color: #856404;
+      }
+      
+      .flash-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      
+      .flash-info .flash-close {
+        color: #0c5460;
       }
       
       /* Flash messages - dark mode */
@@ -784,6 +898,22 @@
       html.dark-mode .profile-name {
         color: #ffffff !important;
       }
+      .navbar-logo {
+        display: flex;
+        align-items: center;
+        padding: 0 0 0 1.5rem;
+        text-decoration: none;
+        transition: transform 0.2s ease;
+        margin-right: 0;
+        border-right: none !important;
+      }
+      .navbar-logo:hover {
+        transform: scale(1.05);
+      }
+      .navbar-logo img {
+        height: 45px;
+        width: auto;
+      }
       .navbar-inner {
         padding: 0;
         display: flex;
@@ -799,6 +929,15 @@
         display: flex;
         align-items: stretch;
         gap: 0;
+        margin-left: 0;
+      }
+      .navbar-left a:first-child {
+        padding-left: 2rem;
+        margin-left: 0;
+        border-left: 2px solid #b0b0b0;
+      }
+      html.dark-mode .navbar-left a:first-child {
+        border-left-color: #777777;
       }
       .navbar-inner a i.material-icons {
         font-size: 18px;
@@ -1375,6 +1514,9 @@
   <body>
     <header class="site-header">
       <div class="navbar-inner">
+        <a href="{{ url_for('players') }}" class="navbar-logo">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="Challenger MTG">
+        </a>
         <div class="navbar-left">
           <a href="{{ url_for('players') }}" class="{% if request.endpoint == 'players' %}active{% endif %}">Players</a>
 
@@ -1431,6 +1573,20 @@
         {% endif %}
       </div>
     </header>
+
+    <!-- Flash messages container -->
+    <div id="flash-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+              {{ message }}
+              <button class="flash-close" onclick="closeFlash(this)">&times;</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
 
     <main class="container">
       {% block content %}{% endblock %}
@@ -1510,6 +1666,36 @@
           });
         }
         {% endif %}
+      });
+      
+      // Flash message management
+      function closeFlash(button) {
+        const flashMessage = button.parentElement;
+        flashMessage.classList.add('fade-out');
+        setTimeout(() => {
+          flashMessage.remove();
+        }, 300);
+      }
+      
+      // Auto-dismiss flash messages after 5 seconds
+      document.addEventListener('DOMContentLoaded', function() {
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach((message, index) => {
+          // Only show the last (newest) flash message, hide others
+          if (index < flashMessages.length - 1) {
+            message.remove();
+          } else {
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+              if (message.parentElement) {
+                message.classList.add('fade-out');
+                setTimeout(() => {
+                  message.remove();
+                }, 300);
+              }
+            }, 5000);
+          }
+        });
       });
     </script>
   </body>

@@ -6,43 +6,72 @@
 {% block content %}
 
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
 
     <meta charset="utf-8">
     <style>
 
 .custom-number {
   display: flex;
-  flex-direction: column; /* stack vertically */
-  align-items: stretch;   /* children take full width */
-  gap: .4rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .custom-number input {
-  width: 100%;
+  flex: 1;
   font-size: 1.6rem;
   text-align: center;
-  padding: .6rem;
-  border: 2px solid #4CAF50;
-  border-radius: 8px;
+  padding: .8rem;
+  border: 2px solid #7c3aed;
+  border-radius: 4px;
   box-sizing: border-box;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.custom-number input:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+html.dark-mode .custom-number input {
+  background: #2a2a2a;
+  color: #e5e5e5;
+  border-color: #a855f7;
+}
+
+html.dark-mode .custom-number input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
 }
 
 .custom-number button {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 1.2rem;
-  padding: .3rem;          /* reduced vertical padding */
+  font-size: 1.4rem;
+  padding: .6rem 1.2rem;
   cursor: pointer;
-  width: 100%;             /* match input width */
   box-sizing: border-box;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  min-width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .custom-number button:hover {
-  background: #45a049;
+  background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  transform: translateY(-1px);
+}
+
+.custom-number button:active {
+  transform: translateY(0);
 }
 
 
@@ -55,8 +84,8 @@ input.invalid {
 .side-panel input[type="number"] {
   font-size: 1.6rem;
   padding: 0.8rem 1rem;
-  border: 2px solid #4CAF50;
-  border-radius: 8px;
+  border: 2px solid #7c3aed;
+  border-radius: 4px;
   width: 100%;
   box-sizing: border-box;
   text-align: center;
@@ -70,14 +99,14 @@ input.invalid {
   display: block;
   width: 24px;
   height: auto;
-  background: #4CAF50;
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .side-panel input[type="number"]::-webkit-inner-spin-button:hover,
 .side-panel input[type="number"]::-webkit-outer-spin-button:hover {
-  background: #45a049;
+  background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
 }
 
 
@@ -94,13 +123,24 @@ input.invalid {
   color: #2c3e50;
 }
 
+html.dark-mode .form-row label {
+  color: #e5e5e5;
+}
+
 .form-row input {
   width: 100%;
   font-size: 1rem;
   padding: 0.6rem;
   border: 2px solid #ccc;
-  border-radius: 6px;
+  border-radius: 4px;
   background-color: #fff;
+  transition: all 0.3s ease;
+}
+
+html.dark-mode .form-row input {
+  background-color: #2a2a2a;
+  color: #e5e5e5;
+  border-color: #505050;
 }
 
 .form-row input:invalid {
@@ -110,17 +150,82 @@ input.invalid {
 
 .form-row input:focus {
   outline: none;
-  border-color: #c9302c;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+html.dark-mode .form-row input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
 }
 
 .player-input {
   display: block;
-  width: 100%;          /* fill the entire cell */
-  box-sizing: border-box; /* include padding/border in width */
+  width: 100%;
+  box-sizing: border-box;
   font-size: 1.1rem;
   padding: 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.player-input:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+html.dark-mode .player-input {
+  background: #2a2a2a;
+  color: #e5e5e5;
+  border-color: #505050;
+}
+
+html.dark-mode .player-input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+}
+
+/* Inline number inputs for player/round count */
+input[type="number"]#playerCount,
+input[type="number"]#roundCount {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]#playerCount::-webkit-inner-spin-button,
+input[type="number"]#playerCount::-webkit-outer-spin-button,
+input[type="number"]#roundCount::-webkit-inner-spin-button,
+input[type="number"]#roundCount::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"]#playerCount:focus,
+input[type="number"]#roundCount:focus {
+  outline: none;
+  border-color: #9333ea;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
+  transform: translateY(-2px);
+}
+
+input[type="number"]#playerCount:hover,
+input[type="number"]#roundCount:hover {
+  border-color: #9333ea;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+}
+
+html.dark-mode input[type="number"]#playerCount,
+html.dark-mode input[type="number"]#roundCount {
+  background: #2a2a2a;
+  color: #e5e5e5;
+  border-color: #505050;
+}
+
+html.dark-mode input[type="number"]#playerCount:focus,
+html.dark-mode input[type="number"]#roundCount:focus {
+  border-color: #c084fc;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3);
 }
 
 .right-column {
@@ -150,76 +255,617 @@ input.invalid {
 
 
 h1 { margin-bottom: 1rem; }
+
+html.dark-mode h1,
+html.dark-mode h2,
+html.dark-mode h3 {
+  color: #e5e5e5;
+}
+
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
 th { background: #f0f0f0; }
-.flash-error { background: #f8d7da; color: #721c24; padding: .5rem; margin-bottom: 1rem; border: 1px solid #f5c6cb; }
-.flash-success { background: #d4edda; color: #155724; padding: .5rem; margin-bottom: 1rem; border: 1px solid #c3e6cb; }
 
-.btn-submit { margin-top: 1rem; padding: .75rem 1.5rem; font-size: 1rem;
-              background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
-.btn-submit:hover { background: #45a049; }
+/* Column widths for standings table */
+#standingsTable th:nth-child(1),
+#standingsTable td:nth-child(1) { width: 60px; }
+#standingsTable th:nth-child(3),
+#standingsTable td:nth-child(3) { width: 220px; padding: 0; }
+#standingsTable td:nth-child(3) .deck-mode-toggle { height: 100%; }
+
+html.dark-mode table {
+  border-color: #444;
+}
+
+html.dark-mode th,
+html.dark-mode td {
+  border-color: #444;
+  color: #e5e5e5;
+}
+
+html.dark-mode th {
+  background: #2a2a2a;
+}
+
+html.dark-mode tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-submit { 
+  margin-top: 1rem; 
+  padding: .75rem 1.5rem; 
+  font-size: 1rem;
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  color: white; 
+  border: none; 
+  border-radius: 4px; 
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.btn-submit:hover { 
+  background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-submit:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.btn-submit:disabled:hover {
+  background: #6c757d;
+  box-shadow: none;
+  transform: none;
+}
 
 .btn-deck {
   padding: .4rem .8rem;
-  font-size: 1rem;       /* slightly larger text */
+  font-size: 1rem;
   background: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   margin: 2px;
-  display: inline-flex;  /* align icon and text nicely */
+  display: inline-flex;
   align-items: center;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
+
 .btn-deck i {
-  line-height: 1;        /* keep icon vertically centered */
+  line-height: 1;
 }
 
+.btn-deck:hover { 
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
+}
 
-.btn-deck:hover { background: #0069d9; }
+/* Inline toggle for Add/Share in table cells */
+.deck-mode-toggle {
+  position: relative;
+  display: flex;
+  background: #f8f9fa;
+  border-radius: 0;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  min-height: 42px;
+}
+
+/* Loading overlay for deck import */
+.deck-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(108, 117, 125, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  gap: 8px;
+  backdrop-filter: blur(2px);
+}
+
+.deck-loading-overlay .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+html.dark-mode .deck-loading-overlay {
+  background: rgba(42, 42, 42, 0.9);
+}
+
+/* Edit/Delete buttons after import */
+.deck-edit-btn,
+.deck-delete-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 10px 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.deck-edit-btn {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.deck-edit-btn:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
+}
+
+.deck-delete-btn {
+  background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+}
+
+.deck-delete-btn:hover {
+  background: linear-gradient(135deg, #a71d2a 0%, #7a1621 100%);
+}
+
+.deck-edit-btn .material-icons,
+.deck-delete-btn .material-icons {
+  font-size: 20px;
+}
+
+.deck-mode-toggle input[type="radio"] {
+  display: none;
+}
+
+.deck-mode-toggle label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  z-index: 2;
+  color: #6c757d;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 10px 0;
+  margin: 0;
+  position: relative;
+  align-self: stretch;
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.deck-mode-toggle label .material-icons {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+/* Add mode selected */
+.deck-mode-toggle input[value="add"]:checked + label {
+  flex: 1.4;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.deck-mode-toggle input[value="add"]:checked + label .material-icons {
+  transform: scale(1.1);
+}
+
+.deck-mode-toggle input[value="add"]:checked ~ label[for*="shareMode"] {
+  flex: 0.6;
+  color: #adb5bd;
+  font-size: 0.8rem;
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.deck-mode-toggle input[value="add"]:checked ~ label[for*="shareMode"] .material-icons {
+  font-size: 16px;
+}
+
+/* Share mode selected */
+.deck-mode-toggle input[value="share"]:checked + label[for*="shareMode"] {
+  flex: 1.4;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.deck-mode-toggle input[value="share"]:checked + label[for*="shareMode"] .material-icons {
+  transform: scale(1.1);
+}
+
+.deck-mode-toggle input[value="share"]:checked ~ label[for*="addMode"] {
+  flex: 0.6;
+  color: #adb5bd;
+  font-size: 0.8rem;
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.deck-mode-toggle input[value="share"]:checked ~ label[for*="addMode"] .material-icons {
+  font-size: 16px;
+}
+
+/* Dark mode for unselected options */
+html.dark-mode .deck-mode-toggle {
+  background: #2a2a2a;
+}
+
+html.dark-mode .deck-mode-toggle label {
+  color: #6c757d;
+}
+
+html.dark-mode .deck-mode-toggle input[value="add"]:checked ~ label[for*="shareMode"],
+html.dark-mode .deck-mode-toggle input[value="share"]:checked ~ label[for*="addMode"] {
+  color: #3d3d3d;
+  background: linear-gradient(135deg, #3a3a3a 0%, #404040 100%);
+}
+
+html.dark-mode .deck-mode-toggle input[value="add"]:checked + label,
+html.dark-mode .deck-mode-toggle input[value="share"]:checked + label[for*="shareMode"] {
+  color: white;
+}
+
+.deck-mode-toggle label:hover {
+  opacity: 0.9;
+}
+
+.deck-mode-toggle input:checked + label:hover,
+.deck-mode-toggle input[value="share"]:checked ~ label:nth-of-type(2):hover {
+  opacity: 0.95;
+}
+
 .icon { margin-right: 4px; }
 
 .custom-select select {
   width: 100%;
   font-size: 1.2rem;
   padding: 0.75rem;
-  border: 2px solid #4CAF50;
-  border-radius: 8px;
+  border: 2px solid #7c3aed;
+  border-radius: 4px;
   background-color: #fff;
   box-sizing: border-box;
   text-align: center;
   cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
 }
+
+html.dark-mode .custom-select select {
+  background-color: #2a2a2a;
+  color: #e5e5e5;
+  border-color: #a855f7;
+}
+
 .custom-select select:focus {
   outline: none;
-  border-color: #45a049;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .side-panel {
   background:#f9f9f9;
   padding:1rem;
   border:1px solid #ccc;
-  border-radius:6px;
-  width: 100%;       /* fill the right column only */
+  border-radius:4px;
+  width: 100%;
   box-sizing: border-box;
 }
+
+html.dark-mode .side-panel {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+/* Dark mode for card-style panels */
+html.dark-mode div[style*="linear-gradient(135deg, #f8f9fa"] {
+  background: linear-gradient(135deg, #2d1b4e 0%, #1e1332 100%) !important;
+  border: 2px solid #a855f7 !important;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15) !important;
+}
+
+html.dark-mode h3[style*="color: #2c3e50"],
+html.dark-mode label[style*="color: #2c3e50"] {
+  color: #e5e5e5 !important;
+}
+
+html.dark-mode .material-icons[style*="color: #7c3aed"] {
+  color: #ffffff !important;
+}
+
+/* Dark mode for card input fields */
+html.dark-mode input[style*="background: white"] {
+  background: #1a1a1a !important;
+  color: #e5e5e5 !important;
+  border-color: #505050 !important;
+}
+
+  /* Deck editor styles */
+  .deck-editor-wrap {
+    position: relative;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-height: 200px;
+    background: #fff;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .deck-editor {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-height: 200px;
+    max-height: 400px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: .5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  html.dark-mode .deck-editor-wrap,
+  html.dark-mode .deck-editor {
+    background: #2a2a2a;
+    border-color: #505050;
+    color: #e5e5e5;
+  }
+
+  /* Highlight spans behave exactly like text */
+  .hl-valid,
+  .hl-invalid,
+  .hl-not-legal,
+  .hl-dup {
+    display: inline;
+    font: inherit;
+    line-height: inherit;
+    vertical-align: baseline;
+    padding: 0;
+    margin: 0;
+  }
+
+  .hl-valid   { color: #2e7d32; }
+  html.dark-mode .deck-editor .hl-valid { color: #66bb6a !important; }
+  html.dark-mode .deck-editor span.hl-valid { color: #66bb6a !important; }
+  .hl-invalid { background: #f8d7da; color: #c0392b; }
+  .hl-not-legal { background: #fff3cd; color: #856404; }
+  .quantity-error { color: #c0392b; font-weight: bold; }
+  .hl-sideboard { 
+    color: #ffffff !important; 
+    font-weight: bold; 
+    display: block;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #888;
+    margin-bottom: 0.5rem;
+  }
+  html.dark-mode .deck-editor .hl-sideboard { color: #ffffff !important; }
+  html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
+
+  /* Deck name dropdown */
+  .deck-name-wrapper {
+    position: relative;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  .deck-name-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1001;
+  }
+
+  html.dark-mode .deck-name-dropdown {
+    background: #2a2a2a;
+    border-color: #505050;
+  }
+  
+  .deck-name-dropdown-item {
+    padding: 0.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  }
+
+  html.dark-mode .deck-name-dropdown-item {
+    border-bottom-color: #444;
+    color: #e5e5e5;
+  }
+  
+  .deck-name-dropdown-item:hover {
+    background-color: #f0f0f0;
+  }
+
+  html.dark-mode .deck-name-dropdown-item:hover {
+    background-color: #3a3a3a;
+  }
+  
+  .deck-name-dropdown-item:last-child {
+    border-bottom: none;
+  }
+  
+  .deck-name-create {
+    padding: 0.5rem;
+    font-style: italic;
+    color: #007bff;
+    cursor: pointer;
+    border-top: 2px solid #007bff;
+  }
+
+  html.dark-mode .deck-name-create {
+    color: #6ab0f3;
+    border-top-color: #6ab0f3;
+  }
+  
+  .deck-name-create:hover {
+    background-color: #e7f3ff;
+  }
+
+  html.dark-mode .deck-name-create:hover {
+    background-color: #1a3a52;
+  }
+
+  /* Loading overlay for deck validation */
+  .deck-loading-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 10;
+  }
+
+  html.dark-mode .deck-loading-overlay {
+    background: rgba(42, 42, 42, 0.9);
+  }
+
+  .deck-loading-overlay.active {
+    display: flex;
+  }
+
+  .deck-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #7c3aed;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+
+  html.dark-mode .deck-spinner {
+    border: 4px solid #444;
+    border-top: 4px solid #7c3aed;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .deck-loading-text {
+    margin-top: 1rem;
+    color: #666;
+    font-weight: 600;
+  }
+
+  html.dark-mode .deck-loading-text {
+    color: #aaa;
+  }
 
 .side-panel h3 { margin-top:0; }
 .option-group { display: flex; flex-direction: column; gap: .5rem; }
 .option input[type="radio"] { display: none; }
-.option span { display: block; padding: .6rem 1rem; border: 1px solid #ccc; border-radius: 6px;
-               cursor: pointer; background: #f9f9f9; transition: all 0.2s ease; text-align: center; }
-.option input[type="radio"]:checked + span { background: #4CAF50; color: white; border-color: #4CAF50; font-weight: bold; }
-.option span:hover { background: #e0e0e0; }
+.option span { 
+  display: block; 
+  padding: .6rem 1rem; 
+  border: 2px solid #ccc; 
+  border-radius: 4px;
+  cursor: pointer; 
+  background: #fff; 
+  transition: all 0.3s ease; 
+  text-align: center;
+  font-weight: 600;
+}
+
+.option input[type="radio"]:checked + span { 
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  color: white; 
+  border-color: #7c3aed;
+  box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
+}
+
+.option span:hover { 
+  background: linear-gradient(135deg, #bfdbfe 0%, #dbeafe 100%);
+  border-color: #93c5fd;
+  color: #1f2937;
+}
+
+html.dark-mode .option span {
+  background: #1a1a1a !important;
+  border-color: #a855f7 !important;
+  color: #e5e5e5 !important;
+}
+
+html.dark-mode .option input[type="radio"]:checked + span {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+  color: white !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 4px 8px rgba(168, 85, 247, 0.4) !important;
+}
+
+html.dark-mode .option span:hover {
+  background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%) !important;
+  border-color: #c084fc !important;
+  color: white !important;
+}
 
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0;
          width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-.modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 6px; width: 400px; }
+.modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 4px; width: 400px; }
+
+html.dark-mode .modal-content {
+  background-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
 .modal-content h3 { margin-top: 0; }
 .modal-content input, .modal-content textarea { width: 100%; margin-bottom: 1rem; padding: .5rem;
                                                 border: 1px solid #ccc; border-radius: 4px; }
+
+html.dark-mode .modal-content input,
+html.dark-mode .modal-content textarea {
+  background: #1a1a1a;
+  color: #e5e5e5;
+  border-color: #505050;
+}
+
 .close { float: right; font-size: 1.2rem; cursor: pointer; }
+
+html.dark-mode .close {
+  color: #e5e5e5;
+}
 
 /* Enhanced Store Selector */
 .store-selector-wrapper {
@@ -230,7 +876,7 @@ th { background: #f0f0f0; }
   width: 100%;
   padding: 0.75rem 1rem;
   border: 2px solid #ddd;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 1rem;
   background: white;
   cursor: pointer;
@@ -270,12 +916,12 @@ th { background: #f0f0f0; }
 }
 
 .store-select-button:hover {
-  border-color: #4CAF50;
+  border-color: #7c3aed;
 }
 
 .store-select-button.active {
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .store-dropdown {
@@ -287,8 +933,8 @@ th { background: #f0f0f0; }
   max-height: 400px;
   overflow-y: auto;
   background: white;
-  border: 2px solid #4CAF50;
-  border-radius: 8px;
+  border: 2px solid #7c3aed;
+  border-radius: 4px;
   margin-top: 0.25rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 1000;
@@ -316,7 +962,7 @@ th { background: #f0f0f0; }
 }
 
 .store-option.selected {
-  background: #e8f5e9;
+  background: #f3e8ff;
 }
 
 .store-option-image {
@@ -364,7 +1010,7 @@ html.dark-mode .store-select-button {
 
 html.dark-mode .store-dropdown {
   background: #2a2a2a;
-  border-color: #4CAF50;
+  border-color: #a855f7;
 }
 
 html.dark-mode .store-option {
@@ -376,7 +1022,7 @@ html.dark-mode .store-option:hover {
 }
 
 html.dark-mode .store-option.selected {
-  background: #1e3a1e;
+  background: #2d1b4e;
 }
 
 html.dark-mode .store-option-name {
@@ -391,126 +1037,203 @@ html.dark-mode .store-option-placeholder,
 html.dark-mode .store-select-placeholder {
   background: #444;
 }
+
+/* Custom autocomplete styles */
+.autocomplete-items {
+  position: absolute;
+  border: 1px solid #d4d4d4;
+  border-top: none;
+  z-index: 99;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.autocomplete-items div {
+  padding: 10px;
+  cursor: pointer;
+  background-color: #fff;
+  border-bottom: 1px solid #d4d4d4;
+}
+
+.autocomplete-items div:hover,
+.autocomplete-items div.autocomplete-active {
+  background-color: #e9e9e9;
+}
+
+html.dark-mode .autocomplete-items {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+html.dark-mode .autocomplete-items div {
+  background-color: #2a2a2a;
+  border-bottom-color: #444;
+  color: #e5e5e5;
+}
+
+html.dark-mode .autocomplete-items div:hover,
+html.dark-mode .autocomplete-items div.autocomplete-active {
+  background-color: #3a3a3a;
+}
+
+/* Make player input position relative for autocomplete positioning */
+.player-input {
+  position: relative;
+}
+
+td:nth-child(2) {
+  position: relative;
+}
     </style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
 
 <div class="new-tournament-casual-page"></div>
   <div class="content-wrapper">
     <h1>{% if is_editing %}Edit{% else %}Create New{% endif %} Casual Tournament (Final Standings)</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+    {% if not is_editing %}
+    <!-- Import from TCDecks Button -->
+    <div style="margin-bottom: 1rem;">
+      <button type="button" onclick="openTCDecksModal()" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.3s ease;">
+        <i class="material-icons" style="vertical-align: middle;">cloud_download</i> Import from TCDecks
+      </button>
+    </div>
+    {% endif %}
 
-    <form method="POST">
-      <div class="form-row">
-        <label>
-          Tournament Name <span style="color:#d9534f">*</span><br>
-          <input type="text" name="tournament_name" value="{% if tournament %}{{ tournament.name }}{% endif %}" required>
-        </label>
-        <label>
-          Date <span style="color:#d9534f">*</span><br>
-          <input type="date" name="date" value="{% if tournament %}{{ tournament.date }}{% endif %}" required>
-        </label>
+    <!-- TCDecks Import Modal -->
+    <div id="tcdecksModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close" onclick="closeTCDecksModal()">&times;</span>
+        <h3>Import from TCDecks</h3>
+        <p style="color: #666; margin-bottom: 1rem;">Paste the TCDecks tournament page URL below:</p>
+        <input type="text" id="tcdecksUrl" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 1rem;" placeholder="https://www.tcdecks.net/deck.php?id=42273">
+        <div id="tcdecksError" style="display: none; margin-top: 1rem; padding: 1rem; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 4px;"></div>
+        <button type="button" onclick="fetchAndParseTCDecks()" id="tcdecksImportBtn" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.3s ease;">
+          <i class="material-icons" style="vertical-align: middle;">file_upload</i> Fetch and Import
+        </button>
       </div>
-<div style="display:flex; gap:2rem;">
-  <!-- Left column: standings table -->
-  <div style="flex:2; min-width:0;">
-    <h2>Final Standings</h2>
+    </div>
+
+    <form method="POST" id="tournamentForm">
+      <div style="max-width: 1040px; margin: 0 auto;">
+        <div class="form-row">
+          <label>
+            Tournament Name <span style="color:#d9534f">*</span><br>
+            <input type="text" name="tournament_name" value="{% if tournament %}{{ tournament.name }}{% endif %}" required>
+          </label>
+          <label>
+            Date <span style="color:#d9534f">*</span><br>
+            <input type="date" name="date" value="{% if tournament %}{{ tournament.date }}{% endif %}" required>
+          </label>
+        </div>
+
+        <!-- Player Count and Round Count Row - Inverted L Layout -->
+        <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; align-items: center;">
+        <!-- Player Count -->
+        <div style="flex: 0 0 auto; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1rem 1.5rem; border-radius: 4px; border: 2px solid #7c3aed; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="material-icons" style="color: #7c3aed; font-size: 28px;">group</i>
+            <label style="font-size: 1.1rem; font-weight: bold; margin: 0; color: #2c3e50; white-space: nowrap;">
+              Player Count <span style="color:#d9534f">*</span>
+            </label>
+            <input type="number" name="player_count" id="playerCount" value="{% if tournament %}{{ tournament.player_count or 0 }}{% else %}0{% endif %}" min="1" required style="width: 80px; font-size: 1.8rem; text-align: center; padding: 0.6rem 0.8rem; border: 2px solid #ddd; border-radius: 4px; box-sizing: border-box; font-weight: 700; transition: all 0.3s ease; background: white;" />
+          </div>
+        </div>
+
+        <!-- Round Count -->
+        <div style="flex: 0 0 auto; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1rem 1.5rem; border-radius: 4px; border: 2px solid #7c3aed; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="material-icons" style="color: #7c3aed; font-size: 28px;">casino</i>
+            <label style="font-size: 1.1rem; font-weight: bold; margin: 0; color: #2c3e50; white-space: nowrap;">
+              Round Count <span style="color:#d9534f">*</span>
+            </label>
+            <input type="number" name="rounds" id="roundCount" value="{% if tournament %}{{ tournament.rounds or 0 }}{% else %}0{% endif %}" min="1" required style="width: 80px; font-size: 1.8rem; text-align: center; padding: 0.6rem 0.8rem; border: 2px solid #ddd; border-radius: 4px; box-sizing: border-box; font-weight: 700; transition: all 0.3s ease; background: white;" />
+          </div>
+        </div>
+
+        <!-- Store Selector -->
+        <div style="flex: 1; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1rem 1.5rem; border-radius: 4px; border: 2px solid #7c3aed; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="material-icons" style="color: #7c3aed; font-size: 28px;">store</i>
+            <label style="font-size: 1.1rem; font-weight: bold; margin: 0; color: #2c3e50; white-space: nowrap;">
+              Store <span style="color: #e74c3c;">*</span>
+            </label>
+            <div class="store-selector-wrapper" style="flex: 1;">
+              <button type="button" class="store-select-button" id="storeSelectBtn">
+                <div class="store-select-content">
+                  <div id="storeSelectImage"></div>
+                  <span id="storeSelectText">Select a store...</span>
+                </div>
+                <span>▼</span>
+              </button>
+              <input type="hidden" id="storeSelect" name="store_id" value="{{ tournament.store_id if tournament and tournament.store_id else '' }}" required>
+              <div class="store-dropdown" id="storeDropdown">
+                {% for store in stores %}
+                  <div class="store-option" data-store-id="{{ store.id }}" data-store-name="{{ store.name }}" data-store-location="{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}">
+                    {% if store.image_url %}
+                      <img src="{{ url_for('static', filename=store.image_url) }}" class="store-option-image" alt="{{ store.name }}">
+                    {% else %}
+                      <div class="store-option-placeholder">🏪</div>
+                    {% endif %}
+                    <div class="store-option-text">
+                      <div class="store-option-name">{{ store.name }}</div>
+                      <div class="store-option-location">{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}</div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div style="display:flex; gap:2rem; justify-content: center; align-items: flex-start;">
+        <!-- Left column: standings table -->
+        <div style="flex:0 1 800px; max-width: 800px; min-width:0;">
+          <h2>Final Standings</h2>
     <table id="standingsTable">
       <tr><th>Rank</th><th>Player</th><th>Deck</th></tr>
     </table>
-</div>
-  <!-- Right side: two side-panel columns -->
-  <div style="display:flex; gap:2rem; flex:0 0 460px;">
+  </div>
+
+  <!-- Right side: Top Cut selector only -->
+  <div style="display:flex; flex-direction: column; gap:1.5rem; flex:0 0 240px; padding-top: 3.5rem;">
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.25rem; border-radius: 4px; border: 2px solid #7c3aed; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">
+      <h3 style="margin-top: 0; margin-bottom: 1rem; color: #2c3e50; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="material-icons" style="color: #7c3aed; font-size: 24px;">emoji_events</i>
+        Top Cut
+      </h3>
+      <div class="option-group">
+        <label class="option">
+          <input type="radio" name="top_cut" value="4" {% if tournament and tournament.top_cut == 4 %}checked{% endif %}>
+          <span>TOP 4</span>
+        </label>
+        <label class="option">
+          <input type="radio" name="top_cut" value="8" {% if tournament and tournament.top_cut == 8 %}checked{% elif not tournament %}checked{% endif %}>
+          <span>TOP 8</span>
+        </label>
+        <label class="option">
+          <input type="radio" name="top_cut" value="16" {% if tournament and tournament.top_cut == 16 %}checked{% endif %}>
+          <span>TOP 16</span>
+        </label>
+        <label class="option">
+          <input type="radio" name="top_cut" value="32" {% if tournament and tournament.top_cut == 32 %}checked{% endif %}>
+          <span>TOP 32</span>
+        </label>
+      </div>
+    </div>
     
-    <!-- First column: Top Cut + Country -->
-    <div class="right-column">
-      <div class="side-panel">
-        <h3>Top Cut</h3>
-        <div class="option-group">
-          <label class="option">
-            <input type="radio" name="top_cut" value="4" {% if tournament and tournament.top_cut == 4 %}checked{% endif %}>
-            <span>TOP 4</span>
-          </label>
-          <label class="option">
-            <input type="radio" name="top_cut" value="8" {% if tournament and tournament.top_cut == 8 %}checked{% elif not tournament %}checked{% endif %}>
-            <span>TOP 8</span>
-          </label>
-          <label class="option">
-            <input type="radio" name="top_cut" value="16" {% if tournament and tournament.top_cut == 16 %}checked{% endif %}>
-            <span>TOP 16</span>
-          </label>
-          <label class="option">
-            <input type="radio" name="top_cut" value="32" {% if tournament and tournament.top_cut == 32 %}checked{% endif %}>
-            <span>TOP 32</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="side-panel">
-        <h3>Store</h3>
-        <div class="store-selector-wrapper">
-          <button type="button" class="store-select-button" id="storeSelectBtn">
-            <div class="store-select-content">
-              <div id="storeSelectImage"></div>
-              <span id="storeSelectText">Select a store...</span>
-            </div>
-            <span>▼</span>
-          </button>
-          <input type="hidden" id="storeSelect" name="store_id" value="{{ tournament.store_id if tournament and tournament.store_id else '' }}">
-          <div class="store-dropdown" id="storeDropdown">
-            {% for store in stores %}
-              <div class="store-option" data-store-id="{{ store.id }}" data-store-name="{{ store.name }}" data-store-location="{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}">
-                {% if store.image_url %}
-                  <img src="{{ url_for('static', filename=store.image_url) }}" class="store-option-image" alt="{{ store.name }}">
-                {% else %}
-                  <div class="store-option-placeholder">🏪</div>
-                {% endif %}
-                <div class="store-option-text">
-                  <div class="store-option-name">{{ store.name }}</div>
-                  <div class="store-option-location">{% if store.location %}{{ store.location }}{% if store.country %}, {{ store.country }}{% endif %}{% elif store.country %}{{ store.country }}{% endif %}</div>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Second column: Player Count + Round Count -->
-    <div class="right-column">
-      <div class="side-panel">
-        <h3>Player Count</h3>
-        <div class="custom-number">
-          <div class="controls">
-            <button type="button" onclick="stepNumber('playerCount', 1)">▲</button>
-          </div>
-          <input type="text" name="player_count" id="playerCount" value="{% if tournament %}{{ tournament.player_count or 0 }}{% else %}0{% endif %}" min="1" />
-          <div class="controls">
-            <button type="button" onclick="stepNumber('playerCount', -1)">▼</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="side-panel">
-        <h3>Round Count</h3>
-        <div class="custom-number">
-          <div class="controls">
-            <button type="button" onclick="stepNumber('roundCount', 1)">▲</button>
-          </div>
-          <input type="text" name="rounds" id="roundCount" value="{% if tournament %}{{ tournament.rounds or 0 }}{% else %}0{% endif %}" min="1" />
-          <div class="controls">
-            <button type="button" onclick="stepNumber('roundCount', -1)">▼</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Submit button moved here -->
+    <button type="submit" class="btn-submit" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+      <i class="material-icons">save</i>
+      {% if is_editing %}Save Changes{% else %}Save Final Standings{% endif %}
+      <i class="material-icons" style="font-size: 18px;">keyboard_double_arrow_right</i>
+    </button>
   </div>
 </div>
 
@@ -524,17 +1247,30 @@ html.dark-mode .store-select-placeholder {
   {% endfor %}
 {% endif %}
 
-<button type="submit" class="btn-submit">{% if is_editing %}Save Changes{% else %}Save Final Standings{% endif %}</button>
 </form>
 
+    <!-- Deck Modal -->
     <div id="deckModal" class="modal">
       <div class="modal-content">
         <span class="close" onclick="closeDeckModal()">&times;</span>
         <h3 id="deckModalTitle">Add Deck</h3>
         <label>Deck Name</label>
-        <input type="text" id="deckName">
+        <div class="deck-name-wrapper">
+          <input type="text" id="deckName" autocomplete="off" placeholder="Search or create archetype...">
+          <input type="hidden" id="deckNameConfirmed" value="false">
+          <div id="deckNameDropdown" class="deck-name-dropdown"></div>
+        </div>
         <label>Deck List</label>
-        <textarea id="deckList" rows="10"></textarea>
+        <div class="deck-editor-wrap">
+          <div id="deckEditor" contenteditable="true" class="deck-editor" spellcheck="false" autocomplete="off"></div>
+          <div id="deckLoadingOverlay" class="deck-loading-overlay">
+            <div class="deck-spinner"></div>
+            <div class="deck-loading-text">Checking Cards...</div>
+          </div>
+        </div>
+        <!-- hidden field to store plain text -->
+        <input type="hidden" id="deckList">
+        <div id="deckErrors" style="color:red; margin-top:0.5rem;"></div>
         <button type="button" class="btn-deck" onclick="saveDeckTemp()">
           <i class="material-icons">save</i> Save
         </button>
@@ -542,10 +1278,682 @@ html.dark-mode .store-select-placeholder {
     </div>
     <script>
 
+// TCDecks modal functions
+function openTCDecksModal() {
+  document.getElementById('tcdecksModal').style.display = 'block';
+  document.getElementById('tcdecksUrl').value = '';
+  document.getElementById('tcdecksError').style.display = 'none';
+}
+
+function closeTCDecksModal() {
+  document.getElementById('tcdecksModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+  const modal = document.getElementById('tcdecksModal');
+  if (event.target === modal) {
+    closeTCDecksModal();
+  }
+});
+
+// Fetch and parse TCDecks tournament
+async function fetchAndParseTCDecks() {
+  const url = document.getElementById('tcdecksUrl').value.trim();
+  const errorDiv = document.getElementById('tcdecksError');
+  const importBtn = document.getElementById('tcdecksImportBtn');
+  
+  if (!url) {
+    errorDiv.textContent = 'Please enter a TCDecks URL.';
+    errorDiv.style.display = 'block';
+    return;
+  }
+  
+  // Validate URL is from tcdecks.net
+  try {
+    const urlObj = new URL(url);
+    if (!urlObj.hostname.endsWith('tcdecks.net')) {
+      errorDiv.textContent = 'Please enter a valid TCDecks URL (tcdecks.net).';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    // Store the base URL for later use
+    window.tcdecksBaseUrl = urlObj.origin;
+  } catch (e) {
+    errorDiv.textContent = 'Invalid URL format. Please enter a valid URL.';
+    errorDiv.style.display = 'block';
+    return;
+  }
+  
+  // Show loading state
+  errorDiv.style.display = 'none';
+  importBtn.disabled = true;
+  importBtn.innerHTML = '<i class="material-icons" style="vertical-align: middle;">hourglass_empty</i> Fetching...';
+  
+  try {
+    // Fetch the page content via backend
+    const response = await fetch('/fetch_tcdecks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url: url })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      errorDiv.textContent = data.error || 'Failed to fetch TCDecks page.';
+      errorDiv.style.display = 'block';
+      importBtn.disabled = false;
+      importBtn.innerHTML = '<i class="material-icons" style="vertical-align: middle;">file_upload</i> Fetch and Import';
+      return;
+    }
+    
+    // Parse the HTML content
+    await parseTCDecksHTML(data.html);
+    
+  } catch (error) {
+    errorDiv.textContent = `Error: ${error.message}`;
+    errorDiv.style.display = 'block';
+    importBtn.disabled = false;
+    importBtn.innerHTML = '<i class="material-icons" style="vertical-align: middle;">file_upload</i> Fetch and Import';
+  }
+}
+
+// Fetch decklists from TCDecks URLs with batching for faster perceived performance
+async function fetchDecklists(decklistUrls, standings) {
+  // Helper function to fetch with retry logic
+  async function fetchWithRetry(url, playerName, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Fetching decklist for ${playerName} from ${url}${attempt > 1 ? ` (attempt ${attempt}/${maxRetries})` : ''}`);
+        
+        const response = await fetch('/fetch_tcdecks_decklist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url })
+        });
+        
+        const data = await response.json();
+        
+        // If successful, return immediately
+        if (response.ok && data.success && data.decklist) {
+          return { success: true, data };
+        }
+        
+        // If failed but not last attempt, log and retry
+        if (attempt < maxRetries) {
+          console.log(`Attempt ${attempt} failed for ${playerName}: ${data.error || 'Unknown error'}. Retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        } else {
+          // Last attempt failed
+          return { success: false, error: data.error || 'Unknown error' };
+        }
+      } catch (error) {
+        if (attempt < maxRetries) {
+          console.log(`Attempt ${attempt} failed for ${playerName}: ${error.message}. Retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          return { success: false, error: error.message };
+        }
+      }
+    }
+  }
+  
+  // Process in batches of 4 for faster perceived performance (browser limit ~6 concurrent)
+  const BATCH_SIZE = 4;
+  const entries = Object.entries(decklistUrls);
+  const totalCount = entries.length;
+  let completedCount = 0;
+  
+  const importBtn = document.getElementById('tcdecksImportBtn');
+  
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+    const batch = entries.slice(i, i + BATCH_SIZE);
+    const fetchPromises = batch.map(async ([playerName, deckUrl]) => {
+    let deckCell = null;
+    let rank = null;
+    
+    try {
+      // Find the rank for this player
+      const playerEntry = standings.find(s => s.player === playerName);
+      if (!playerEntry) {
+        return;
+      }
+      
+      rank = playerEntry.position;
+      
+      // Get the deck cell
+      const row = document.querySelector(`#standingsTable tr:nth-child(${parseInt(rank,10)+1})`);
+      deckCell = row ? row.querySelector('td:nth-child(3)') : null;
+      
+      const deckNameInput = document.getElementById(`deckName_${rank}`);
+      const deckListInput = document.getElementById(`deckList_${rank}`);
+      const deckModeInput = document.getElementById(`deckMode_${rank}`);
+      
+      // Fetch the decklist with retry logic
+      const result = await fetchWithRetry(deckUrl, playerName);
+      
+      console.log(`Decklist response for ${playerName}:`, result.success ? result.data : result);
+      
+      if (result.success && result.data.decklist) {
+        console.log(`Successfully imported decklist for ${playerName}`);
+        
+        // Populate the deck list (if hidden inputs exist)
+        if (deckListInput) {
+          deckListInput.value = result.data.decklist;
+        }
+        
+        if (deckNameInput) {
+          deckNameInput.value = playerEntry.archetype;
+        }
+        
+        if (deckModeInput) {
+          deckModeInput.value = 'add';
+        }
+        
+        // Always update persistent store (this is the source of truth for imported decks)
+        if (!playerDataStore[rank]) {
+          playerDataStore[rank] = { playerName: playerEntry.player, deckMode: 'add' };
+        }
+        playerDataStore[rank].deckName = playerEntry.archetype;
+        playerDataStore[rank].deckList = result.data.decklist;
+        
+        // Replace "Importing..." with Edit/Delete buttons immediately
+        if (deckCell) {
+          // Use proper escaping for the decklist value
+          const escapedDeckList = (playerDataStore[rank].deckList || '').replace(/"/g, '&quot;').replace(/\\/g, '\\\\');
+          const escapedDeckName = (playerDataStore[rank].deckName || '').replace(/"/g, '&quot;');
+          
+          deckCell.innerHTML = `
+            <div class="deck-mode-toggle" id="deckToggle_${rank}" style="display: flex; height: 100%;">
+              <button type="button" class="deck-edit-btn" onclick="openDeckModal(this)" data-rank="${rank}">
+                <i class="material-icons">edit</i> Edit
+              </button>
+              <button type="button" class="deck-delete-btn" onclick="removeDeck(${rank})">
+                <i class="material-icons">delete</i> Delete
+              </button>
+            </div>
+            <input type="hidden" name="deck_name_${rank}" id="deckName_${rank}" value="${escapedDeckName}" tabindex="-1">
+            <input type="hidden" name="deck_list_${rank}" id="deckList_${rank}" value="${escapedDeckList}" tabindex="-1">
+            <input type="hidden" name="deck_mode_${rank}" id="deckMode_${rank}" value="add" tabindex="-1">
+          `;
+        }
+      } else {
+        // If decklist fetch failed after all retries, still set the archetype name and restore toggle
+        console.log(`Failed to import decklist for ${playerName} after 3 attempts: ${result.error || 'Unknown error'}`);
+        
+        if (deckNameInput) {
+          deckNameInput.value = playerEntry.archetype;
+        }
+        
+        // Replace "Importing..." with Edit/Delete buttons (failed import, archetype only)
+        if (deckCell) {
+          const escapedArchetype = (playerEntry.archetype || '').replace(/"/g, '&quot;');
+          
+          deckCell.innerHTML = `
+            <div class="deck-mode-toggle" id="deckToggle_${rank}" style="display: flex; height: 100%;">
+              <button type="button" class="deck-edit-btn" onclick="openDeckModal(this)" data-rank="${rank}">
+                <i class="material-icons">edit</i> Edit
+              </button>
+              <button type="button" class="deck-delete-btn" onclick="removeDeck(${rank})">
+                <i class="material-icons">delete</i> Delete
+              </button>
+            </div>
+            <input type="hidden" name="deck_name_${rank}" id="deckName_${rank}" value="${escapedArchetype}" tabindex="-1">
+            <input type="hidden" name="deck_list_${rank}" id="deckList_${rank}" value="" tabindex="-1">
+            <input type="hidden" name="deck_mode_${rank}" id="deckMode_${rank}" value="add" tabindex="-1">
+          `;
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching decklist for ${playerName}:`, error);
+      
+      // Restore original toggle buttons on error
+      if (deckCell) {
+        deckCell.innerHTML = `
+          <div class="deck-mode-toggle" id="deckToggle_${rank}">
+            <input type="radio" id="addMode_${rank}" name="mode_toggle_${rank}" value="add" checked onchange="toggleDeckMode(${rank})">
+            <label for="addMode_${rank}" onclick="event.preventDefault(); event.stopPropagation(); openDeckModalFromToggle(${rank});">
+              <i class="material-icons">add</i> Add Deck
+            </label>
+            <input type="radio" id="shareMode_${rank}" name="mode_toggle_${rank}" value="share" onchange="toggleDeckMode(${rank})">
+            <label for="shareMode_${rank}">
+              <i class="material-icons">link</i> Share Link
+            </label>
+          </div>
+        `;
+      }
+    }
+    });
+    
+    // Wait for this batch to complete before starting next batch
+    await Promise.all(fetchPromises);
+  }
+}
+
+// TCDecks parser function
+async function parseTCDecksHTML(html) {
+  const errorDiv = document.getElementById('tcdecksError');
+  const importBtn = document.getElementById('tcdecksImportBtn');
+  
+  if (!html) {
+    errorDiv.textContent = 'No content received from TCDecks.';
+    errorDiv.style.display = 'block';
+    importBtn.disabled = false;
+    importBtn.innerHTML = '<i class="material-icons" style="vertical-align: middle;">file_upload</i> Fetch and Import';
+    return;
+  }
+  
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Get the body text for parsing
+    const bodyText = doc.body ? doc.body.textContent : html;
+    
+    console.log('DEBUG: Parsing TCDecks page...');
+    console.log('DEBUG: Body text length:', bodyText.length);
+    
+    // Extract tournament name - Try multiple methods
+    let tournamentName = '';
+    
+    // Method 1: Look for h1 or h2 tags
+    const h1 = doc.querySelector('h1');
+    const h2 = doc.querySelector('h2');
+    const h3 = doc.querySelector('h3');
+    
+    if (h1 && h1.textContent.trim() && !h1.textContent.toLowerCase().includes('tcdecks')) {
+      tournamentName = h1.textContent.trim();
+    } else if (h2 && h2.textContent.trim()) {
+      tournamentName = h2.textContent.trim();
+    } else if (h3 && h3.textContent.trim()) {
+      tournamentName = h3.textContent.trim();
+    }
+    
+    // Method 2: Look in meta tags
+    if (!tournamentName) {
+      const titleMeta = doc.querySelector('meta[property="og:title"]') || doc.querySelector('title');
+      if (titleMeta) {
+        const content = titleMeta.getAttribute('content') || titleMeta.textContent;
+        if (content && !content.toLowerCase().includes('tcdecks')) {
+          tournamentName = content.trim();
+        }
+      }
+    }
+    
+    // Method 3: Look for common TCDecks page title pattern
+    if (!tournamentName) {
+      const titleMatch = bodyText.match(/Event:\s*([^\n]+)/i) || 
+                        bodyText.match(/Tournament:\s*([^\n]+)/i) ||
+                        bodyText.match(/^([A-Z][^\n]{10,100}?)\s*(?:Format|Date|Number)/im);
+      if (titleMatch) {
+        tournamentName = titleMatch[1].trim();
+      }
+    }
+    
+    // Fallback
+    if (!tournamentName) {
+      tournamentName = 'Imported Tournament';
+    }
+    
+    console.log('DEBUG: Tournament name:', tournamentName);
+    
+    // Extract player count and date with more flexible patterns
+    let playerCount = 0;
+    let dateStr = '';
+    
+    // Try multiple date formats
+    const dateMatch = bodyText.match(/Date:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i) ||
+                      bodyText.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0');
+      const month = dateMatch[2].padStart(2, '0');
+      const year = dateMatch[3];
+      dateStr = `${year}-${month}-${day}`;
+    } else {
+      // Use today's date as fallback
+      const today = new Date();
+      dateStr = today.toISOString().split('T')[0];
+    }
+    
+    console.log('DEBUG: Date:', dateStr);
+    
+    // Extract player count with more flexible patterns
+    const playerMatch = bodyText.match(/(?:Number of )?Players?:\s*(\d+)/i) ||
+                        bodyText.match(/(\d+)\s+Players?/i);
+    
+    if (playerMatch) {
+      playerCount = parseInt(playerMatch[1], 10);
+    }
+    
+    console.log('DEBUG: Player count:', playerCount);
+    
+    // Extract standings - try both table format and text format
+    const standings = [];
+    const decklistUrls = {}; // Map player names to their decklist URLs
+    
+    // First try: look for HTML table with proper structure
+    const tables = doc.querySelectorAll('table');
+    let foundTable = false;
+    
+    console.log('DEBUG: Found', tables.length, 'tables');
+    
+    for (let tableIdx = 0; tableIdx < tables.length; tableIdx++) {
+      const table = tables[tableIdx];
+      const allCells = Array.from(table.querySelectorAll('th, td')).map(cell => cell.textContent.trim());
+      
+      console.log(`DEBUG: Table ${tableIdx} has ${allCells.length} cells`);
+      
+      // Check if this table has tournament-related headers
+      const hasArchetype = allCells.some(h => h.toLowerCase().includes('archetype') || h.toLowerCase().includes('deck'));
+      const hasPlayer = allCells.some(h => h.toLowerCase().includes('player') || h.toLowerCase().includes('name'));
+      
+      console.log(`DEBUG: Table ${tableIdx} - hasArchetype: ${hasArchetype}, hasPlayer: ${hasPlayer}`);
+      
+      if ((hasArchetype || hasPlayer) && allCells.length > 5) {
+        // Try to find the header row
+        const headerRow = table.querySelector('tr');
+        if (!headerRow) continue;
+        
+        const headerCells = Array.from(headerRow.querySelectorAll('th, td')).map(th => th.textContent.trim());
+        
+        console.log('DEBUG: Header cells:', headerCells);
+        
+        // Find column indices
+        let archetypeIndex = -1;
+        let playerIndex = -1;
+        let positionIndex = -1;
+        
+        headerCells.forEach((header, index) => {
+          const lower = header.toLowerCase();
+          if (lower.includes('archetype') || lower.includes('deck')) archetypeIndex = index;
+          if (lower.includes('player') || lower.includes('name')) playerIndex = index;
+          if (lower.includes('position') || lower.includes('rank') || lower.includes('place') || lower === '#') positionIndex = index;
+        });
+        
+        console.log(`DEBUG: Column indices - archetype: ${archetypeIndex}, player: ${playerIndex}, position: ${positionIndex}`);
+        
+        // Parse data rows
+        const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
+        let position = 1;
+        
+        rows.forEach(row => {
+          const cells = row.querySelectorAll('td, th');
+          if (cells.length > 0) {
+            let archetype = '';
+            let player = '';
+            let pos = position;
+            
+            // Try to extract values
+            if (archetypeIndex >= 0 && cells[archetypeIndex]) {
+              archetype = cells[archetypeIndex].textContent.trim();
+            }
+            if (playerIndex >= 0 && cells[playerIndex]) {
+              player = cells[playerIndex].textContent.trim();
+            }
+            if (positionIndex >= 0 && cells[positionIndex]) {
+              const posText = cells[positionIndex].textContent.trim();
+              const parsedPos = parseInt(posText, 10);
+              if (!isNaN(parsedPos)) pos = parsedPos;
+            }
+            
+            // If we couldn't find player or archetype by index, try to guess from content
+            if (!player || !archetype) {
+              Array.from(cells).forEach(cell => {
+                const text = cell.textContent.trim();
+                // If it's a number, probably position
+                if (/^\d+$/.test(text)) {
+                  pos = parseInt(text, 10);
+                }
+                // If it has letters and spaces, could be player name or archetype
+                else if (text.length > 2 && /[a-z]/i.test(text)) {
+                  if (!player) {
+                    player = text;
+                  } else if (!archetype) {
+                    archetype = text;
+                  }
+                }
+              });
+            }
+            
+            // Extract decklist URL from archetype cell
+            if (archetypeIndex >= 0 && cells[archetypeIndex]) {
+              const link = cells[archetypeIndex].querySelector('a');
+              if (link) {
+                let deckUrl = link.getAttribute('href');
+                
+                if (deckUrl) {
+                  if (!deckUrl.startsWith('http')) {
+                    const baseUrl = 'https://www.tcdecks.net';
+                    if (deckUrl.startsWith('/')) {
+                      deckUrl = baseUrl + deckUrl;
+                    } else {
+                      deckUrl = baseUrl + '/' + deckUrl;
+                    }
+                  }
+                  decklistUrls[player] = deckUrl;
+                }
+              }
+            }
+            
+            if (player && player.length > 1) {
+              standings.push({ player, archetype: archetype || 'Unknown', position: pos });
+              position++;
+            }
+          }
+        });
+        
+        console.log(`DEBUG: Found ${standings.length} standings from table`);
+        
+        if (standings.length > 0) {
+          foundTable = true;
+          break;
+        }
+      }
+    }
+    
+    // If no player count found but we have standings, use standings length
+    if (!playerCount && standings.length > 0) {
+      playerCount = standings.length;
+      console.log('DEBUG: Using standings length as player count:', playerCount);
+    }
+    
+    // Validate parsed data
+    if (!tournamentName || !playerCount || !dateStr || standings.length === 0) {
+      let missingFields = [];
+      if (!tournamentName) missingFields.push('tournament name');
+      if (!playerCount) missingFields.push('player count');
+      if (!dateStr) missingFields.push('date');
+      if (standings.length === 0) missingFields.push('standings table');
+      
+      console.error('DEBUG: Missing fields:', missingFields);
+      console.log('DEBUG: First 500 chars of body text:', bodyText.substring(0, 500));
+      
+      errorDiv.textContent = `Failed to parse: missing ${missingFields.join(', ')}. Please check the URL or try a different tournament page.`;
+      errorDiv.style.display = 'block';
+      importBtn.disabled = false;
+      importBtn.innerHTML = '<i class="material-icons" style="vertical-align: middle;">file_upload</i> Fetch and Import';
+      return;
+    }
+    
+    // Sort standings by position
+    standings.sort((a, b) => a.position - b.position);
+    
+    // Auto-assign top cut based on number of standings parsed: ≤8 players = top 8, >8 = top 16
+    const topCut = standings.length <= 8 ? 8 : 16;
+    
+    // Calculate round count based on player count
+    let roundCount;
+    if (playerCount >= 410) {
+      roundCount = 10;
+    } else if (playerCount >= 227) {
+      roundCount = 9;
+    } else if (playerCount >= 129) {
+      roundCount = 8;
+    } else if (playerCount >= 65) {
+      roundCount = 7;
+    } else if (playerCount >= 33) {
+      roundCount = 6;
+    } else if (playerCount >= 17) {
+      roundCount = 5;
+    } else if (playerCount >= 9) {
+      roundCount = 4;
+    } else if (playerCount >= 4) {
+      roundCount = 3;
+    } else {
+      roundCount = 3; // default minimum
+    }
+    
+    // Populate the form
+    document.querySelector('input[name="tournament_name"]').value = tournamentName;
+    document.querySelector('input[name="date"]').value = dateStr;
+    document.getElementById('playerCount').value = playerCount;
+    document.getElementById('roundCount').value = roundCount;
+    
+    // Set top cut radio
+    const topCutRadio = document.querySelector(`input[name="top_cut"][value="${topCut}"]`);
+    if (topCutRadio) {
+      topCutRadio.checked = true;
+    }
+    
+    // Populate standings table
+    const standingsTable = document.getElementById('standingsTable');
+    // Clear existing rows except header
+    while (standingsTable.rows.length > 1) {
+      standingsTable.deleteRow(1);
+    }
+    
+    standings.forEach((entry, index) => {
+      const rank = index + 1;
+      const row = document.createElement('tr');
+      
+      row.innerHTML = `
+        <td>${rank}</td>
+        <td>
+          <input type="text" name="player_${rank}" class="player-input" placeholder="Type player name" value="${entry.player}" tabindex="${rank}" required>
+        </td>
+        <td style="padding: 0; position: relative;">
+          <div class="deck-mode-toggle" id="deckToggle_${rank}">
+            <input type="radio" id="addMode_${rank}" name="mode_toggle_${rank}" value="add" checked onchange="toggleDeckMode(${rank})">
+            <label for="addMode_${rank}" onclick="event.preventDefault(); event.stopPropagation(); openDeckModalFromToggle(${rank});">
+              <i class="material-icons">add</i> Add Deck
+            </label>
+            <input type="radio" id="shareMode_${rank}" name="mode_toggle_${rank}" value="share" onchange="toggleDeckMode(${rank})">
+            <label for="shareMode_${rank}">
+              <i class="material-icons">link</i> Share Link
+            </label>
+          </div>
+          <input type="hidden" name="deck_name_${rank}" id="deckName_${rank}" value="${entry.archetype || ''}" tabindex="-1">
+          <input type="hidden" name="deck_list_${rank}" id="deckList_${rank}" value="" tabindex="-1">
+          <input type="hidden" name="deck_mode_${rank}" id="deckMode_${rank}" value="add" tabindex="-1">
+        </td>
+      `;
+      
+      standingsTable.appendChild(row);
+    });
+    
+    // Re-attach autocomplete to player inputs
+    document.querySelectorAll(".player-input").forEach(el => attachAutocomplete(el));
+    
+    // Replace deck cells with "Importing..." for all cells that will receive decklists
+    Object.entries(decklistUrls).forEach(([playerName, deckUrl]) => {
+      const playerEntry = standings.find(s => s.player === playerName);
+      if (playerEntry) {
+        const rank = playerEntry.position;
+        const row = document.querySelector(`#standingsTable tr:nth-child(${parseInt(rank,10)+1})`);
+        const deckCell = row ? row.querySelector('td:nth-child(3)') : null;
+        
+        if (deckCell) {
+          // Replace entire cell content with importing message
+          deckCell.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: #6c757d; color: white; font-weight: 600;">
+              <div style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+              <span>Importing...</span>
+            </div>
+          `;
+        }
+      }
+    });
+    
+    // Close modal immediately so user can edit tournament details
+    closeTCDecksModal();
+    
+    // Disable save button during import with tooltip
+    const saveBtn = document.querySelector('.btn-submit');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.title = 'Please wait for decklists to finish importing';
+    }
+    
+    // Fetch decklists and wait for completion
+    await fetchDecklists(decklistUrls, standings);
+    
+    // Re-enable save button after all imports complete
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.title = '';
+    }
+    
+    // Scroll to the form
+    document.getElementById('tournamentForm').scrollIntoView({ behavior: 'smooth' });
+    
+  } catch (error) {
+    errorDiv.textContent = `Error parsing TCDecks HTML: ${error.message}`;
+    errorDiv.style.display = 'block';
+    importBtn.disabled = false;
+    importBtn.innerHTML = '<i class="material-icons" style="vertical-align: middle;">file_upload</i> Fetch and Import';
+  }
+}
+
 // Pre-load existing tournament data in edit mode
 const isEditing = {{ 'true' if is_editing else 'false' }};
 const existingPlayers = {{ players_with_decks | tojson if players_with_decks else '[]' }};
 const initialTopCut = {{ tournament.top_cut if tournament and tournament.top_cut else 0 }};
+
+// Persistent storage for all player data regardless of top cut
+const playerDataStore = {};
+
+// Initialize store with existing players
+if (isEditing && existingPlayers.length > 0) {
+  existingPlayers.forEach((player, index) => {
+    playerDataStore[index + 1] = {
+      playerName: player.player_name || '',
+      deckName: player.deck_name || '',
+      deckList: player.deck_list || '',
+      deckMode: 'add'
+    };
+  });
+}
+
+// Save current form data to store before re-rendering
+function saveCurrentData() {
+  const table = document.getElementById('standingsTable');
+  const rows = table.querySelectorAll('tr');
+  
+  rows.forEach((row, index) => {
+    if (index === 0) return; // Skip header row
+    
+    const rank = index;
+    const playerInput = row.querySelector(`input[name="player_${rank}"]`);
+    const deckNameInput = document.getElementById(`deckName_${rank}`);
+    const deckListInput = document.getElementById(`deckList_${rank}`);
+    const deckModeInput = document.getElementById(`deckMode_${rank}`);
+    
+    if (playerInput) {
+      playerDataStore[rank] = {
+        playerName: playerInput.value || '',
+        deckName: deckNameInput ? deckNameInput.value : '',
+        deckList: deckListInput ? deckListInput.value : '',
+        deckMode: deckModeInput ? deckModeInput.value : 'add'
+      };
+    }
+  });
+}
 
 function stepNumber(id, step) {
   const input = document.getElementById(id);
@@ -559,6 +1967,7 @@ function stepNumber(id, step) {
 document.querySelector("form").addEventListener("submit", function(e) {
   const playerCount = document.getElementById("playerCount");
   const roundCount = document.getElementById("roundCount");
+  const storeSelect = document.getElementById("storeSelect");
 
   let valid = true;
 
@@ -576,35 +1985,107 @@ document.querySelector("form").addEventListener("submit", function(e) {
     roundCount.classList.remove("invalid");
   }
 
+  // Validate store selection
+  if (!storeSelect.value || storeSelect.value === '') {
+    alert("Please select a store before submitting.");
+    valid = false;
+    // Highlight the store button
+    const storeBtn = document.getElementById("storeSelectBtn");
+    if (storeBtn) {
+      storeBtn.style.borderColor = '#e74c3c';
+      storeBtn.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.2)';
+      setTimeout(() => {
+        storeBtn.style.borderColor = '';
+        storeBtn.style.boxShadow = '';
+      }, 3000);
+    }
+  }
+
   if (!valid) {
     e.preventDefault();
-    alert("Player Count and Round Count must be greater than zero.");
+    if (parseInt(playerCount.value, 10) <= 0 || parseInt(roundCount.value, 10) <= 0) {
+      alert("Player Count and Round Count must be greater than zero.");
+    }
   }
 });
 
 
 function attachAutocomplete(input) {
-  input.setAttribute("autocomplete", "off"); // disable native browser suggestions
-
-  const aw = new Awesomplete(input, {
-    minChars: 2,
-    list: []
-  });
-
-  input.addEventListener("input", function() {
-    const q = this.value;
-    if (q.length < 2) {
-      aw.list = [];
-      return;
+  input.setAttribute("autocomplete", "off");
+  
+  let dropdownEl = null;
+  let currentFocus = -1;
+  
+  function closeAllLists() {
+    const items = document.getElementsByClassName("autocomplete-items");
+    for (let i = 0; i < items.length; i++) {
+      items[i].parentNode.removeChild(items[i]);
     }
-    fetch("/players/search?q=" + encodeURIComponent(q))
+  }
+  
+  input.addEventListener("input", function(e) {
+    const val = this.value;
+    closeAllLists();
+    currentFocus = -1;
+    
+    if (!val || val.length < 2) return;
+    
+    fetch("/players/search?q=" + encodeURIComponent(val))
       .then(res => res.json())
       .then(data => {
-        aw.list = data; // backend returns ["Alice","Bob","Charlie"]
+        if (!data || data.length === 0) return;
+        
+        dropdownEl = document.createElement("DIV");
+        dropdownEl.setAttribute("class", "autocomplete-items");
+        input.parentNode.appendChild(dropdownEl);
+        
+        data.forEach(item => {
+          const div = document.createElement("DIV");
+          div.innerHTML = item.replace(new RegExp(val, 'gi'), match => `<strong>${match}</strong>`);
+          div.addEventListener("click", function() {
+            input.value = item;
+            closeAllLists();
+          });
+          dropdownEl.appendChild(div);
+        });
       })
-      .catch(() => {
-        aw.list = [];
-      });
+      .catch(() => {});
+  });
+  
+  input.addEventListener("keydown", function(e) {
+    let items = dropdownEl ? dropdownEl.getElementsByTagName("div") : [];
+    if (e.keyCode === 40) { // Down
+      currentFocus++;
+      addActive(items);
+      e.preventDefault();
+    } else if (e.keyCode === 38) { // Up
+      currentFocus--;
+      addActive(items);
+      e.preventDefault();
+    } else if (e.keyCode === 13) { // Enter
+      e.preventDefault();
+      if (currentFocus > -1 && items[currentFocus]) {
+        items[currentFocus].click();
+      }
+    }
+  });
+  
+  function addActive(items) {
+    if (!items || items.length === 0) return;
+    removeActive(items);
+    if (currentFocus >= items.length) currentFocus = 0;
+    if (currentFocus < 0) currentFocus = items.length - 1;
+    items[currentFocus].classList.add("autocomplete-active");
+  }
+  
+  function removeActive(items) {
+    for (let i = 0; i < items.length; i++) {
+      items[i].classList.remove("autocomplete-active");
+    }
+  }
+  
+  document.addEventListener("click", function(e) {
+    if (e.target !== input) closeAllLists();
   });
 }
 
@@ -616,37 +2097,72 @@ function renderStandings(topCut) {
   for (let i = 1; i <= topCut; i++) {
     const row = document.createElement('tr');
     
-    // Get existing player data if in edit mode
-    const playerData = isEditing && existingPlayers[i-1] ? existingPlayers[i-1] : null;
-    const playerName = playerData ? playerData.player_name : '';
-    const deckName = playerData ? playerData.deck_name : '';
-    const deckList = playerData ? playerData.deck_list : '';
+    // Get data from persistent store, fallback to existing players, or empty
+    const storedData = playerDataStore[i];
+    const playerName = storedData ? storedData.playerName : '';
+    const deckName = storedData ? storedData.deckName : '';
+    const deckList = storedData ? storedData.deckList : '';
+    const deckMode = storedData ? storedData.deckMode : 'add';
+    
+    // Determine which mode should be checked
+    const addChecked = deckMode === 'add' ? 'checked' : '';
+    const shareChecked = deckMode === 'share' ? 'checked' : '';
     
 row.innerHTML = `
   <td>${i}</td>
   <td>
-    <input type="text" name="player_${i}" class="player-input" placeholder="Type player name" value="${playerName}" tabindex="${i}">
+    <input type="text" name="player_${i}" class="player-input" placeholder="Type player name" value="${playerName}" tabindex="${i}" required>
   </td>
-  <td>
-    <div class="deck-buttons">
-      <button type="button" class="btn-deck" data-rank="${i}" onclick="openDeckModal(this)" tabindex="-1">
-        <i class="material-icons">${deckName ? 'edit' : 'add'}</i> ${deckName ? 'Edit' : 'Add'}
-      </button>
-      ${deckName ? `<button type="button" class="btn-deck" onclick="removeDeck(${i})" tabindex="-1"><i class="material-icons">delete</i> Delete</button>` : ''}
-    </div>
+  <td style="padding: 0;">
+    ${deckList ? `
+      <div class="deck-mode-toggle" id="deckToggle_${i}" style="display: flex; height: 100%;">
+        <button type="button" class="deck-edit-btn" onclick="openDeckModal(this)" data-rank="${i}">
+          <i class="material-icons">edit</i> Edit
+        </button>
+        <button type="button" class="deck-delete-btn" onclick="removeDeck(${i})">
+          <i class="material-icons">delete</i> Delete
+        </button>
+      </div>
+    ` : `
+      <div class="deck-mode-toggle" id="deckToggle_${i}">
+        <input type="radio" id="addMode_${i}" name="mode_toggle_${i}" value="add" ${addChecked} onchange="toggleDeckMode(${i})">
+        <label for="addMode_${i}" onclick="event.preventDefault(); event.stopPropagation(); openDeckModalFromToggle(${i});">
+          <i class="material-icons">add</i> Add Deck
+        </label>
+        <input type="radio" id="shareMode_${i}" name="mode_toggle_${i}" value="share" ${shareChecked} onchange="toggleDeckMode(${i})">
+        <label for="shareMode_${i}">
+          <i class="material-icons">link</i> Share Link
+        </label>
+      </div>
+    `}
     <input type="hidden" name="deck_name_${i}" id="deckName_${i}" value="${deckName}" tabindex="-1">
     <input type="hidden" name="deck_list_${i}" id="deckList_${i}" value="${deckList}" tabindex="-1">
+    <input type="hidden" name="deck_mode_${i}" id="deckMode_${i}" value="${deckMode}" tabindex="-1">
   </td>
 `;
 
 
     table.appendChild(row);
   }
-  document.querySelectorAll(".player-input").forEach(el => attachAutocomplete(el));
+  
+  // Attach autocomplete and change listeners to player inputs
+  document.querySelectorAll(".player-input").forEach(el => {
+    attachAutocomplete(el);
+    
+    // Update persistent store when player name changes
+    el.addEventListener('input', function() {
+      const rank = parseInt(this.name.replace('player_', ''), 10);
+      if (!playerDataStore[rank]) {
+        playerDataStore[rank] = { playerName: '', deckName: '', deckList: '', deckMode: 'add' };
+      }
+      playerDataStore[rank].playerName = this.value;
+    });
+  });
 }
 
 document.querySelectorAll("input[name='top_cut']").forEach(radio => {
   radio.addEventListener("change", () => {
+    saveCurrentData(); // Save before re-rendering
     renderStandings(parseInt(radio.value, 10));
   });
 });
@@ -660,61 +2176,608 @@ if (isEditing && initialTopCut > 0) {
 }
 
 let currentRank = null;
+
+function toggleDeckMode(rank) {
+  const addModeRadio = document.getElementById(`addMode_${rank}`);
+  const shareModeRadio = document.getElementById(`shareMode_${rank}`);
+  const deckModeInput = document.getElementById(`deckMode_${rank}`);
+  
+  if (shareModeRadio && shareModeRadio.checked) {
+    // Switched to share link mode
+    deckModeInput.value = 'share';
+    // Clear any existing deck data when switching to share link
+    document.getElementById(`deckName_${rank}`).value = '';
+    document.getElementById(`deckList_${rank}`).value = '';
+    
+    // Update persistent store
+    if (!playerDataStore[rank]) playerDataStore[rank] = {};
+    playerDataStore[rank].deckMode = 'share';
+    playerDataStore[rank].deckName = '';
+    playerDataStore[rank].deckList = '';
+  } else if (addModeRadio && addModeRadio.checked) {
+    // Switched back to add deck mode
+    deckModeInput.value = 'add';
+    
+    // Update persistent store
+    if (!playerDataStore[rank]) playerDataStore[rank] = {};
+    playerDataStore[rank].deckMode = 'add';
+  }
+}
+
+function openDeckModalFromToggle(rank) {
+  // Ensure Add Deck mode is selected
+  const addModeRadio = document.getElementById(`addMode_${rank}`);
+  const deckModeInput = document.getElementById(`deckMode_${rank}`);
+  
+  if (addModeRadio && !addModeRadio.checked) {
+    addModeRadio.checked = true;
+    deckModeInput.value = 'add';
+  }
+  
+  // Create a mock button element to pass to openDeckModal
+  const mockButton = {
+    dataset: { rank: rank },
+    textContent: 'Add'
+  };
+  openDeckModal(mockButton);
+}
+
 function openDeckModal(button) {
   currentRank = button.dataset.rank;
-  document.getElementById('deckModal').style.display = 'block';
-  document.getElementById('deckModalTitle').textContent =
-    (button.textContent.includes("Edit") ? "Edit Deck for Rank " : "Add Deck for Rank ") + currentRank;
+  const modal = document.getElementById('deckModal');
+  const title = document.getElementById('deckModalTitle');
+  const deckNameInput = document.getElementById('deckName');
+  const editor = document.getElementById('deckEditor');
+  const hidden = document.getElementById('deckList');
 
-  document.getElementById('deckName').value = document.getElementById('deckName_' + currentRank).value || "";
-  document.getElementById('deckList').value = document.getElementById('deckList_' + currentRank).value || "";
+  modal.style.display = 'block';
+  title.textContent = (button.textContent.includes("Edit") ? "Edit Deck for Rank " : "Add Deck for Rank ") + currentRank;
+
+  const existingNameEl = document.getElementById('deckName_' + currentRank);
+  const existingListEl = document.getElementById('deckList_' + currentRank);
+  
+  // Try to get from hidden inputs first, fallback to playerDataStore
+  let existingName = existingNameEl ? existingNameEl.value || "" : "";
+  let existingList = existingListEl ? existingListEl.value || "" : "";
+  
+  // If hidden inputs don't exist or are empty, check playerDataStore
+  if (!existingName && playerDataStore[currentRank]) {
+    existingName = playerDataStore[currentRank].deckName || "";
+  }
+  if (!existingList && playerDataStore[currentRank]) {
+    existingList = playerDataStore[currentRank].deckList || "";
+  }
+
+  deckNameInput.value = existingName;
+  const confirmedInput = document.getElementById('deckNameConfirmed');
+  if (confirmedInput) {
+    confirmedInput.value = 'false';
+  }
+
+  // Properly structure the editor content
+  editor.innerHTML = '';
+  if (existingList) {
+    const lines = existingList.split('\n');
+    lines.forEach(line => {
+      const div = document.createElement('div');
+      const span = document.createElement('span');
+      span.textContent = line;
+      div.appendChild(span);
+      editor.appendChild(div);
+    });
+    hidden.value = existingList;
+    validateAndHighlight();  // immediate validation for existing deck
+  } else {
+    // Empty editor with one empty line
+    const div = document.createElement('div');
+    const span = document.createElement('span');
+    div.appendChild(span);
+    editor.appendChild(div);
+    hidden.value = '';
+    
+    // Enable save button for empty deck list
+    const saveBtn = document.querySelector('.btn-deck');
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.style.opacity = '1';
+      saveBtn.style.cursor = 'pointer';
+    }
+  }
 }
 
 function closeDeckModal() {
-  document.getElementById('deckModal').style.display = 'none';
+  const modal = document.getElementById('deckModal');
+  if (modal) modal.style.display = 'none';
+  const dropdown = document.getElementById('deckNameDropdown');
+  if (dropdown) dropdown.style.display = 'none';
 }
 
 function saveDeckTemp() {
   if (!currentRank) return;
-  const deckName = document.getElementById('deckName').value;
+  
+  const deckNameInput = document.getElementById('deckName');
+  const confirmedInput = document.getElementById('deckNameConfirmed');
+  const deckName = deckNameInput.value.trim();
   const deckList = document.getElementById('deckList').value;
+
+  // Check if deck name is provided
+  if (!deckName) {
+    alert('Please enter a deck name.');
+    return;
+  }
+  
+  // Check if it's a new archetype that hasn't been confirmed
+  const isExisting = archetypes.some(arch => 
+    arch.toLowerCase() === deckName.toLowerCase()
+  );
+  
+  if (!isExisting && confirmedInput.value !== 'true') {
+    if (confirm(`Create new archetype "${deckName}"?`)) {
+      confirmedInput.value = 'true';
+    } else {
+      return;
+    }
+  }
 
   const safeName = deckName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const safeList = deckList.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   document.getElementById('deckName_' + currentRank).value = safeName;
   document.getElementById('deckList_' + currentRank).value = safeList;
+  
+  // Update persistent store
+  if (!playerDataStore[currentRank]) {
+    playerDataStore[currentRank] = { playerName: '', deckMode: 'add' };
+  }
+  playerDataStore[currentRank].deckName = safeName;
+  playerDataStore[currentRank].deckList = safeList;
 
   const row = document.querySelector(`#standingsTable tr:nth-child(${parseInt(currentRank,10)+1})`);
   const btnDiv = row.querySelector(".deck-buttons");
-btnDiv.innerHTML = `
-  <button type="button" class="btn-deck" data-rank="${currentRank}" onclick="openDeckModal(this)">
-    <i class="material-icons">edit</i> Edit
-  </button>
-  <button type="button" class="btn-deck" onclick="removeDeck(${currentRank})">
-    <i class="material-icons">delete</i> Delete
-  </button>
-`;
-
+  btnDiv.innerHTML = `
+    <button type="button" class="btn-deck" data-rank="${currentRank}" onclick="openDeckModal(this)">
+      <i class="material-icons">edit</i> Edit
+    </button>
+    <button type="button" class="btn-deck" onclick="removeDeck(${currentRank})">
+      <i class="material-icons">delete</i> Delete
+    </button>
+  `;
 
   closeDeckModal();
 }
 
 function removeDeck(rank) {
   const row = document.querySelector(`#standingsTable tr:nth-child(${parseInt(rank,10)+1})`);
-  const btnDiv = row.querySelector(".deck-buttons");
+  const deckCell = row.querySelector('td:nth-child(3)');
+  const deckToggle = deckCell.querySelector('.deck-mode-toggle');
 
-  btnDiv.innerHTML = `
-    <button type="button" class="btn-deck" data-rank="${rank}" onclick="openDeckModal(this)">
-      <i class="material-icons">add</i> Add Deck
-    </button>
-  `;
+  if (deckToggle) {
+    // Restore the Add/Share toggle
+    deckToggle.innerHTML = `
+      <input type="radio" id="addMode_${rank}" name="mode_toggle_${rank}" value="add" checked onchange="toggleDeckMode(${rank})">
+      <label for="addMode_${rank}" onclick="event.preventDefault(); event.stopPropagation(); openDeckModalFromToggle(${rank});">
+        <i class="material-icons">add</i> Add Deck
+      </label>
+      <input type="radio" id="shareMode_${rank}" name="mode_toggle_${rank}" value="share" onchange="toggleDeckMode(${rank})">
+      <label for="shareMode_${rank}">
+        <i class="material-icons">link</i> Share Link
+      </label>
+    `;
+  }
 
-  document.getElementById('deckName_' + rank).value = "";
-  document.getElementById('deckList_' + rank).value = "";
+  // Clear hidden inputs
+  const deckNameInput = document.getElementById('deckName_' + rank);
+  const deckListInput = document.getElementById('deckList_' + rank);
+  const deckModeInput = document.getElementById('deckMode_' + rank);
+  
+  if (deckNameInput) deckNameInput.value = "";
+  if (deckListInput) deckListInput.value = "";
+  if (deckModeInput) deckModeInput.value = "add";
+  
+  // Clear playerDataStore
+  if (playerDataStore[rank]) {
+    playerDataStore[rank].deckName = "";
+    playerDataStore[rank].deckList = "";
+    playerDataStore[rank].deckMode = "add";
+  }
 }
 
-document.querySelectorAll('#deckModal input, #deckModal textarea').forEach(el => {
+// Deck archetype dropdown functionality
+let archetypes = [];
+
+// Load archetypes from server
+async function loadArchetypes() {
+  try {
+    const response = await fetch("{{ url_for('get_deck_archetypes') }}");
+    archetypes = await response.json();
+  } catch (error) {
+    console.error('Failed to load archetypes:', error);
+    archetypes = [];
+  }
+}
+
+// Initialize archetypes on page load
+loadArchetypes();
+
+// Deck name dropdown
+const deckNameInput = document.getElementById('deckName');
+const deckNameDropdown = document.getElementById('deckNameDropdown');
+const deckNameConfirmed = document.getElementById('deckNameConfirmed');
+
+if (deckNameInput && deckNameDropdown) {
+  deckNameInput.addEventListener('input', function() {
+    const value = this.value.toLowerCase();
+    deckNameConfirmed.value = 'false';
+    
+    if (!value) {
+      deckNameDropdown.style.display = 'none';
+      return;
+    }
+    
+    const matches = archetypes.filter(arch => 
+      arch.toLowerCase().includes(value)
+    );
+    
+    if (matches.length > 0 || value.length > 0) {
+      deckNameDropdown.innerHTML = '';
+      
+      matches.forEach(arch => {
+        const div = document.createElement('div');
+        div.className = 'deck-name-dropdown-item';
+        div.textContent = arch;
+        div.onclick = () => {
+          deckNameInput.value = arch;
+          deckNameDropdown.style.display = 'none';
+          deckNameConfirmed.value = 'true';
+        };
+        deckNameDropdown.appendChild(div);
+      });
+      
+      if (!matches.some(arch => arch.toLowerCase() === value)) {
+        const createDiv = document.createElement('div');
+        createDiv.className = 'deck-name-create';
+        createDiv.textContent = `Create new: "${this.value}"`;
+        createDiv.onclick = () => {
+          deckNameDropdown.style.display = 'none';
+          deckNameConfirmed.value = 'true';
+        };
+        deckNameDropdown.appendChild(createDiv);
+      }
+      
+      deckNameDropdown.style.display = 'block';
+    } else {
+      deckNameDropdown.style.display = 'none';
+    }
+  });
+  
+  deckNameInput.addEventListener('focus', function() {
+    if (this.value && deckNameDropdown.children.length > 0) {
+      deckNameDropdown.style.display = 'block';
+    }
+  });
+  
+  document.addEventListener('click', function(e) {
+    if (!deckNameInput.contains(e.target) && !deckNameDropdown.contains(e.target)) {
+      deckNameDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Deck validation functions
+const editor = document.getElementById("deckEditor");
+const hidden = document.getElementById("deckList");
+const deckErrors = document.getElementById("deckErrors");
+
+function debounce(fn, delay = 300) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+// Ensure each child is a DIV with a SPAN
+function normalizeEditor() {
+  if (!editor) return;
+  Array.from(editor.childNodes).forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const div = document.createElement("div");
+      const span = document.createElement("span");
+      span.textContent = node.textContent;
+      div.appendChild(span);
+      editor.replaceChild(div, node);
+    } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== "DIV") {
+      const div = document.createElement("div");
+      const span = document.createElement("span");
+      span.textContent = node.textContent;
+      div.appendChild(span);
+      editor.replaceChild(div, node);
+    } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "DIV") {
+      let span = node.querySelector("span");
+      if (!span) {
+        span = document.createElement("span");
+        span.textContent = node.textContent;
+        node.innerHTML = "";
+        node.appendChild(span);
+      }
+    }
+  });
+  if (!editor.firstChild) {
+    const div = document.createElement("div");
+    const span = document.createElement("span");
+    div.appendChild(span);
+    editor.appendChild(div);
+  }
+}
+
+// Extract card names and quantities from a line
+function extractNamesFromLine(rawLine) {
+  const trimmed = rawLine.trim();
+  
+  if (!trimmed) return [];
+  
+  if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+    return [{ name: '__SIDEBOARD__', count: 0, isSideboard: true }];
+  }
+  
+  const tokens = trimmed.split(/\s+/);
+  const cards = [];
+  let currentCount = null;
+  let currentName = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    const next = tokens[i + 1];
+
+    if (/^-?\d+$/.test(tok)) {
+      if (currentName.length > 0) {
+        cards.push({ name: currentName.join(" "), count: currentCount || 1 });
+        currentName = [];
+      }
+      currentCount = parseInt(tok);
+      continue;
+    } else {
+      currentName.push(tok);
+      if (!next || /^-?\d+$/.test(next)) {
+        cards.push({ name: currentName.join(" "), count: currentCount || 1 });
+        currentName = [];
+        currentCount = null;
+      }
+    }
+  }
+
+  return cards
+    .map(c => ({ name: c.name.trim(), count: c.count }))
+    .filter(c => c.name.length > 0);
+}
+
+// Validate card names against Scryfall
+async function validateNames(cardNames) {
+  const invalid = new Set();
+  const notLegal = new Set();
+  const cardData = new Map();
+  
+  for (const name of cardNames) {
+    try {
+      const resp = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`);
+      const card = await resp.json();
+      if (card.object === "error") {
+        invalid.add(name.toLowerCase());
+      } else {
+        cardData.set(name.toLowerCase(), card);
+        if (card.legalities && card.legalities.premodern !== 'legal') {
+          notLegal.add(name.toLowerCase());
+        }
+      }
+    } catch {
+      invalid.add(name.toLowerCase());
+    }
+  }
+  return { invalid, notLegal, cardData };
+}
+
+// Main validation and highlighting function
+async function validateAndHighlight(showLoading = false) {
+  if (!editor || !hidden || !deckErrors) return;
+
+  const loadingOverlay = document.getElementById('deckLoadingOverlay');
+  if (showLoading && loadingOverlay) loadingOverlay.classList.add('active');
+
+  normalizeEditor();
+
+  const lines = Array.from(editor.children).map(div => div.querySelector("span").textContent);
+  hidden.value = lines.join("\n");
+
+  const names = [];
+  const seen = new Set();
+  let sideboardCount = 0;
+
+  const perLineCards = lines.map(line => extractNamesFromLine(line));
+  for (const arr of perLineCards) {
+    for (const card of arr) {
+      if (card.isSideboard) {
+        sideboardCount++;
+        continue;
+      }
+      const key = card.name.toLowerCase();
+      if (!seen.has(key)) {
+        names.push(card.name);
+        seen.add(key);
+      }
+    }
+  }
+
+  const { invalid, notLegal, cardData } = await validateNames(names);
+
+  if (loadingOverlay) loadingOverlay.classList.remove('active');
+
+  const basicLands = new Set(['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes']);
+  let hasQuantityError = false;
+  const quantityErrors = [];
+  
+  if (sideboardCount > 1) {
+    hasQuantityError = true;
+    quantityErrors.push('Multiple sideboard sections found - only one is allowed');
+  }
+
+  perLineCards.forEach(arr => {
+    for (const card of arr) {
+      if (card.isSideboard) continue;
+      
+      const key = card.name.toLowerCase();
+      const isBasic = basicLands.has(key);
+      const count = card.count;
+      
+      if (count <= 0 || count > (isBasic ? 999 : 4)) {
+        hasQuantityError = true;
+        if (count <= 0) {
+          quantityErrors.push(`${card.name}: quantity must be at least 1`);
+        } else {
+          quantityErrors.push(`${card.name}: maximum 4 copies allowed (${count} specified)`);
+        }
+      }
+    }
+  });
+
+  const saveBtn = document.querySelector('.btn-deck');
+  if (saveBtn) {
+    if (invalid.size > 0 || hasQuantityError) {
+      saveBtn.disabled = true;
+      saveBtn.style.opacity = '0.5';
+      saveBtn.style.cursor = 'not-allowed';
+    } else {
+      saveBtn.disabled = false;
+      saveBtn.style.opacity = '1';
+      saveBtn.style.cursor = 'pointer';
+    }
+  }
+
+  perLineCards.forEach((arr, i) => {
+    // Safety check: ensure the editor line exists
+    if (!editor.children[i]) return;
+    
+    if (arr.length > 0 && arr[0].isSideboard) {
+      const span = editor.children[i].querySelector("span");
+      if (!span) return;
+      if (sideboardCount > 1) {
+        span.className = "hl-invalid";
+      } else {
+        span.className = "hl-sideboard";
+      }
+      return;
+    }
+    
+    let isInvalid = false;
+    let isNotLegal = false;
+    let hasQtyError = false;
+    
+    for (const card of arr) {
+      const key = card.name.toLowerCase();
+      const isBasic = basicLands.has(key);
+      const count = card.count;
+      
+      if (invalid.has(key)) {
+        isInvalid = true;
+        break;
+      }
+      if (count <= 0 || count > (isBasic ? 999 : 4)) {
+        hasQtyError = true;
+      }
+      if (notLegal.has(key)) {
+        isNotLegal = true;
+      }
+    }
+    
+    let cls = "hl-valid";
+    if (isInvalid || hasQtyError) {
+      cls = "hl-invalid";
+    } else if (isNotLegal) {
+      cls = "hl-not-legal";
+    }
+
+    const span = editor.children[i].querySelector("span");
+    if (!span) return;
+    
+    if (hasQtyError && !isInvalid) {
+      const text = span.textContent;
+      const match = text.match(/^(-?\d+)\s+(.+)$/);
+      if (match) {
+        span.innerHTML = `<span class="quantity-error">${match[1]}</span> ${match[2]}`;
+      }
+    }
+    
+    if (span.className !== cls) span.className = cls;
+  });
+
+  deckErrors.innerHTML = "";
+  
+  if (quantityErrors.length > 0) {
+    quantityErrors.forEach(err => {
+      const div = document.createElement("div");
+      div.style.color = "#c0392b";
+      div.textContent = err;
+      deckErrors.appendChild(div);
+    });
+  }
+  
+  if (invalid.size > 0) {
+    const done = new Set();
+    for (const nm of names) {
+      const key = nm.toLowerCase();
+      if (invalid.has(key) && !done.has(key)) {
+        const div = document.createElement("div");
+        div.textContent = `${nm} → not found (exact match)`;
+        deckErrors.appendChild(div);
+        done.add(key);
+      }
+    }
+  }
+  
+  if (notLegal.size > 0) {
+    const done = new Set();
+    for (const nm of names) {
+      const key = nm.toLowerCase();
+      if (notLegal.has(key) && !done.has(key)) {
+        const div = document.createElement("div");
+        div.style.color = "#856404";
+        div.textContent = `${nm} is not legal in premodern`;
+        deckErrors.appendChild(div);
+        done.add(key);
+      }
+    }
+  }
+}
+
+const debouncedValidate = debounce(validateAndHighlight, 300);
+
+if (editor) {
+  normalizeEditor();
+  editor.addEventListener("input", debouncedValidate);
+  editor.addEventListener("blur", validateAndHighlight);
+  editor.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      setTimeout(() => normalizeEditor(), 0);
+    }
+  });
+
+  editor.addEventListener("paste", e => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    const lines = text.replace(/\r/g, "").split("\n");
+
+    editor.innerHTML = "";
+
+    lines.forEach(line => {
+      const div = document.createElement("div");
+      const span = document.createElement("span");
+      span.textContent = line;
+      div.appendChild(span);
+      editor.appendChild(div);
+    });
+
+    normalizeEditor();
+    validateAndHighlight(true);
+  });
+}
+
+document.querySelectorAll('#deckModal input').forEach(el => {
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();

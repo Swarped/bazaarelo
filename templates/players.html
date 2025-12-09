@@ -99,6 +99,64 @@
       html.dark-mode a.btn-secondary:visited {
         color: #e0e0e0 !important;
       }
+
+      .store-filter-btn {
+        padding: 0.6rem 1.2rem;
+        border: 2px solid #ccc;
+        background: white;
+        color: #1f2937;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.2s;
+        margin: 0.25rem;
+      }
+      
+      .store-filter-btn.active {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: white;
+        border-color: #7c3aed;
+      }
+      
+      html.dark-mode .store-filter-btn {
+        background: #2a2a2a;
+        border-color: #505050;
+        color: #e5e5e5;
+      }
+      
+      html.dark-mode .store-filter-btn.active {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: white;
+        border-color: #a855f7;
+      }
+
+      .store-filters-container {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f5f5f5;
+        border-radius: 8px;
+      }
+
+      html.dark-mode .store-filters-container {
+        background: #2a2a2a;
+      }
+
+      .store-filters-container label {
+        font-weight: 600;
+        color: #333;
+        font-size: 1.1rem;
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+      }
+
+      html.dark-mode .store-filters-container label {
+        color: #e5e5e5;
+      }
       
       html.dark-mode a.btn-secondary:hover {
         color: #fff !important;
@@ -359,22 +417,6 @@
 
       tr:nth-child(even) {
         background-color: #f9f9f9;
-      }
-
-
-      .flash-error {
-        background: #f8d7da;
-        color: #721c24;
-        padding: .5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #f5c6cb;
-      }
-      .flash-success {
-        background: #d4edda;
-        color: #155724;
-        padding: .5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #c3e6cb;
       }
 
       td.actions {
@@ -1081,18 +1123,6 @@ html.dark-mode .featured-posts-section h2 {
   {% endif %}
 
 <div class="players-page">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        {% if category == 'error' %}
-          <div class="flash-error">{{ message }}</div>
-        {% elif category == 'success' %}
-          <div class="flash-success">{{ message }}</div>
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
   <!-- FLEX CONTAINER: left tables + right aside -->
   <div style="display:flex; gap:2rem; align-items:flex-start; flex-wrap:nowrap;">
     <!-- LEFT COLUMN -->
@@ -1108,7 +1138,7 @@ html.dark-mode .featured-posts-section h2 {
 
       <div class="filters-toolbar">
         <input type="text" id="searchBar" placeholder="🔍 Search players...">
-        <form method="GET" class="filter-group" id="countryFilterForm">
+        <div class="filter-group">
           <label for="country">Country:</label>
           <select name="country" id="country" class="country-select">
             <option value="">🌐 Global</option>
@@ -1147,13 +1177,19 @@ html.dark-mode .featured-posts-section h2 {
             } %}
             {% for country_code in available_countries|sort %}
               {% if country_code in country_names %}
-                <option value="{{ country_code }}" {% if request.args.get('country') == country_code %}selected{% endif %} data-flag="{{ country_code|lower }}">{{ country_names[country_code] }}</option>
+                <option value="{{ country_code }}" data-flag="{{ country_code|lower }}">{{ country_names[country_code] }}</option>
               {% else %}
-                <option value="{{ country_code }}" {% if request.args.get('country') == country_code %}selected{% endif %} data-flag="{{ country_code|lower }}">{{ country_code }}</option>
+                <option value="{{ country_code }}" data-flag="{{ country_code|lower }}">{{ country_code }}</option>
               {% endif %}
             {% endfor %}
           </select>
-        </form>
+        </div>
+      </div>
+
+      <div class="store-filters-container" id="storeFiltersContainer" style="display: none;">
+        <label>Store:</label>
+        <button class="store-filter-btn active" data-store="" onclick="filterByStore('all')">All Stores</button>
+        <div id="storeButtons"></div>
       </div>
 
       <!-- PANELS WRAPPER -->
@@ -1169,7 +1205,7 @@ html.dark-mode .featured-posts-section h2 {
               <th>Country</th>
             </tr>
             {% for p in players %}
-            <tr class="clickable-row" data-href="{{ url_for('player_info', pid=p.player.id) }}" data-country="{{ player_country(p.player.id) or '' }}">
+            <tr class="clickable-row" data-href="{{ url_for('player_info', pid=p.player.id) }}" data-country="{{ player_country(p.player.id) or '' }}" data-stores="{{ player_stores(p.player.id)|join(',') }}">
               <td>
                 {% if p.rank %}
                   #{{ p.rank }}
@@ -1212,16 +1248,32 @@ html.dark-mode .featured-posts-section h2 {
           <h2>Casual Ranking</h2>
           <table id="casualPlayersTable">
             <tr>
-              <th>Rank</th>
+              <th style="width: 60px;">Rank</th>
+              <th style="width: 30px;"></th>
               <th>Name</th>
-              <th>Casual Points</th>
-              <th>Country</th>
+              <th style="width: 120px;">Casual Points</th>
+              <th style="width: 60px;">Country</th>
             </tr>
             {% for p in casual_players %}
-            <tr data-country="{{ player_country(p.player.id) or '' }}">
+            <tr class="clickable-row" data-href="{{ url_for('player_info', pid=p.player.id) }}" data-country="{{ player_country(p.player.id) or '' }}" data-stores="{{ player_stores(p.player.id)|join(',') }}" data-points-by-store='{{ p.points_by_store|tojson }}' data-total-points="{{ p.player.casual_points }}">
               <td>#{{ p.rank }}</td>
+              <td style="text-align: center;">
+                {% if p.rank_change is not none %}
+                  {% if p.rank_change > 0 %}
+                    <span style="color: #22c55e; font-size: 18px;" title="Up {{ p.rank_change }} position{{ 's' if p.rank_change > 1 else '' }}">▲</span>
+                  {% elif p.rank_change < 0 %}
+                    <span style="color: #ef4444; font-size: 18px;" title="Down {{ p.rank_change|abs }} position{{ 's' if p.rank_change|abs > 1 else '' }}">▼</span>
+                  {% else %}
+                    <span style="color: #6b7280; font-size: 14px;" title="No change">—</span>
+                  {% endif %}
+                {% else %}
+                  <span style="color: #d1d5db; font-size: 14px;" title="New entry">●</span>
+                {% endif %}
+              </td>
               <td>{{ p.player.name }}</td>
-              <td>{{ p.player.casual_points }}</td>
+              <td class="points-cell">
+                <span class="points-value">{{ p.points }}</span>
+              </td>
               <td>
                 {% if player_country(p.player.id) %}
                   <span class="fi fi-{{ player_country(p.player.id)|lower }}"></span>
@@ -1252,19 +1304,23 @@ html.dark-mode .featured-posts-section h2 {
           background-position: center;
           height: 120px;
           display: flex;
-          align-items: center;
-          justify-content: center;">
-          <span style="
+          align-items: flex-end;
+          justify-content: center;
+          position: relative;">
+          <div style="
             color: white;
             font-weight: bold;
-            font-size: 1.2rem;
-            text-shadow: 2px 2px 4px black;
             text-align: center;
-            padding: 0.5rem;
-            background: rgba(0,0,0,0.3);
+            padding: 0.75rem 0.5rem;
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 70%, transparent 100%);
             width: 100%;">
-            {{ deck.name }}
-          </span>
+            <div style="font-size: 1.2rem; text-shadow: 2px 2px 6px rgba(0,0,0,0.9); margin-bottom: 0.25rem;">
+              {{ deck.name }}
+            </div>
+            <div style="font-size: 0.85rem; color: #66ff99; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">
+              {{ deck.meta_share }}% Meta Share
+            </div>
+          </div>
         </div>
       </a>
       {% endfor %}
@@ -1365,14 +1421,16 @@ html.dark-mode .featured-posts-section h2 {
 const searchBar = document.getElementById("searchBar");
 const countrySelect = document.getElementById("country");
 
-// Prevent form submission and handle client-side
+// Store filter state
+let currentStoreFilter = '';
+
+// Stores data from backend
+const storesByCountry = {{ stores_by_country|tojson }};
+
+// Handle country change
 if (countrySelect) {
-  countrySelect.form.addEventListener('submit', (e) => {
-    e.preventDefault();
-  });
-  
   countrySelect.addEventListener('change', () => {
-    applyFilters();
+    updateStoreFilters(countrySelect.value);
   });
 }
 
@@ -1380,9 +1438,106 @@ searchBar.addEventListener("keyup", () => {
   applyFilters();
 });
 
+function updateStoreFilters(country) {
+  currentStoreFilter = '';
+  
+  const storeContainer = document.getElementById('storeFiltersContainer');
+  const storeButtons = document.getElementById('storeButtons');
+  
+  if (country && storesByCountry[country]) {
+    storeButtons.innerHTML = '';
+    storesByCountry[country].forEach(store => {
+      const btn = document.createElement('button');
+      btn.className = 'store-filter-btn';
+      btn.setAttribute('data-store', store.id.toString());
+      btn.textContent = store.name;
+      btn.onclick = () => filterByStore(store.id.toString());
+      storeButtons.appendChild(btn);
+    });
+    
+    // Only show store filters if casual table is active
+    const casualTableActive = document.getElementById('casual-table').classList.contains('active');
+    if (casualTableActive) {
+      storeContainer.style.display = 'flex';
+    }
+    
+    // Reset to "All Stores"
+    document.querySelectorAll('.store-filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector('.store-filter-btn[data-store=""]').classList.add('active');
+    
+    // Reset points display to total
+    filterByStore('all');
+  } else {
+    storeContainer.style.display = 'none';
+  }
+  
+  applyFilters();
+}
+
+function filterByStore(storeId) {
+  currentStoreFilter = storeId;
+  
+  // Update button states
+  document.querySelectorAll('.store-filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-store') === storeId || (storeId === 'all' && btn.getAttribute('data-store') === '')) {
+      btn.classList.add('active');
+    }
+  });
+  
+  // Update points display for each casual player
+  const casualRows = document.querySelectorAll("#casualPlayersTable tr:not(:first-child)");
+  casualRows.forEach(row => {
+    const pointsCell = row.querySelector('.points-cell');
+    const pointsValue = row.querySelector('.points-value');
+    const pointsByStore = JSON.parse(row.getAttribute('data-points-by-store') || '{}');
+    const totalPoints = parseInt(row.getAttribute('data-total-points') || '0');
+    
+    if (storeId === 'all' || storeId === '') {
+      // Show total points
+      pointsValue.textContent = totalPoints;
+    } else {
+      // Show points for selected store
+      const storeData = pointsByStore[storeId];
+      pointsValue.textContent = storeData ? storeData.points : 0;
+    }
+  });
+  
+  // Re-sort and re-rank the table
+  resortCasualTable();
+  
+  applyFilters();
+}
+
+function resortCasualTable() {
+  const table = document.getElementById('casualPlayersTable');
+  const tbody = table.querySelector('tbody') || table;
+  const rows = Array.from(tbody.querySelectorAll('tr:not(:first-child)'));
+  
+  // Sort by points (descending)
+  rows.sort((a, b) => {
+    const pointsA = parseInt(a.querySelector('.points-value').textContent) || 0;
+    const pointsB = parseInt(b.querySelector('.points-value').textContent) || 0;
+    return pointsB - pointsA;
+  });
+  
+  // Re-add rows in sorted order and update ranks
+  let rank = 1;
+  rows.forEach(row => {
+    const points = parseInt(row.querySelector('.points-value').textContent) || 0;
+    if (points > 0) {
+      row.cells[0].textContent = '#' + rank;
+      tbody.appendChild(row);
+      row.style.display = '';
+      rank++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
 function applyFilters() {
   const searchFilter = searchBar.value.toLowerCase();
-  const countryFilter = countrySelect ? countrySelect.value : '';
 
   const rowsToHide = [];
   const rowsToShow = [];
@@ -1391,12 +1546,10 @@ function applyFilters() {
   const compRows = document.querySelectorAll("#playersTable tr:not(:first-child)");
   compRows.forEach(row => {
     const nameCell = row.cells[1].textContent.toLowerCase();
-    const rowCountry = row.getAttribute('data-country') || '';
     
     const matchesSearch = nameCell.includes(searchFilter);
-    const matchesCountry = !countryFilter || rowCountry === countryFilter;
     
-    const shouldBeHidden = !(matchesSearch && matchesCountry);
+    const shouldBeHidden = !matchesSearch;
     const isCurrentlyHidden = row.classList.contains('hidden');
     
     if (shouldBeHidden && !isCurrentlyHidden) {
@@ -1406,16 +1559,16 @@ function applyFilters() {
     }
   });
 
-  // Casual rows
+  // Casual rows - also check if they have 0 points with current store filter
   const casualRows = document.querySelectorAll("#casualPlayersTable tr:not(:first-child)");
   casualRows.forEach(row => {
     const nameCell = row.cells[1].textContent.toLowerCase();
-    const rowCountry = row.getAttribute('data-country') || '';
+    const points = parseInt(row.querySelector('.points-value').textContent) || 0;
     
     const matchesSearch = nameCell.includes(searchFilter);
-    const matchesCountry = !countryFilter || rowCountry === countryFilter;
+    const hasPoints = points > 0;
     
-    const shouldBeHidden = !(matchesSearch && matchesCountry);
+    const shouldBeHidden = !matchesSearch || !hasPoints;
     const isCurrentlyHidden = row.classList.contains('hidden');
     
     if (shouldBeHidden && !isCurrentlyHidden) {
@@ -1506,10 +1659,17 @@ function swapPanels(showPanel, hidePanel) {
 
 document.getElementById('competitive').addEventListener('change', () => {
   swapPanels(compPanel, casualPanel);
+  // Hide store filters when switching to competitive table
+  document.getElementById('storeFiltersContainer').style.display = 'none';
 });
 
 document.getElementById('casual').addEventListener('change', () => {
   swapPanels(casualPanel, compPanel);
+  // Show store filters when switching to casual table (if country is selected)
+  const selectedCountry = document.getElementById('country').value;
+  if (selectedCountry) {
+    document.getElementById('storeFiltersContainer').style.display = 'flex';
+  }
 });
 
 // Blog Carousel Functionality
@@ -1632,8 +1792,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Close dropdown
         customSelect.classList.remove('open');
         
-        // Submit form
-        document.getElementById('countryFilterForm').submit();
+        // Trigger country change and filter update
+        updateStoreFilters(option.value);
       });
       
       optionsContainer.appendChild(optionDiv);

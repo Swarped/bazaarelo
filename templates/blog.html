@@ -448,16 +448,6 @@
     <p>Latest news and updates from the community</p>
   </div>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash-{{ category }}" style="padding: 1rem; margin-bottom: 1rem; border-radius: 6px; {% if category == 'error' %}background: #f8d7da; color: #721c24;{% else %}background: #d4edda; color: #155724;{% endif %}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
   {% if current_user.is_authenticated and current_user.is_admin %}
   <div class="create-post-section">
     <h2>✍️ Create New Post</h2>

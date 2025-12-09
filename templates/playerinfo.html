@@ -1,291 +1,967 @@
 
-  {% extends "base.html" %}
+{% extends "base.html" %}
+
+{% block title %}{{ player.name }}{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.6/css/flag-icons.min.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<style>
+  /* Override base.html container for this page */
+  .container {
+    max-width: 100% !important;
+    padding: 10rem !important;
+  }
 
-  <meta charset="utf-8">
-  <title>{{ player.name }} Info</title>
-  <style>
-    .playerinfo-page { font-family: Arial, sans-serif; max-width: 1100px; margin: 2rem auto; }
-    .container { display: flex; gap: 2rem; }
-    .profile-panel { flex: 0 0 250px; background:#f9f9f9; border:1px solid #ccc; border-radius:6px; padding:1rem; }
-    .profile-panel h1 { font-size:1.5rem; margin-top:0; }
-    .elo { font-size: 2.5rem; font-weight: bold; color: #4CAF50; margin:1rem 0; }
-    .stat { margin:.5rem 0; font-size:1rem; }
-    .history { flex:1; }
-    
-    /* Toggle Container */
-    .toggle-container {
-      position: relative;
-      display: flex;
-      width: 100%;
-      height: 60px;
-      background-color: #f2f2f2;
-      border-radius: 8px 8px 0 0;
-      border: 1px solid #ddd;
-      border-bottom: none;
-      overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      margin-bottom: 0;
-    }
-    
-    html.dark-mode .toggle-container {
-      background-color: #2a2a2a;
-      border-color: #444;
-    }
-    
-    .toggle-container input {
-      display: none;
-    }
-    
-    .toggle-container label {
-      flex: 1;
-      text-align: center;
-      line-height: 60px;
-      cursor: pointer;
-      z-index: 2;
-      color: #666;
-      font-weight: 600;
-      font-size: 1.1rem;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-    
-    html.dark-mode .toggle-container label {
-      color: #ccc;
-    }
-    
-    .toggle-container .toggle-slider {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 50%;
-      height: 100%;
-      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-      border-radius: 8px 0 0 0;
-      transition: transform 0.3s ease;
-      z-index: 1;
-      box-shadow: 0 2px 8px rgba(0,123,255,0.3);
-    }
-    
-    .toggle-container input#decks:checked ~ .toggle-slider {
-      transform: translateX(100%);
-      border-radius: 0 8px 0 0;
-    }
-    
-    .toggle-container input#tournaments:checked ~ .toggle-slider {
-      border-radius: 8px 0 0 0;
-    }
-    
-    .toggle-container input#tournaments:checked + label,
-    .toggle-container input#decks:checked + label {
-      color: white;
-    }
-    
-    /* Panels Wrapper */
-    .panels-wrapper {
-      position: relative;
-      overflow: hidden;
-      background-color: #fff;
-    }
-    
-    html.dark-mode .panels-wrapper {
-      background-color: #1e1e1e;
-    }
-    
-    .table-panel {
-      position: absolute;
-      top: 0;
-      width: 100%;
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      pointer-events: none;
-      min-height: 100%;
-    }
-    
-    .table-panel.active {
-      transform: translateX(0);
-      pointer-events: auto;
-      position: relative;
-    }
-    
-    #tournaments-table {
-      left: 0;
-      transform: translateX(0);
-    }
-    
-    #tournaments-table:not(.active) {
-      transform: translateX(-100%);
-    }
-    
-    #decks-table {
-      left: 0;
-      transform: translateX(100%);
-    }
-    
-    #decks-table.active {
-      transform: translateX(0);
-    }
-    
-    .table-panel h2 {
-      display: none;
-    }
-    
-    table { width: 100%; border-collapse: collapse; }
-    .table-panel table {
-      border-top-left-radius: 0;
-      border-top-right-radius: 0;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    th, td { border: 1px solid #ccc; padding: .5rem; text-align: center; }
-    th { background: #f0f0f0; }
-    tr:nth-child(even) { background-color: #f9f9f9; }
-    tr.clickable-row { transition: background-color 140ms ease, color 140ms ease; }
-    tr.clickable-row:hover { background-color: #007bff; color: white; cursor: pointer; }
-    tr.clickable-row:hover td { background-color: #007bff !important; color: white !important; }
-    html.dark-mode tr.clickable-row:hover { background-color: #007bff !important; color: white !important; }
-    html.dark-mode tr.clickable-row:hover td { background-color: #007bff !important; color: white !important; }
-    .casual-tag { background:#eee; color:#333; padding:.2rem .5rem; border-radius:4px; font-size:.8rem; }
-    .colors-cell { text-align: right; }
-    .price-cell { text-align: center; }
-    .mana-icon { width:20px; height:20px; vertical-align:middle; margin:0 2px; }
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-    .modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 6px; width: 900px; max-width: 95%; display: flex; gap: 2rem; }
-    .modal-left, .modal-right { flex: 1; }
-    .modal-left h4, .modal-right h4 { margin-top: 0; }
-    ul.card-list { list-style: none; padding: 0; margin: 0; }
-    ul.card-list li { padding: .3rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    ul.card-list li:hover { background-color: #e0e0e0; }
-    .modal-right img { max-width: 250px; border: 1px solid #ccc; border-radius: 4px; display: none; }
-    .close { float: right; font-size: 1.2rem; cursor: pointer; }
-    .btn { padding:.4rem .8rem; border:none; border-radius:4px; cursor:pointer; }
-    .btn-danger { background:#d9534f; color:white; }
-    .btn-primary { background:#007bff; color:white; }
-  </style>
-<div class="playerinfo-page"></div>
+  .playerinfo-page {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-<div class="container">
-  <div class="profile-panel">
-    <h1>{{ player.name }}</h1>
-{% if current_user.is_authenticated and current_user.is_admin %}
-  <!-- Admins always see Elo -->
-  <div class="elo">{{ player.elo }}</div>
-{% else %}
-  <!-- Regular users: only show Elo if 3+ tournaments -->
-  {% if stats.tournaments_played >= 3 %}
-    <div class="elo">{{ player.elo }}</div>
-  {% else %}
-    <div class="elo" style="color:#888;">–</div>
-  {% endif %}
-{% endif %}
+  .playerinfo-container {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    width: 100%;
+  }
 
+  .profile-panel {
+    flex: 0 0 280px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 1rem;
+  }
 
+  html.dark-mode .profile-panel {
+    background: #2a2a2a;
+    border-color: #444;
+  }
 
-    <div class="stat"><strong>Country:</strong> {{ player_country(player.id) or '–' }}</div>
-    <div class="stat"><strong>Tournaments:</strong> {{ stats.tournaments_played }}</div>
-    <div class="stat"><strong>Top 1:</strong> {{ stats.top1 }}</div>
-    <div class="stat"><strong>Top 4:</strong> {{ stats.top4 }}</div>
-    <div class="stat"><strong>Top 8:</strong> {{ stats.top8 }}</div>
+  .profile-panel h1 {
+    font-size: 1.8rem;
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+    text-align: center;
+  }
 
-    {% if current_user.is_authenticated and current_user.is_admin %}
-      <form method="POST" action="{{ url_for('delete_player', pid=player.id) }}"
-            onsubmit="return confirm('Delete {{ player.name }}?');">
-        <button type="submit" class="btn btn-danger">Delete Player</button>
-      </form>
-      <form method="POST" action="{{ url_for('merge_player') }}">
-        <input type="hidden" name="source_id" value="{{ player.id }}">
-        <button type="submit" class="btn btn-primary">Merge Player</button>
-      </form>
-    {% endif %}
-  </div>
+  html.dark-mode .profile-panel h1 {
+    color: #e0e0e0;
+  }
 
-<div class="history">
-  <div class="toggle-container">
-    <input type="radio" id="tournaments" name="toggle" checked>
-    <label for="tournaments">Past Tournaments</label>
-    <input type="radio" id="decks" name="toggle">
-    <label for="decks">Decks</label>
-    <div class="toggle-slider"></div>
-  </div>
+  .elo-badge-wrapper {
+    display: inline-block;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  }
 
-  <div class="panels-wrapper">
-    <!-- Tournaments Table -->
-    <div id="tournaments-table" class="table-panel active">
-      <table>
-        <tr>
-          <th>Store</th>
-          <th>Tournament</th>
-          <th>Date</th>
-          <th>Competitive/Casual</th>
-          <th>Deck</th>
-          <th>Colors</th>
-          <th>Position</th>
-          <th>Country</th>
-        </tr>
-        {% for h in history %}
-        <tr class="clickable-row tournament-row"
-            data-tournament-id="{{ h.tournament.id }}"
-            data-player-name='{{ player.name|tojson }}'
-            data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
-            data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
-          <td style="padding: 0.25rem; width: 60px;">
-            {% if h.tournament.store and h.tournament.store.image_url %}
-              <img src="{{ url_for('static', filename=h.tournament.store.image_url) }}" 
-                   alt="{{ h.tournament.store.name }}" 
-                   style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; display: block;">
-            {% else %}
-              –
-            {% endif %}
-          </td>
-          <td>{{ h.tournament.name }}</td>
-          <td>{{ h.tournament.date }}</td>
-          <td>{% if h.tournament.casual %}<span class="casual-tag">Casual</span>{% else %}Competitive{% endif %}</td>
-          <td class="deck-cell">{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
-          <td class="colors-cell"></td>
-          <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
-          <td>
-            {% if h.tournament.country %}
-              <span class="fi fi-{{ h.tournament.country|lower }}"></span>
-            {% else %}
-              –
-            {% endif %}
-          </td>
-        </tr>
+  .elo-badge-wrapper.gold {
+    filter: drop-shadow(0 2px 6px rgba(212, 175, 55, 0.3));
+  }
+
+  .elo-badge-wrapper.silver {
+    filter: drop-shadow(0 2px 6px rgba(168, 168, 168, 0.3));
+  }
+
+  .elo-badge-wrapper.bronze {
+    filter: drop-shadow(0 2px 6px rgba(184, 115, 51, 0.3));
+  }
+
+  .elo-badge-wrapper.black {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  }
+
+  .elo-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: #d0d0d0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .elo-badge.gold {
+    background: linear-gradient(135deg, #9d8034 0%, #c9a961 50%, #9d8034 100%);
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .elo-badge.silver {
+    background: linear-gradient(135deg, #6b747d 0%, #9ca5ad 50%, #6b747d 100%);
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .elo-badge.bronze {
+    background: linear-gradient(135deg, #6b4a2a 0%, #9d7352 50%, #6b4a2a 100%);
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .elo-badge.black {
+    background: linear-gradient(135deg, #2a2a2a 0%, #4a4a4a 50%, #2a2a2a 100%);
+    color: #d0d0d0 !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  html.dark-mode .elo-badge.gold {
+    color: #ffffff !important;
+  }
+
+  html.dark-mode .elo-badge.silver {
+    color: #ffffff !important;
+  }
+
+  html.dark-mode .elo-badge.bronze {
+    color: #ffffff !important;
+  }
+
+  html.dark-mode .elo-badge.black {
+    color: #d0d0d0 !important;
+  }
+
+  .elo {
+    text-align: center;
+    margin: 1rem 0 0.5rem 0;
+  }
+
+  .casual-points {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    text-align: center;
+    margin: 0 0 1.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  html.dark-mode .casual-points {
+    color: #e0e0e0;
+  }
+
+  .stat {
+    margin: 0.75rem 0;
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .store-cell {
+    width: 120px;
+    height: 60px;
+    padding: 0 !important;
+    margin: 0;
+    line-height: 0;
+  }
+
+  .store-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+  }
+
+  html.dark-mode .stat {
+    border-bottom-color: #3a3a3a;
+  }
+
+  .stat:last-of-type {
+    border-bottom: none;
+  }
+
+  .stat strong {
+    color: #555;
+  }
+
+  html.dark-mode .stat strong {
+    color: #aaa;
+  }
+
+  .stat-value {
+    color: #2c3e50;
+    font-weight: 600;
+  }
+
+  html.dark-mode .stat-value {
+    color: #e0e0e0;
+  }
+
+  .most-played-stores {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e0e0e0;
+  }
+
+  html.dark-mode .most-played-stores {
+    border-top-color: #444;
+  }
+
+  .most-played-stores h3 {
+    font-size: 1rem;
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+    font-weight: 600;
+  }
+
+  html.dark-mode .most-played-stores h3 {
+    color: #e0e0e0;
+  }
+
+  .store-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    background: #f8f8f8;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  html.dark-mode .store-item {
+    background: #333;
+  }
+
+  .store-count {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .admin-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  html.dark-mode .admin-actions {
+    border-top-color: #444;
+  }
+
+  .history-panel {
+    flex: 1;
+    min-width: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    table-layout: fixed;
+    border-radius: 0 0 8px 8px;
+  }
+  
+  html.dark-mode table {
+    background: #2a2a2a;
+  }
+
+  /* Column widths - percentage based for responsive layout */
+  th:nth-child(1), td:nth-child(1) { width: 6%; } /* Rank */
+  th:nth-child(2), td:nth-child(2) { width: 12%; } /* Store */
+  th:nth-child(3), td:nth-child(3) { width: 16%; } /* Deck Name */
+  th:nth-child(4), td:nth-child(4) { width: 25%; } /* Tournament */
+  th:nth-child(5), td:nth-child(5) { width: 10%; } /* Date */
+  th:nth-child(6), td:nth-child(6) { width: 10%; } /* Uniqueness */
+  th:nth-child(7), td:nth-child(7) { width: 12%; } /* Colors */
+  th:nth-child(8), td:nth-child(8) { width: 9%; } /* Price */
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 1rem;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  html.dark-mode th,
+  html.dark-mode td {
+    border-color: #444;
+  }
+
+  th {
+    background: #f0f0f0;
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  html.dark-mode th {
+    background: #333;
+    color: #e0e0e0;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+
+  html.dark-mode tr:nth-child(even) {
+    background-color: #252525;
+  }
+
+  tr.clickable-row {
+    transition: background-color 140ms ease, color 140ms ease;
+    cursor: pointer;
+  }
+
+  tr.clickable-row:hover {
+    background: #007bff !important;
+    color: white !important;
+  }
+
+  tr.clickable-row:hover td {
+    background-color: #007bff !important;
+    color: white !important;
+  }
+
+  html.dark-mode tr.clickable-row:hover {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    color: white !important;
+  }
+
+  html.dark-mode tr.clickable-row:hover td {
+    background: transparent !important;
+    color: white !important;
+  }
+
+  .clickable-cell {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .clickable-cell:hover {
+    text-decoration: underline;
+    font-weight: bold;
+  }
+
+  tr.clickable-row:hover .clickable-cell {
+    color: white;
+  }
+
+  html.dark-mode tr.clickable-row:hover .clickable-cell {
+    color: white !important;
+  }
+
+  .casual-tag {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+  }
+
+  .competitive-tag {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+  }
+
+  .colors-cell {
+    text-align: center;
+  }
+
+  .uniqueness-cell {
+    min-width: 90px;
+    max-width: 90px;
+  }
+
+  .uniqueness-bar-container {
+    position: relative;
+    width: 100%;
+    height: 24px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .uniqueness-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+    transition: width 0.5s ease;
+    border-radius: 4px;
+  }
+
+  .uniqueness-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  html.dark-mode .uniqueness-bar-container {
+    background: #444;
+  }
+
+  html.dark-mode .uniqueness-bar {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .price-cell {
+    text-align: center;
+    font-weight: 600;
+    color: #059669;
+  }
+
+  html.dark-mode .price-cell {
+    color: #10b981;
+  }
+
+  .mana-icon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+
+  .deck-cell {
+    cursor: pointer;
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  html.dark-mode .deck-cell {
+    color: white;
+  }
+
+  .deck-cell:hover {
+    color: #007bff;
+  }
+
+  html.dark-mode .deck-cell:hover {
+    color: #4da3ff;
+  }
+
+  .btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(239,68,68,0.3);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(59,130,246,0.3);
+  }
+
+  /* Toggle Styles */
+  .toggle-container {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 60px;
+    background-color: #f2f2f2;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    margin-bottom: 0;
+  }
+
+  html.dark-mode .toggle-container {
+    background-color: #2a2a2a;
+    border-color: #444;
+  }
+
+  .toggle-container input {
+    display: none;
+  }
+
+  .toggle-container label {
+    flex: 1;
+    text-align: center;
+    line-height: 60px;
+    cursor: pointer;
+    z-index: 2;
+    color: #666;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  html.dark-mode .toggle-container label {
+    color: #ccc;
+  }
+
+  .toggle-container .toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-radius: 8px 0 0 0;
+    transition: transform 0.3s ease;
+    z-index: 1;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+  }
+
+  .toggle-container input#statistics:checked ~ .toggle-slider {
+    transform: translateX(100%);
+    border-radius: 0 8px 0 0;
+  }
+
+  .toggle-container input#decks:checked ~ .toggle-slider {
+    border-radius: 8px 0 0 0;
+  }
+
+  .toggle-container input#decks:checked + label,
+  .toggle-container input#statistics:checked + label {
+    color: white;
+  }
+
+  .panels-wrapper {
+    position: relative;
+    overflow: hidden;
+    background-color: #fff;
+  }
+
+  html.dark-mode .panels-wrapper {
+    background-color: #1e1e1e;
+  }
+
+  .view-panel {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    min-height: 400px;
+  }
+
+  .view-panel.active {
+    transform: translateX(0);
+    pointer-events: auto;
+    position: relative;
+  }
+
+  #decks-view {
+    left: 0;
+    transform: translateX(0);
+  }
+
+  #decks-view:not(.active) {
+    transform: translateX(-100%);
+  }
+
+  #statistics-view {
+    left: 0;
+    transform: translateX(100%);
+  }
+
+  #statistics-view.active {
+    transform: translateX(0);
+  }
+
+  /* Statistics View Styles */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 2rem;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  html.dark-mode .stat-card {
+    background: #2a2a2a;
+  }
+
+  .stat-card h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.2rem;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  html.dark-mode .stat-card h3 {
+    color: #e0e0e0;
+  }
+
+  .chart-container {
+    min-height: 300px;
+  }
+
+  .archetype-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .archetype-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background: #f8f8f8;
+    border-radius: 6px;
+  }
+
+  html.dark-mode .archetype-item {
+    background: #333;
+  }
+
+  .archetype-bar {
+    flex: 1;
+    height: 30px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-radius: 4px;
+    margin: 0 1rem;
+    position: relative;
+  }
+
+  .archetype-count {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .color-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .color-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .color-label {
+    width: 80px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .color-bar {
+    flex: 1;
+    height: 35px;
+    border-radius: 6px;
+    position: relative;
+    background: #e0e0e0;
+    overflow: hidden;
+  }
+
+  html.dark-mode .color-bar {
+    background: #444;
+  }
+
+  .color-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0.5rem;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: width 0.5s ease;
+  }
+
+</style>
+
+<div class="playerinfo-page">
+  <div class="playerinfo-container">
+    <div class="profile-panel">
+      <h1>{{ player.name }}</h1>
+      
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <!-- Admins always see Elo -->
+        {% if stats.tournaments_played < 3 %}
+          <div class="elo">
+            <span style="font-size: 2rem; color: #888;">{{ player.elo }}</span>
+            <span style="font-size: 0.9rem; color: #ff9800; display: block;">(provisional)</span>
+          </div>
+        {% elif player_rank and player_rank <= (total_ranked * 0.1)|int %}
+          <div class="elo">
+            <span class="elo-badge-wrapper gold"><span class="elo-badge gold">{{ player.elo }}</span></span>
+          </div>
+        {% elif player_rank and player_rank <= (total_ranked * 0.3)|int %}
+          <div class="elo">
+            <span class="elo-badge-wrapper silver"><span class="elo-badge silver">{{ player.elo }}</span></span>
+          </div>
+        {% elif player_rank and player_rank <= (total_ranked * 0.6)|int %}
+          <div class="elo">
+            <span class="elo-badge-wrapper bronze"><span class="elo-badge bronze">{{ player.elo }}</span></span>
+          </div>
+        {% else %}
+          <div class="elo">
+            <span class="elo-badge-wrapper black"><span class="elo-badge black">{{ player.elo }}</span></span>
+          </div>
+        {% endif %}
+      {% else %}
+        <!-- Regular users: only show Elo if 3+ tournaments -->
+        {% if stats.tournaments_played >= 3 %}
+          {% if player_rank and player_rank <= (total_ranked * 0.1)|int %}
+            <div class="elo">
+              <span class="elo-badge-wrapper gold"><span class="elo-badge gold">{{ player.elo }}</span></span>
+            </div>
+          {% elif player_rank and player_rank <= (total_ranked * 0.3)|int %}
+            <div class="elo">
+              <span class="elo-badge-wrapper silver"><span class="elo-badge silver">{{ player.elo }}</span></span>
+            </div>
+          {% elif player_rank and player_rank <= (total_ranked * 0.6)|int %}
+            <div class="elo">
+              <span class="elo-badge-wrapper bronze"><span class="elo-badge bronze">{{ player.elo }}</span></span>
+            </div>
+          {% else %}
+            <div class="elo">
+              <span class="elo-badge-wrapper black"><span class="elo-badge black">{{ player.elo }}</span></span>
+            </div>
+          {% endif %}
+        {% else %}
+          <div class="elo" style="opacity: 0.3;">
+            <span style="font-size: 2rem; color: #888;">–</span>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="casual-points">
+        <span class="material-icons">star</span>
+        {{ stats.casual_points }} Casual Points
+      </div>
+
+      <div class="stat">
+        <strong>Country</strong>
+        <span class="stat-value">
+          {% set country = player_country(player.id) %}
+          {% if country %}
+            <span class="fi fi-{{ country|lower }}" style="font-size: 1.5rem;"></span>
+          {% else %}
+            –
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="stat">
+        <strong>Tournaments</strong>
+        <span class="stat-value">{{ stats.tournaments_played }}</span>
+      </div>
+
+      <div class="stat">
+        <strong>Top 1</strong>
+        <span class="stat-value">{{ stats.top1 }}</span>
+      </div>
+
+      <div class="stat">
+        <strong>Top 4</strong>
+        <span class="stat-value">{{ stats.top4 }}</span>
+      </div>
+
+      <div class="stat">
+        <strong>Top 8</strong>
+        <span class="stat-value">{{ stats.top8 }}</span>
+      </div>
+
+      {% if most_played_stores %}
+      <div class="most-played-stores">
+        <h3>
+          <span class="material-icons" style="font-size: 1rem; vertical-align: middle;">store</span>
+          Most Played Stores
+        </h3>
+        {% for store in most_played_stores %}
+        <div class="store-item">
+          <span>{{ store.name }}</span>
+          <span class="store-count">{{ store.count }}</span>
+        </div>
         {% endfor %}
-      </table>
+      </div>
+      {% endif %}
+
+      {% if current_user.is_authenticated and current_user.is_admin %}
+      <div class="admin-actions">
+        <form method="POST" action="{{ url_for('delete_player', pid=player.id) }}"
+              onsubmit="return confirm('Delete {{ player.name }}?');">
+          <button type="submit" class="btn btn-danger" style="width: 100%;">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">delete</span>
+            Delete Player
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('merge_player') }}">
+          <input type="hidden" name="source_id" value="{{ player.id }}">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">merge</span>
+            Merge Player
+          </button>
+        </form>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- Decks Table -->
-    <div id="decks-table" class="table-panel">
-      <table>
-        <tr>
-          <th>Deck Name</th>
-          <th>Tournament</th>
-          <th>Date</th>
-          <th>Rank</th>
-          <th>Colors</th>
-          <th>Est. Price</th>
-        </tr>
-        {% for h in history %}
-        {% if h.deck %}
-        <tr class="clickable-row deck-row"
-            data-player-name='{{ player.name|tojson }}'
-            data-deck-name='{{ h.deck.name|tojson }}'
-            data-deck-list='{{ h.deck.list_text|tojson }}'>
-          <td class="deck-cell">{{ h.deck.name }}</td>
-          <td>{{ h.tournament.name }}</td>
-          <td>{{ h.tournament.date }}</td>
-          <td>{% if h.rank %}{{ h.rank }}{% else %}–{% endif %}</td>
-          <td class="colors-cell"></td>
-          <td class="price-cell">Calculating...</td>
-        </tr>
-        {% endif %}
-        {% endfor %}
-      </table>
+    <div class="history-panel">
+      <div class="toggle-container">
+        <input type="radio" id="decks" name="view-toggle" checked>
+        <label for="decks">Tournament History</label>
+        <input type="radio" id="statistics" name="view-toggle">
+        <label for="statistics">Statistics</label>
+        <div class="toggle-slider"></div>
+      </div>
+
+      <div class="panels-wrapper">
+        <div id="decks-view" class="view-panel active">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Store</th>
+                <th>Deck Name</th>
+                <th>Tournament</th>
+                <th>Date</th>
+                <th>Uniqueness</th>
+                <th>Colors</th>
+                <th>Est. Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for h in history %}
+              <tr class="clickable-row"
+                  data-tournament-id="{{ h.tournament.id }}"
+                  data-player-name='{{ player.name|tojson }}'
+                  data-deck-name='{{ (h.deck.name if h.deck else "")|tojson }}'
+                  data-deck-list='{{ (h.deck.list_text if h.deck else "")|tojson }}'>
+                <td>{% if h.rank %}#{{ h.rank }}{% else %}–{% endif %}</td>
+                <td class="store-cell">
+                  {% if h.tournament.store and h.tournament.store.image_url %}
+                    <img src="{{ url_for('static', filename=h.tournament.store.image_url) }}" 
+                         alt="{{ h.tournament.store.name }}">
+                  {% else %}
+                    –
+                  {% endif %}
+                </td>
+                <td class="deck-cell">{% if h.deck %}{{ h.deck.name }}{% else %}–{% endif %}</td>
+                <td class="clickable-cell tournament-cell" data-tournament-id="{{ h.tournament.id }}">{{ h.tournament.name }}</td>
+                <td>{{ h.tournament.date }}</td>
+                <td class="uniqueness-cell">
+                  <div class="uniqueness-bar-container">
+                    <div class="uniqueness-bar" style="width: 0%"></div>
+                    <span class="uniqueness-text">N/A</span>
+                  </div>
+                </td>
+                <td class="colors-cell"></td>
+                <td class="price-cell">Calculating...</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="statistics-view" class="view-panel">
+          <div class="stats-grid">
+            <!-- Top Rate Over Time -->
+            <div class="stat-card">
+              <h3>
+                <span class="material-icons">timeline</span>
+                Top Placements Over Time
+              </h3>
+              <div class="chart-container">
+                <canvas id="topRateChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Color Distribution -->
+            <div class="stat-card">
+              <h3>
+                <span class="material-icons">palette</span>
+                Color Distribution
+              </h3>
+              <div class="color-bar-chart" id="colorDistribution">
+                <p style="text-align: center; color: #999;">Loading color data...</p>
+              </div>
+            </div>
+
+            <!-- Most Played Archetypes -->
+            {% if most_played_archetypes %}
+            <div class="stat-card">
+              <h3>
+                <span class="material-icons">style</span>
+                Most Played Archetypes
+              </h3>
+              <ul class="archetype-list">
+                {% for archetype in most_played_archetypes %}
+                <li class="archetype-item">
+                  <span>{{ archetype.archetype }}</span>
+                  <span class="archetype-count">{{ archetype.count }}</span>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -293,114 +969,150 @@
 {% include '_deck_view_modal.html' %}
 
   <script>
-    // Toggle between tournaments and decks
-    function swapPanels() {
-      const tournamentsRadio = document.getElementById('tournaments');
-      const decksRadio = document.getElementById('decks');
-      const tournamentsPanel = document.getElementById('tournaments-table');
-      const decksPanel = document.getElementById('decks-table');
-
-      if (tournamentsRadio.checked) {
-        tournamentsPanel.classList.add('active');
-        decksPanel.classList.remove('active');
-      } else {
-        tournamentsPanel.classList.remove('active');
-        decksPanel.classList.add('active');
-        // Compute deck colors and prices when switching to decks view
-        computeAllDeckInfo();
-      }
-    }
-
-    document.getElementById('tournaments').addEventListener('change', swapPanels);
-    document.getElementById('decks').addEventListener('change', swapPanels);
-
-    // Click handler for tournament rows
-    document.querySelectorAll('.tournament-row').forEach(row => {
-      row.addEventListener('click', function(event) {
-        if (event.target.closest('.deck-cell')) {
-          return; // Let the deck cell handler deal with it
-        }
-        const tournamentId = this.getAttribute('data-tournament-id');
-        window.location.href = `/tournament/${tournamentId}/standings`;
-      });
-    });
-
-    // Click handler for deck cells in tournament table
-    document.querySelectorAll('.tournament-row .deck-cell').forEach(cell => {
-      cell.addEventListener('click', function(event) {
-        event.stopPropagation();
-        openDeckModal(this.closest('.clickable-row'));
-      });
-    });
-
-    // Click handler for deck rows in decks table
-    document.querySelectorAll('.deck-row').forEach(row => {
-      row.addEventListener('click', function(event) {
-        openDeckModal(this);
-      });
-    });
-
+    // Click handler for rows
     document.querySelectorAll('tr.clickable-row').forEach(row => {
-      // Click on row goes to tournament
-      row.addEventListener('click', (e) => {
-        const tournamentId = row.dataset.tournamentId;
-        if (tournamentId) {
-          window.location.href = `/tournament/${tournamentId}/standings`;
+      row.addEventListener('click', function(event) {
+        // Check if clicked on tournament cell
+        const tournamentCell = event.target.closest('.tournament-cell');
+        
+        if (tournamentCell) {
+          const tournamentId = tournamentCell.getAttribute('data-tournament-id');
+          if (tournamentId) {
+            window.location.href = `/tournament/${tournamentId}/standings`;
+          }
+          return;
+        }
+        
+        // Otherwise open deck modal
+        const deckName = row.dataset.deckName;
+        if (deckName) {
+          openDeckModal(row);
         }
       });
-      
-      // Click on deck cell opens modal (stop propagation to prevent tournament navigation)
-      const deckCell = row.querySelector('.deck-cell');
-      if (deckCell) {
-        deckCell.addEventListener('click', (e) => {
-          e.stopPropagation();
-          openDeckModal(row);
-        });
-        deckCell.style.cursor = 'zoom-in';
-      }
       
       row.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          const tournamentId = row.dataset.tournamentId;
-          if (tournamentId) {
-            window.location.href = `/tournament/${tournamentId}/standings`;
+          const deckName = row.dataset.deckName;
+          if (deckName) {
+            openDeckModal(row);
           }
         }
       });
     });
 
     let symbolMap = {};
-    fetch("https://api.scryfall.com/symbology")
-      .then(res => res.json())
-      .then(data => {
-        data.data.forEach(sym => {
-          symbolMap[sym.symbol] = sym.svg_uri;
-        });
-        // Compute colors for tournament table on load
-        document.querySelectorAll('.tournament-row').forEach(row => {
-          const deckListRaw = row.dataset.deckList;
-          if (deckListRaw) {
-            const deckList = JSON.parse(deckListRaw || '""');
-            computeDeckColors(deckList, row);
+    let cardCache = {};
+    
+    // Cache symbology data in localStorage
+    const SYMBOLOGY_CACHE_KEY = 'scryfall_symbology';
+    const SYMBOLOGY_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+    
+    function getCachedSymbology() {
+      try {
+        const cached = localStorage.getItem(SYMBOLOGY_CACHE_KEY);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < SYMBOLOGY_CACHE_DURATION) {
+            return data.symbology;
           }
-        });
-      });
-
-    // Compute deck colors and prices for decks table (lazy load)
-    let deckInfoComputed = false;
-    function computeAllDeckInfo() {
-      if (deckInfoComputed) return;
-      deckInfoComputed = true;
-
-      document.querySelectorAll('.deck-row').forEach(row => {
+        }
+      } catch (e) {
+        console.warn('Failed to load cached symbology:', e);
+      }
+      return null;
+    }
+    
+    function setCachedSymbology(symbology) {
+      try {
+        localStorage.setItem(SYMBOLOGY_CACHE_KEY, JSON.stringify({
+          symbology: symbology,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache symbology:', e);
+      }
+    }
+    
+    // Try to load from cache first
+    const cachedSymbology = getCachedSymbology();
+    
+    function processRows() {
+      // Collect all unique card names from all decks
+      const allCardNames = new Set();
+      document.querySelectorAll('tr.clickable-row').forEach(row => {
         const deckListRaw = row.dataset.deckList;
         if (deckListRaw) {
           const deckList = JSON.parse(deckListRaw || '""');
-          computeDeckColors(deckList, row);
-          computeDeckPrice(deckList, row);
+          extractCardNames(deckList).forEach(name => allCardNames.add(name));
         }
       });
+      
+      // Batch fetch all cards
+      if (allCardNames.size > 0) {
+        batchFetchCards([...allCardNames]).then(() => {
+          // Now compute colors and prices using cached data
+          document.querySelectorAll('tr.clickable-row').forEach(row => {
+            const deckListRaw = row.dataset.deckList;
+            if (deckListRaw) {
+              const deckList = JSON.parse(deckListRaw || '""');
+              computeDeckColors(deckList, row);
+              computeDeckPrice(deckList, row);
+            }
+          });
+        });
+      }
+    }
+    
+    if (cachedSymbology) {
+      cachedSymbology.forEach(sym => {
+        symbolMap[sym.symbol] = sym.svg_uri;
+      });
+      processRows();
+    } else {
+      // Fetch from API if not cached
+      fetch("https://api.scryfall.com/symbology")
+        .then(res => res.json())
+        .then(data => {
+          setCachedSymbology(data.data);
+          data.data.forEach(sym => {
+            symbolMap[sym.symbol] = sym.svg_uri;
+          });
+          processRows();
+        })
+        .catch(err => console.warn('Failed to fetch symbology:', err));
+    }
+    
+    async function batchFetchCards(cardNames, timeout = 5000) {
+      const uniqueNames = [...new Set(cardNames)];
+      
+      const promises = uniqueNames.map(name => 
+        Promise.race([
+          fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(card => {
+              if (card) {
+                cardCache[name] = card;
+              }
+            }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+        ])
+        .catch(err => console.warn('Card fetch error:', err))
+      );
+      
+      await Promise.all(promises);
+    }
+    
+    function extractCardNames(deckList) {
+      const names = [];
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
+        const parts = line.trim().split(/\s+/, 2);
+        const name = line.trim().substring(parts[0].length).trim();
+        if (name) names.push(name);
+      });
+      return names;
     }
 
     function renderManaCost(manaCost) {
@@ -417,77 +1129,224 @@
     function computeDeckColors(deckList, row) {
       const colors = new Set();
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-      const promises = lines.map(line => {
-        if (/^sideboard/i.test(line.trim())) return Promise.resolve();
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
         const parts = line.trim().split(/\s+/, 2);
         const name = line.trim().substring(parts[0].length).trim();
-        if (!name) return Promise.resolve();
-        return fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
-          .then(res => res.json())
-          .then(card => {
-            if (card.color_identity) {
-              card.color_identity.forEach(c => colors.add(c));
-            }
-          });
-      });
-
-      Promise.all(promises).then(() => {
-        const cell = row.querySelector(".colors-cell");
-        if (cell) {
-          cell.innerHTML = "";
-          ["W","U","B","R","G"].forEach(c => {
-            if (colors.has(c)) {
-              const token = `{${c}}`;
-              const uri = symbolMap[token];
-              if (uri) {
-                cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
-              }
-            }
-          });
+        if (!name) return;
+        
+        const card = cardCache[name];
+        if (card && card.color_identity) {
+          card.color_identity.forEach(c => colors.add(c));
         }
       });
+
+      const cell = row.querySelector(".colors-cell");
+      if (cell) {
+        cell.innerHTML = "";
+        ["W","U","B","R","G"].forEach(c => {
+          if (colors.has(c)) {
+            const token = `{${c}}`;
+            const uri = symbolMap[token];
+            if (uri) {
+              cell.innerHTML += `<img src="${uri}" alt="${token}" class="mana-icon">`;
+            }
+          }
+        });
+      }
     }
 
     function computeDeckPrice(deckList, row) {
+      let totalPrice = 0;
       const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
-      const cardRequests = [];
       
-      for (const line of lines) {
-        if (/^sideboard/i.test(line.trim())) break; // Only count main deck
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
         const parts = line.trim().split(/\s+/, 2);
-        const count = parseInt(parts[0]);
+        const count = parseInt(parts[0]) || 0;
         const name = line.trim().substring(parts[0].length).trim();
-        if (!name || isNaN(count)) continue;
-        cardRequests.push({ name, count });
-      }
+        if (!name || count === 0) return;
+        
+        const card = cardCache[name];
+        if (card && card.prices) {
+          const price = parseFloat(card.prices.usd) || 
+                       parseFloat(card.prices.usd_foil) || 
+                       parseFloat(card.prices.eur) || 
+                       0;
+          totalPrice += price * count;
+        }
+      });
 
-      if (cardRequests.length === 0) {
-        const priceCell = row.querySelector('.price-cell');
-        if (priceCell) priceCell.textContent = '–';
+      const cell = row.querySelector(".price-cell");
+      if (cell) {
+        cell.textContent = totalPrice > 0 ? `$${Math.round(totalPrice)}` : 'N/A';
+      }
+    }
+
+    // Toggle functionality
+    const toggleInputs = document.querySelectorAll('input[name="view-toggle"]');
+    toggleInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        const decksView = document.getElementById('decks-view');
+        const statsView = document.getElementById('statistics-view');
+        
+        if (this.id === 'decks') {
+          decksView.classList.add('active');
+          statsView.classList.remove('active');
+        } else {
+          decksView.classList.remove('active');
+          statsView.classList.add('active');
+          initializeCharts();
+        }
+      });
+    });
+
+    // Chart initialization
+    let topRateChartInstance = null;
+    
+    function initializeCharts() {
+      // Only initialize once
+      if (topRateChartInstance) return;
+      
+      // Top Rate Over Time Chart
+      const topRateData = {{ top_rate_data|tojson }};
+      
+      if (topRateData && topRateData.length > 0) {
+        const ctx = document.getElementById('topRateChart').getContext('2d');
+        const isDarkMode = document.documentElement.classList.contains('dark-mode');
+        
+        topRateChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: topRateData.map(d => d.date),
+            datasets: [{
+              label: 'Tournament Rank',
+              data: topRateData.map(d => d.rank),
+              borderColor: '#007bff',
+              backgroundColor: 'rgba(0, 123, 255, 0.1)',
+              tension: 0.3,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    const index = context[0].dataIndex;
+                    return topRateData[index].tournament;
+                  },
+                  label: function(context) {
+                    const index = context.dataIndex;
+                    const data = topRateData[index];
+                    return `Rank: ${data.rank} (Top ${data.top_cut})`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                reverse: true,
+                beginAtZero: false,
+                ticks: {
+                  stepSize: 1,
+                  color: isDarkMode ? '#e0e0e0' : '#2c3e50'
+                },
+                grid: {
+                  color: isDarkMode ? '#444' : '#e0e0e0'
+                }
+              },
+              x: {
+                ticks: {
+                  color: isDarkMode ? '#e0e0e0' : '#2c3e50',
+                  maxRotation: 45,
+                  minRotation: 45
+                },
+                grid: {
+                  color: isDarkMode ? '#444' : '#e0e0e0'
+                }
+              }
+            }
+          }
+        });
+      }
+      
+      // Calculate color distribution from all decks
+      calculateColorDistribution();
+    }
+
+    async function calculateColorDistribution() {
+      const colorCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+      const rows = document.querySelectorAll('tr.clickable-row');
+      
+      for (const row of rows) {
+        const deckList = row.dataset.deckList;
+        if (!deckList || deckList === '""') continue;
+        
+        const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+        for (const line of lines) {
+          if (/^sideboard/i.test(line.trim())) continue;
+          const parts = line.trim().split(/\s+/, 2);
+          const name = line.trim().substring(parts[0].length).trim();
+          if (!name) continue;
+          
+          const card = cardCache[name];
+          if (card && card.color_identity) {
+            card.color_identity.forEach(c => colorCounts[c]++);
+          }
+        }
+      }
+      
+      const colorNames = {
+        W: 'White',
+        U: 'Blue',
+        B: 'Black',
+        R: 'Red',
+        G: 'Green'
+      };
+      
+      const colorBgs = {
+        W: 'linear-gradient(135deg, #f0e68c 0%, #daa520 100%)',
+        U: 'linear-gradient(135deg, #4169e1 0%, #1e3a8a 100%)',
+        B: 'linear-gradient(135deg, #4b5563 0%, #1f2937 100%)',
+        R: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)',
+        G: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)'
+      };
+      
+      const maxCount = Math.max(...Object.values(colorCounts));
+      const container = document.getElementById('colorDistribution');
+      
+      if (maxCount === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999;">No color data available</p>';
         return;
       }
-
-      const promises = cardRequests.slice(0, 75).map(({ name, count }) =>
-        fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
-          .then(res => res.ok ? res.json() : null)
-          .then(card => {
-            if (card && card.prices && card.prices.usd) {
-              return parseFloat(card.prices.usd) * count;
-            }
-            return 0;
-          })
-          .catch(() => 0)
-      );
-
-      Promise.all(promises).then(prices => {
-        const total = prices.reduce((sum, p) => sum + p, 0);
-        const priceCell = row.querySelector('.price-cell');
-        if (priceCell) {
-          priceCell.textContent = total > 0 ? `$${total.toFixed(2)}` : '–';
-        }
-      }).catch(() => {
-        const priceCell = row.querySelector('.price-cell');
-        if (priceCell) priceCell.textContent = '–';
+      
+      container.innerHTML = '';
+      
+      ['W', 'U', 'B', 'R', 'G'].forEach(color => {
+        const count = colorCounts[color];
+        const percentage = maxCount > 0 ? (count / maxCount * 100) : 0;
+        
+        const item = document.createElement('div');
+        item.className = 'color-bar-item';
+        item.innerHTML = `
+          <div class="color-label">
+            ${symbolMap[`{${color}}`] ? `<img src="${symbolMap[`{${color}}`]}" class="mana-icon" alt="${color}">` : ''}
+            ${colorNames[color]}
+          </div>
+          <div class="color-bar">
+            <div class="color-bar-fill" style="width: ${percentage}%; background: ${colorBgs[color]};">
+              ${count}
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
       });
     }
   </script>

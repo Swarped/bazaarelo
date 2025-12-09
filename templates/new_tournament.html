@@ -11,13 +11,6 @@
     <style>
       .new-tournament-page { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; }
       h1 { margin-bottom: 1rem; }
-      .flash-error {
-        background: #f8d7da;
-        color: #721c24;
-        padding: .5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #f5c6cb;
-      }
       h2 { margin-top: 2rem; }
       form { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; }
       textarea { width: 100%; font-family: monospace; padding: .5rem; }
@@ -90,15 +83,6 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <div class="new-tournament-page"></div>
     <h1>Create a New Tournament</h1>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
 
     <h2>Import Tournament</h2>
 <form method="POST">

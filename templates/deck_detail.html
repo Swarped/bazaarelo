@@ -2,6 +2,7 @@
 
 {% block content %}
   <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <title>{{ deck_name }} Decks</title>
   <style>
     .deck-header {
@@ -48,7 +49,7 @@
     
     .deck-stats {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 1rem;
       align-items: start;
     }
@@ -61,14 +62,14 @@
     
     .stat-label {
       font-size: 0.85rem;
-      color: #aaa;
+      color: rgba(255, 255, 255, 0.8);
       margin-bottom: 0.25rem;
     }
     
     .stat-value {
       font-size: 1.5rem;
       font-weight: bold;
-      color: #4CAF50;
+      color: #ffffff;
     }
     
     .mana-icon {
@@ -83,14 +84,58 @@
       font-size: 0.9rem;
     }
 
-    .deck-detail-page { font-family: Arial, sans-serif; max-width: 1000px; margin: 2rem auto; }
-    table { width:100%; border-collapse: collapse; }
+    .deck-detail-page { font-family: Arial, sans-serif; max-width: 1200px; margin: 2rem auto; }
+    table { width:100%; border-collapse: collapse; table-layout: fixed; }
     th, td { border:1px solid #ccc; padding:.5rem; text-align:center; }
     th { background:#f0f0f0; }
     tr:nth-child(even) { background-color:#f9f9f9; }
     tr.clickable-row { transition: background-color 140ms ease, color 140ms ease; }
     tr.clickable-row:hover { background:#007bff; color:white; cursor:pointer; }
-    .colors-cell { text-align:right; }
+    
+    /* Column widths */
+    th:nth-child(1), td:nth-child(1) { width: 60px; } /* Rank */
+    th:nth-child(2), td:nth-child(2) { width: 180px; } /* Player - fixed width for long names */
+    th:nth-child(3), td:nth-child(3) { width: 140px; } /* Deck Name - short fixed */
+    th:nth-child(4), td:nth-child(4) { width: auto; } /* Tournament */
+    th:nth-child(5), td:nth-child(5) { width: 100px; } /* Date */
+    th:nth-child(6), td:nth-child(6) { width: 90px; } /* Uniqueness (conditional) - shorter */
+    th:nth-child(7), td:nth-child(7) { width: 125px; } /* Colors - slightly larger */
+    th:nth-child(8), td:nth-child(8) { width: 70px; } /* Price - 6 chars max */
+    
+    /* Adjust when Uniqueness is hidden (Rogue archetype) */
+    .no-uniqueness th:nth-child(6), .no-uniqueness td:nth-child(6) { width: 125px; } /* Colors */
+    .no-uniqueness th:nth-child(7), .no-uniqueness td:nth-child(7) { width: 70px; } /* Price */
+    
+    .colors-cell { text-align:center; }
+    .uniqueness-cell { min-width: 90px; max-width: 90px; }
+    
+    .clickable-cell {
+      position: relative;
+      cursor: pointer;
+    }
+    
+    .clickable-cell:hover {
+      text-decoration: underline;
+      font-weight: bold;
+    }
+    
+    tr.clickable-row:hover .clickable-cell {
+      color: white;
+    }
+    
+    html.dark-mode tr.clickable-row:hover {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+      color: white !important;
+    }
+    
+    html.dark-mode tr.clickable-row:hover td {
+      background: transparent !important;
+      color: white !important;
+    }
+    
+    html.dark-mode tr.clickable-row:hover .clickable-cell {
+      color: white !important;
+    }
     
     /* Enhanced Deck Modal Styles */
     .modal { 
@@ -103,6 +148,41 @@
       height: 100%; 
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(4px);
+    }
+    
+    .modal-content {
+      background: #fff;
+      margin: 5% auto;
+      padding: 2rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 800px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    
+    html.dark-mode .modal-content {
+      background: #2a2a2a;
+      color: #e5e5e5;
+    }
+    
+    .modal-content h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    
+    html.dark-mode .modal-content h3 {
+      color: #e5e5e5;
+    }
+    
+    .close {
+      float: right;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+    }
+    
+    html.dark-mode .close {
+      color: #ccc;
     }
     
     .modal-content-deck { 
@@ -353,6 +433,154 @@
       color: #d32f2f;
       font-weight: bold;
     }
+    
+    .uniqueness-bar-container {
+      position: relative;
+      width: 100%;
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .uniqueness-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+    
+    .uniqueness-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    html.dark-mode .uniqueness-bar-container {
+      background: #444;
+    }
+    
+    html.dark-mode .uniqueness-bar {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+    
+    .btn {
+      display: inline-block;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
+    }
+    
+    /* Deck editor styles (reused from round.html) */
+    .deck-editor-wrap {
+      position: relative;
+    }
+    
+    .deck-editor {
+      width: 100%;
+      min-height: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+    
+    html.dark-mode .deck-editor {
+      background: #2a2a2a;
+      border-color: #505050;
+      color: #e5e5e5;
+    }
+    
+    .deck-editor:focus {
+      outline: 2px solid #7c3aed;
+    }
+    
+    .hl-invalid { background-color: rgba(255, 0, 0, 0.2); }
+    .hl-not-legal { background-color: rgba(255, 165, 0, 0.2); }
+    .hl-valid { background-color: rgba(0, 255, 0, 0.1); }
+    .hl-sideboard { 
+      color: #888; 
+      font-style: italic; 
+      font-weight: bold;
+    }
+    
+    html.dark-mode .deck-editor .hl-invalid { background-color: rgba(255, 100, 100, 0.3); }
+    html.dark-mode .deck-editor .hl-not-legal { background-color: rgba(255, 200, 100, 0.3); }
+    html.dark-mode .deck-editor .hl-valid { background-color: rgba(100, 255, 100, 0.15); }
+    html.dark-mode .deck-editor .hl-sideboard { color: #ffffff !important; }
+    html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
+    
+    .deck-loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1rem;
+      border-radius: 4px;
+      z-index: 10;
+    }
+    
+    .deck-loading-overlay.active {
+      display: flex;
+    }
+    
+    html.dark-mode .deck-loading-overlay {
+      background: rgba(42, 42, 42, 0.9);
+    }
+    
+    .deck-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #7c3aed;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .deck-loading-text {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    
+    html.dark-mode .deck-loading-text {
+      color: #ccc;
+    }
   </style>
 <div class="deck-detail-page"></div>
   {% if image_url %}
@@ -372,29 +600,15 @@
           <div class="stat-label">Meta Share</div>
           <div class="stat-value">{{ meta_share }}%</div>
         </div>
+        {% if deck_name != 'Rogue' %}
+        <div class="stat-item">
+          <div class="stat-label">Est. Price</div>
+          <div class="stat-value" id="bannerPrice">Calculating...</div>
+        </div>
+        {% endif %}
         <div class="stat-item">
           <div class="stat-label">Colors</div>
-          <div class="stat-value">
-            {% if colors %}
-              {% for color in colors %}
-                {% if color == 'W' %}
-                  <img src="https://svgs.scryfall.io/card-symbols/W.svg" class="mana-icon" alt="White">
-                {% elif color == 'U' %}
-                  <img src="https://svgs.scryfall.io/card-symbols/U.svg" class="mana-icon" alt="Blue">
-                {% elif color == 'B' %}
-                  <img src="https://svgs.scryfall.io/card-symbols/B.svg" class="mana-icon" alt="Black">
-                {% elif color == 'R' %}
-                  <img src="https://svgs.scryfall.io/card-symbols/R.svg" class="mana-icon" alt="Red">
-                {% elif color == 'G' %}
-                  <img src="https://svgs.scryfall.io/card-symbols/G.svg" class="mana-icon" alt="Green">
-                {% elif color == 'C' %}
-                  <img src="https://svgs.scryfall.io/card-symbols/C.svg" class="mana-icon" alt="Colorless">
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              N/A
-            {% endif %}
-          </div>
+          <div class="stat-value" id="bannerColors">Calculating...</div>
         </div>
       </div>
     </div>
@@ -402,17 +616,40 @@
   {% else %}
   <h1>{{ deck_name }} Decks</h1>
   {% endif %}
+
+  {% if current_user.is_authenticated and current_user.is_admin %}
+  <div style="margin-bottom: 1rem;">
+    <button type="button" class="btn btn-primary" onclick="openModelDeckModal()" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+      <span class="material-icons" style="font-size: 16px; vertical-align: middle;">edit</span>
+      {{ 'Edit' if model_decklist else 'Add' }} Model Decklist
+    </button>
+  </div>
+  {% endif %}
+
   <table>
-    <tr><th>Player</th><th>Tournament</th><th>Date</th><th>Rank</th><th>Colors</th><th>Est. Price</th></tr>
+    <tr><th>Rank</th><th>Player</th><th>Deck Name</th><th>Tournament</th><th>Date</th>{% if deck_name != 'Rogue' %}<th>Uniqueness</th>{% endif %}<th>Colors</th><th>Est. Price</th></tr>
     {% for r in rows %}
 <tr class="clickable-row"
     data-player-name='{{ (r.player.name if r.player else "")|tojson }}'
     data-deck-name='{{ (r.deck.name if r.deck else "")|tojson }}'
     data-deck-list='{{ (r.deck.list_text if r.deck else "")|tojson }}'>
-  <td>{% if r.player %}{{ r.player.name }}{% else %}–{% endif %}</td>
-  <td>{% if r.tournament %}{{ r.tournament.name }}{% else %}–{% endif %}</td>
+  <td>{% if r.rank %}#{{ r.rank }}{% else %}–{% endif %}</td>
+  <td class="clickable-cell player-cell" data-player-id="{{ r.player.id if r.player else '' }}">{% if r.player %}{{ r.player.name }}{% else %}–{% endif %}</td>
+  <td>{% if r.deck %}{{ r.deck.name }}{% else %}–{% endif %}</td>
+  <td class="clickable-cell tournament-cell" data-tournament-id="{{ r.tournament.id if r.tournament else '' }}">{% if r.tournament %}{{ r.tournament.name }}{% else %}–{% endif %}</td>
   <td>{% if r.tournament %}{{ r.tournament.date }}{% else %}–{% endif %}</td>
-  <td>{% if r.rank %}{{ r.rank }}{% else %}–{% endif %}</td>
+  {% if deck_name != 'Rogue' %}
+  <td class="uniqueness-cell">
+    {% if model_decklist %}
+      <div class="uniqueness-bar-container">
+        <div class="uniqueness-bar" style="width: 0%"></div>
+        <span class="uniqueness-text">0%</span>
+      </div>
+    {% else %}
+      N/A
+    {% endif %}
+  </td>
+  {% endif %}
   <td class="colors-cell"></td>
   <td class="price-cell">Calculating...</td>
 </tr>
@@ -420,11 +657,58 @@
     {% endfor %}
   </table>
 
+<!-- Model Deck Modal -->
+<div id="modelDeckModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModelDeckModal()">&times;</span>
+    <h3>{{ 'Edit' if model_decklist else 'Add' }} Model Decklist for {{ deck_name }}</h3>
+    <form id="modelDeckForm" onsubmit="saveModelDecklist(event)">
+      <label>Model Deck List</label>
+      <div class="deck-editor-wrap">
+        <div id="modelDeckEditor" contenteditable="true" class="deck-editor" spellcheck="false" autocomplete="off"></div>
+        <div id="modelDeckLoadingOverlay" class="deck-loading-overlay">
+          <div class="deck-spinner"></div>
+          <div class="deck-loading-text">Checking Cards...</div>
+        </div>
+      </div>
+      <textarea name="model_decklist" id="modelDeckList" hidden></textarea>
+      <div id="modelDeckErrors" style="color:red; margin-top:0.5rem;"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span>
+        Save Model Decklist
+      </button>
+    </form>
+  </div>
+</div>
+
 {% include '_deck_view_modal.html' %}
 
   <script>
     document.querySelectorAll('tr.clickable-row').forEach(row => {
-      row.addEventListener('click', () => openDeckModal(row));
+      row.addEventListener('click', (e) => {
+        // Check if clicked on a player or tournament cell
+        const playerCell = e.target.closest('.player-cell');
+        const tournamentCell = e.target.closest('.tournament-cell');
+        
+        if (playerCell) {
+          const playerId = playerCell.dataset.playerId;
+          if (playerId) {
+            window.location.href = `/player/${playerId}`;
+            return;
+          }
+        }
+        
+        if (tournamentCell) {
+          const tournamentId = tournamentCell.dataset.tournamentId;
+          if (tournamentId) {
+            window.location.href = `/tournament/${tournamentId}`;
+            return;
+          }
+        }
+        
+        // Otherwise open deck modal
+        openDeckModal(row);
+      });
       row.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -436,38 +720,164 @@
     let symbolMap = {};
     let cardCache = {};
     
-    fetch("https://api.scryfall.com/symbology")
-      .then(res => res.json())
-      .then(data => {
-        data.data.forEach(sym => {
-          symbolMap[sym.symbol] = sym.svg_uri;
-        });
-        
-        // Collect all unique card names from all decks
-        const allCardNames = new Set();
-        document.querySelectorAll('tr.clickable-row').forEach(row => {
-          const deckListRaw = row.dataset.deckList;
-          if (deckListRaw) {
-            const deckList = JSON.parse(deckListRaw || '""');
-            extractCardNames(deckList).forEach(name => allCardNames.add(name));
+    // Cache symbology data in localStorage
+    const SYMBOLOGY_CACHE_KEY = 'scryfall_symbology';
+    const SYMBOLOGY_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+    
+    function getCachedSymbology() {
+      try {
+        const cached = localStorage.getItem(SYMBOLOGY_CACHE_KEY);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < SYMBOLOGY_CACHE_DURATION) {
+            return data.symbology;
           }
-        });
-        
-        // Batch fetch all cards
-        if (allCardNames.size > 0) {
-          batchFetchCards([...allCardNames]).then(() => {
-            // Now compute colors and prices using cached data
-            document.querySelectorAll('tr.clickable-row').forEach(row => {
-              const deckListRaw = row.dataset.deckList;
-              if (deckListRaw) {
-                const deckList = JSON.parse(deckListRaw || '""');
-                computeDeckColors(deckList, row);
-                computeDeckPrice(deckList, row);
-              }
-            });
-          });
+        }
+      } catch (e) {
+        console.warn('Failed to load cached symbology:', e);
+      }
+      return null;
+    }
+    
+    function setCachedSymbology(symbology) {
+      try {
+        localStorage.setItem(SYMBOLOGY_CACHE_KEY, JSON.stringify({
+          symbology: symbology,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache symbology:', e);
+      }
+    }
+    
+    // Try to load from cache first
+    const cachedSymbology = getCachedSymbology();
+    
+    function processRows() {
+      // Collect all unique card names from all decks
+      const allCardNames = new Set();
+      document.querySelectorAll('tr.clickable-row').forEach(row => {
+        const deckListRaw = row.dataset.deckList;
+        if (deckListRaw) {
+          const deckList = JSON.parse(deckListRaw || '""');
+          extractCardNames(deckList).forEach(name => allCardNames.add(name));
         }
       });
+      
+      // Batch fetch all cards
+      if (allCardNames.size > 0) {
+        batchFetchCards([...allCardNames]).then(() => {
+          // Now compute colors and prices using cached data
+          document.querySelectorAll('tr.clickable-row').forEach(row => {
+            const deckListRaw = row.dataset.deckList;
+            if (deckListRaw) {
+              const deckList = JSON.parse(deckListRaw || '""');
+              computeDeckColors(deckList, row);
+              computeDeckPrice(deckList, row);
+            }
+          });
+          
+          // Compute banner colors and price from the first deck (most recent)
+          const firstRow = document.querySelector('tr.clickable-row');
+          if (firstRow) {
+            const deckListRaw = firstRow.dataset.deckList;
+            if (deckListRaw) {
+              const deckList = JSON.parse(deckListRaw || '""');
+              computeBannerColors(deckList);
+              computeBannerPrice(deckList);
+            }
+          }
+        });
+      }
+    }
+    
+    if (cachedSymbology) {
+      cachedSymbology.forEach(sym => {
+        symbolMap[sym.symbol] = sym.svg_uri;
+      });
+      processRows();
+    } else {
+      // Fetch from API if not cached
+      fetch("https://api.scryfall.com/symbology")
+        .then(res => res.json())
+        .then(data => {
+          setCachedSymbology(data.data);
+          data.data.forEach(sym => {
+            symbolMap[sym.symbol] = sym.svg_uri;
+          });
+          processRows();
+        })
+        .catch(err => console.warn('Failed to fetch symbology:', err));
+    }
+    
+    function computeBannerColors(deckList) {
+      const colors = new Set();
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
+        const parts = line.trim().split(/\s+/, 2);
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name) return;
+        
+        const card = cardCache[name];
+        if (card && card.color_identity) {
+          card.color_identity.forEach(c => colors.add(c));
+        }
+      });
+
+      const bannerColorsDiv = document.getElementById('bannerColors');
+      if (bannerColorsDiv) {
+        if (colors.size === 0) {
+          bannerColorsDiv.textContent = 'Colorless';
+        } else {
+          bannerColorsDiv.innerHTML = "";
+          ["W","U","B","R","G"].forEach(c => {
+            if (colors.has(c)) {
+              bannerColorsDiv.innerHTML += `<img src="https://svgs.scryfall.io/card-symbols/${c}.svg" alt="${c}" class="mana-icon">`;
+            }
+          });
+        }
+      }
+    }
+    
+    function computeBannerPrice(deckList) {
+      let totalPrice = 0;
+      const lines = deckList.split(/\r?\n/).filter(l => l.trim() !== "");
+      
+      lines.forEach(line => {
+        if (/^sideboard/i.test(line.trim())) return;
+        const parts = line.trim().split(/\s+/, 2);
+        const count = parseInt(parts[0]) || 0;
+        const name = line.trim().substring(parts[0].length).trim();
+        if (!name || count === 0) return;
+        
+        const card = cardCache[name];
+        if (card && card.prices) {
+          const usd = parseFloat(card.prices.usd);
+          const usdFoil = parseFloat(card.prices.usd_foil);
+          
+          let cheapestPrice = null;
+          if (!isNaN(usd) && usd > 0) {
+            cheapestPrice = usd;
+          }
+          if (!isNaN(usdFoil) && usdFoil > 0) {
+            if (cheapestPrice === null || usdFoil < cheapestPrice) {
+              cheapestPrice = usdFoil;
+            }
+          }
+          
+          if (cheapestPrice !== null) {
+            totalPrice += cheapestPrice * count;
+          }
+        }
+      });
+
+      const bannerPriceDiv = document.getElementById('bannerPrice');
+      if (bannerPriceDiv) {
+        bannerPriceDiv.textContent = totalPrice > 0 ? `$${Math.round(totalPrice)}` : 'N/A';
+      }
+    }
     
     async function batchFetchCards(cardNames, timeout = 5000) {
       const uniqueNames = [...new Set(cardNames)];
@@ -575,8 +985,379 @@
 
       const cell = row.querySelector(".price-cell");
       if (cell) {
-        cell.textContent = totalPrice > 0 ? `$${totalPrice.toFixed(2)}` : 'N/A';
+        cell.textContent = totalPrice > 0 ? `$${Math.round(totalPrice)}` : 'N/A';
       }
+    }
+    
+    // Model Decklist Management
+    const modelDecklistRaw = {{ model_decklist|tojson }};
+    let modelEditor = null;
+    let modelHidden = null;
+    let modelErrors = null;
+    
+    function openModelDeckModal() {
+      const modal = document.getElementById('modelDeckModal');
+      modelEditor = document.getElementById('modelDeckEditor');
+      modelHidden = document.getElementById('modelDeckList');
+      modelErrors = document.getElementById('modelDeckErrors');
+      
+      if (!modal || !modelEditor || !modelHidden) return;
+      
+      modal.style.display = 'block';
+      
+      // Populate with existing model decklist if available
+      modelEditor.innerHTML = '';
+      if (modelDecklistRaw) {
+        const lines = modelDecklistRaw.split('\n');
+        lines.forEach(line => {
+          const div = document.createElement('div');
+          const span = document.createElement('span');
+          span.textContent = line;
+          div.appendChild(span);
+          modelEditor.appendChild(div);
+        });
+        modelHidden.value = modelDecklistRaw;
+        validateModelDeck();
+      } else {
+        const div = document.createElement('div');
+        const span = document.createElement('span');
+        div.appendChild(span);
+        modelEditor.appendChild(div);
+        modelHidden.value = '';
+      }
+      
+      // Add event listeners
+      modelEditor.addEventListener('input', onModelDeckInput);
+      modelEditor.addEventListener('paste', onModelDeckPaste);
+    }
+    
+    function closeModelDeckModal() {
+      const modal = document.getElementById('modelDeckModal');
+      if (modal) modal.style.display = 'none';
+      if (modelEditor) {
+        modelEditor.removeEventListener('input', onModelDeckInput);
+        modelEditor.removeEventListener('paste', onModelDeckPaste);
+      }
+    }
+    
+    function onModelDeckInput() {
+      normalizeModelEditor();
+      const lines = Array.from(modelEditor.children).map(div => div.querySelector("span").textContent);
+      modelHidden.value = lines.join("\n");
+      validateModelDeck();
+    }
+    
+    function onModelDeckPaste(e) {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      document.execCommand('insertText', false, text);
+      setTimeout(() => validateModelDeck(true), 100);
+    }
+    
+    function normalizeModelEditor() {
+      if (!modelEditor) return;
+      Array.from(modelEditor.children).forEach(node => {
+        if (node.nodeName !== "DIV") {
+          const div = document.createElement("div");
+          const span = document.createElement("span");
+          span.textContent = node.textContent;
+          div.appendChild(span);
+          node.replaceWith(div);
+        } else {
+          const span = node.querySelector("span") || document.createElement("span");
+          span.textContent = node.textContent;
+          node.innerHTML = "";
+          node.appendChild(span);
+        }
+      });
+      if (!modelEditor.firstChild) {
+        const div = document.createElement("div");
+        const span = document.createElement("span");
+        div.appendChild(span);
+        modelEditor.appendChild(div);
+      }
+    }
+    
+    async function validateModelDeck(showLoading = false) {
+      if (!modelEditor || !modelHidden || !modelErrors) return;
+
+      const loadingOverlay = document.getElementById('modelDeckLoadingOverlay');
+      if (showLoading && loadingOverlay) loadingOverlay.classList.add('active');
+
+      normalizeModelEditor();
+
+      const lines = Array.from(modelEditor.children).map(div => div.querySelector("span").textContent);
+      modelHidden.value = lines.join("\n");
+
+      const names = [];
+      const seen = new Set();
+      let sideboardCount = 0;
+
+      const perLineCards = lines.map(line => extractNamesFromLine(line));
+      for (const arr of perLineCards) {
+        for (const card of arr) {
+          if (card.isSideboard) {
+            sideboardCount++;
+            continue;
+          }
+          const key = card.name.toLowerCase();
+          if (!seen.has(key)) {
+            names.push(card.name);
+            seen.add(key);
+          }
+        }
+      }
+
+      const { invalid, notLegal, cardData } = await validateNames(names);
+
+      if (loadingOverlay) loadingOverlay.classList.remove('active');
+
+      const basicLands = new Set(['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes']);
+      let hasQuantityError = false;
+      const quantityErrors = [];
+      
+      if (sideboardCount > 1) {
+        hasQuantityError = true;
+        quantityErrors.push('Multiple sideboard sections found - only one is allowed');
+      }
+
+      perLineCards.forEach(arr => {
+        for (const card of arr) {
+          if (card.isSideboard) continue;
+          
+          const key = card.name.toLowerCase();
+          const isBasic = basicLands.has(key);
+          const count = card.count;
+          
+          if (count <= 0 || count > (isBasic ? 999 : 4)) {
+            hasQuantityError = true;
+            if (count <= 0) {
+              quantityErrors.push(`${card.name}: quantity must be at least 1`);
+            } else {
+              quantityErrors.push(`${card.name}: maximum 4 copies allowed (${count} specified)`);
+            }
+          }
+        }
+      });
+
+      const saveBtn = document.querySelector('#modelDeckForm button[type="submit"]');
+      if (saveBtn) {
+        if (invalid.size > 0 || hasQuantityError) {
+          saveBtn.disabled = true;
+          saveBtn.style.opacity = '0.5';
+          saveBtn.style.cursor = 'not-allowed';
+        } else {
+          saveBtn.disabled = false;
+          saveBtn.style.opacity = '1';
+          saveBtn.style.cursor = 'pointer';
+        }
+      }
+
+      perLineCards.forEach((arr, i) => {
+        if (arr.length > 0 && arr[0].isSideboard) {
+          const span = modelEditor.children[i].querySelector("span");
+          span.className = "hl-sideboard";
+          return;
+        }
+
+        const allInvalid = arr.every(c => invalid.has(c.name.toLowerCase()));
+        const anyNotLegal = arr.some(c => notLegal.has(c.name.toLowerCase()));
+        const hasQtyError = arr.some(c => {
+          const key = c.name.toLowerCase();
+          const isBasic = basicLands.has(key);
+          return c.count <= 0 || c.count > (isBasic ? 999 : 4);
+        });
+
+        const span = modelEditor.children[i].querySelector("span");
+        if (allInvalid || hasQtyError) {
+          span.className = "hl-invalid";
+        } else if (anyNotLegal) {
+          span.className = "hl-not-legal";
+        } else if (arr.length > 0) {
+          span.className = "hl-valid";
+        } else {
+          span.className = "";
+        }
+      });
+
+      if (invalid.size > 0) {
+        modelErrors.textContent = `Invalid cards: ${Array.from(invalid).join(', ')}`;
+      } else if (quantityErrors.length > 0) {
+        modelErrors.textContent = quantityErrors.join('; ');
+      } else {
+        modelErrors.textContent = '';
+      }
+    }
+    
+    function extractNamesFromLine(rawLine) {
+      const trimmed = rawLine.trim();
+      
+      if (!trimmed) {
+        return [];
+      }
+      
+      if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+        return [{ name: '__SIDEBOARD__', count: 0, isSideboard: true }];
+      }
+      
+      const tokens = trimmed.split(/\s+/);
+      const cards = [];
+      let currentCount = null;
+      let currentName = [];
+
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        const next = tokens[i + 1];
+
+        if (/^-?\d+$/.test(tok)) {
+          if (currentName.length > 0) {
+            cards.push({ name: currentName.join(" "), count: currentCount || 1 });
+            currentName = [];
+          }
+          currentCount = parseInt(tok);
+          continue;
+        } else {
+          currentName.push(tok);
+          if (!next || /^-?\d+$/.test(next)) {
+            cards.push({ name: currentName.join(" "), count: currentCount || 1 });
+            currentName = [];
+            currentCount = null;
+          }
+        }
+      }
+
+      return cards
+        .map(c => ({ name: c.name.trim(), count: c.count }))
+        .filter(c => c.name.length > 0);
+    }
+
+    async function validateNames(cardNames) {
+      const invalid = new Set();
+      const notLegal = new Set();
+      const cardData = new Map();
+      
+      for (const name of cardNames) {
+        try {
+          const resp = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`);
+          const card = await resp.json();
+          if (card.object === "error") {
+            invalid.add(name.toLowerCase());
+          } else {
+            cardData.set(name.toLowerCase(), card);
+            if (card.legalities && card.legalities.premodern !== 'legal') {
+              notLegal.add(name.toLowerCase());
+            }
+          }
+        } catch {
+          invalid.add(name.toLowerCase());
+        }
+      }
+      return { invalid, notLegal, cardData };
+    }
+    
+    async function saveModelDecklist(event) {
+      event.preventDefault();
+      
+      const decklist = modelHidden.value;
+      
+      try {
+        const response = await fetch(`/archetype/{{ deck_name }}/model`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `decklist=${encodeURIComponent(decklist)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Model decklist saved successfully!');
+          location.reload();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (error) {
+        alert('Error saving model decklist');
+        console.error(error);
+      }
+    }
+    
+    // Calculate uniqueness for each deck
+    function calculateUniqueness(deckList, modelDeck) {
+      if (!modelDeck) return 0;
+      
+      const parseDecklist = (decklist) => {
+        const cards = {};
+        const lines = decklist.split(/\r?\n/).filter(l => l.trim() !== "");
+        let inSideboard = false;
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+            inSideboard = true;
+            continue;
+          }
+          
+          // Skip sideboard cards
+          if (inSideboard) continue;
+          
+          const parts = trimmed.split(/\s+/);
+          let count = 1;
+          let name = trimmed;
+          
+          if (/^\d+$/.test(parts[0])) {
+            count = parseInt(parts[0]);
+            name = parts.slice(1).join(' ');
+          }
+          
+          if (name) {
+            const key = name.toLowerCase().trim();
+            cards[key] = (cards[key] || 0) + count;
+          }
+        }
+        
+        return cards;
+      };
+      
+      const deck1 = parseDecklist(deckList);
+      const deck2 = parseDecklist(modelDeck);
+      
+      const allCards = new Set([...Object.keys(deck1), ...Object.keys(deck2)]);
+      let totalDiff = 0;
+      let totalCards = 0;
+      
+      for (const card of allCards) {
+        const count1 = deck1[card] || 0;
+        const count2 = deck2[card] || 0;
+        totalDiff += Math.abs(count1 - count2);
+        totalCards += Math.max(count1, count2);
+      }
+      
+      if (totalCards === 0) return 0;
+      
+      // Uniqueness as percentage (higher = more different from model)
+      return Math.round((totalDiff / totalCards) * 100);
+    }
+    
+    // Update uniqueness bars after page load
+    if (modelDecklistRaw) {
+      document.querySelectorAll('tr.clickable-row').forEach(row => {
+        const deckListRaw = row.dataset.deckList;
+        if (deckListRaw) {
+          const deckList = JSON.parse(deckListRaw || '""');
+          const uniqueness = calculateUniqueness(deckList, modelDecklistRaw);
+          
+          const bar = row.querySelector('.uniqueness-bar');
+          const text = row.querySelector('.uniqueness-text');
+          
+          if (bar && text) {
+            bar.style.width = uniqueness + '%';
+            text.textContent = uniqueness + '%';
+            // Keep the blue gradient consistent as defined in CSS
+          }
+        }
+      });
     }
   </script>
   {% endblock %}
