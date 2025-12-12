@@ -614,7 +614,7 @@
   </div>
 
   {% if current_user.is_authenticated and current_user.is_admin %}
-  <div style="margin-bottom: 1rem;">
+  <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
     <button type="button" class="btn btn-primary" onclick="openModelDeckModal()" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600;">
       <span class="material-icons" style="font-size: 16px; vertical-align: middle;">edit</span>
       {{ 'Edit' if model_decklist else 'Add' }} Model Decklist
@@ -623,7 +623,7 @@
   {% endif %}
 
   <table>
-    <tr><th>Rank</th><th>Player</th><th>Custom Deck Name</th><th>Tournament</th><th>Date</th>{% if deck_name != 'Rogue' %}<th>Uniqueness</th>{% endif %}<th>Colors</th><th>Est. Price</th></tr>
+    <tr><th>Rank</th><th>Player</th><th>Deck Name</th><th>Tournament</th><th>Date</th>{% if deck_name != 'Rogue' %}<th>Uniqueness</th>{% endif %}<th>Colors</th><th>Est. Price</th></tr>
     {% for r in rows %}
 <tr class="clickable-row"
     data-player-name='{{ (r.player.name if r.player else "")|tojson }}'
@@ -677,7 +677,7 @@
   </div>
 </div>
 
-{% include '_deck_view_modal.html' %}
+<!-- User-generated decklist modal removed - personal decks are link-only accessible -->
 
   <script>
     document.querySelectorAll('tr.clickable-row').forEach(row => {
@@ -1355,5 +1355,6 @@
         }
       });
     }
+
   </script>
   {% endblock %}

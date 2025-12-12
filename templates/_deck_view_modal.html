@@ -384,6 +384,7 @@
     
     // Fade out current image
     preview.style.opacity = '0';
+    preview.style.transition = 'opacity 0.3s ease-in-out';
     
     // Fetch all printings to find oldest and cheapest
     fetch(`https://api.scryfall.com/cards/search?q=!"`+encodeURIComponent(card.name)+`" -set:lea -set:leb -set:2ed -set:3ed -set:ced -set:cei -set:fbb -set:sum&unique=prints&order=released&dir=asc`)
@@ -415,7 +416,7 @@
             if (myLoadId !== currentImageLoadId) return;
             
             // Wait for fade-out to complete before changing the src
-            const fadeOutDelay = wasVisible ? 250 : 0;
+            const fadeOutDelay = wasVisible ? 300 : 0;
             setTimeout(() => {
               if (myLoadId !== currentImageLoadId) return;
               
@@ -428,8 +429,12 @@
                 if (myLoadId === currentImageLoadId) {
                   preview.style.opacity = '1';
                 }
-              }, 20);
+              }, 50);
             }, fadeOutDelay);
+          };
+          tempImg.onerror = () => {
+            console.error('Failed to load card image:', imgUrl);
+            preview.style.display = 'none';
           };
           tempImg.src = imgUrl;
         } else if (myLoadId === currentImageLoadId) {

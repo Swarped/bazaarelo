@@ -186,6 +186,24 @@
     color: #333;
   }
   
+  .deck-editor::selection {
+    background: #7c3aed;
+    color: white;
+    -webkit-text-fill-color: white;
+  }
+  
+  .deck-editor ::-moz-selection {
+    background: #7c3aed;
+    color: white;
+  }
+  
+  .deck-editor {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+  }
+  
   html.dark-mode .deck-editor {
     color: #e0e0e0;
   }
@@ -296,7 +314,7 @@
   }
   
   .submit-btn {
-    width: 100%;
+    flex: 1;
     padding: 1rem;
     background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
     color: white;
@@ -310,6 +328,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    height: 56px;
   }
   
   .submit-btn:hover:not(:disabled) {
@@ -328,6 +347,264 @@
   
   .submit-btn .material-icons {
     font-size: 24px;
+  }
+  
+  .submit-button-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    align-items: flex-start;
+  }
+  
+  .claim-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0.8;
+  }
+  
+  .submit-button-row .claim-checkbox-wrapper {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    width: 100%;
+  }
+  
+  .submit-button-row .claim-checkbox-wrapper input[type="checkbox"] {
+    display: none;
+  }
+  
+  .submit-button-row .checkbox-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 56px;
+    cursor: pointer;
+  }
+  
+  .submit-button-row .checkbox-box {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  
+  html.dark-mode .submit-button-row .checkbox-box {
+    background: #2a2a2a;
+    border-color: #475569;
+  }
+  
+  .submit-button-row .claim-checkbox-wrapper input:checked ~ .checkbox-control .checkbox-box {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    border-color: #7c3aed;
+  }
+  
+  .submit-button-row .claim-checkbox-wrapper input:checked ~ .checkbox-control .checkbox-box::after {
+    content: '✓';
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    line-height: 1;
+  }
+  
+  .submit-button-row .checkbox-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    margin: 0;
+  }
+  
+  html.dark-mode .submit-button-row .checkbox-label {
+    color: #e2e8f0;
+  }
+  
+  .claim-profile-hint {
+    font-size: 0.85rem;
+    color: #6b7280;
+    text-align: center;
+    padding: 0;
+    display: block;
+    margin-top: 0.25rem;
+    font-style: italic;
+  }
+  
+  html.dark-mode .claim-profile-hint {
+    color: #9ca3af;
+  }
+  
+  .personal-deck-selector {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f0f4ff;
+    border: 2px solid #7c3aed;
+    border-radius: 8px;
+  }
+  
+  html.dark-mode .personal-deck-selector {
+    background: #1a1a2e;
+    border-color: #9d5cff;
+  }
+  
+  .personal-deck-selector label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #7c3aed;
+  }
+  
+  html.dark-mode .personal-deck-selector label {
+    color: #9d5cff;
+  }
+  
+  .personal-deck-selector select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+  }
+  
+  html.dark-mode .personal-deck-selector select {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+  
+  .personal-deck-selector .help-text {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+  
+  html.dark-mode .personal-deck-selector .help-text {
+    color: #9ca3af;
+  }
+  
+  .claim-profile-box {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 2px solid #3b82f6;
+    border-radius: 12px;
+    text-align: center;
+  }
+  
+  html.dark-mode .claim-profile-box {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
+    border-color: #60a5fa;
+  }
+  
+  .claim-profile-notice {
+    display: none;
+  }
+  
+  .claim-profile-box h3 {
+    margin: 0 0 1rem 0;
+    color: #1e40af;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  html.dark-mode .claim-profile-box h3 {
+    color: #93c5fd;
+  }
+  
+  .claim-profile-box p {
+    margin: 0 0 1.5rem 0;
+    color: #475569;
+    font-size: 1rem;
+  }
+  
+  html.dark-mode .claim-profile-box p {
+    color: #cbd5e1;
+  }
+  
+  .claim-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    transition: all 0.3s;
+  }
+  
+  html.dark-mode .claim-checkbox-wrapper {
+    background: #0f172a;
+  }
+  
+  .claim-checkbox-wrapper:hover {
+    background: #eff6ff;
+    transform: scale(1.02);
+  }
+  
+  html.dark-mode .claim-checkbox-wrapper:hover {
+    background: #1e293b;
+  }
+  
+  .claim-checkbox-wrapper input[type="checkbox"] {
+    display: none;
+  }
+  
+  .claim-checkbox-icon {
+    width: 48px;
+    height: 48px;
+    border: 3px solid #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    background: white;
+  }
+  
+  html.dark-mode .claim-checkbox-icon {
+    background: #1e293b;
+    border-color: #475569;
+  }
+  
+  .claim-checkbox-wrapper input:checked + .claim-checkbox-icon {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    border-color: #7c3aed;
+  }
+  
+  .claim-checkbox-icon .material-icons {
+    font-size: 32px;
+    color: transparent;
+    transition: color 0.3s;
+  }
+  
+  .claim-checkbox-wrapper input:checked + .claim-checkbox-icon .material-icons {
+    color: white;
+  }
+  
+  .claim-checkbox-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+  
+  html.dark-mode .claim-checkbox-label {
+    color: #e2e8f0;
   }
   
   .success-container {
@@ -372,6 +649,107 @@
   .success-container a:hover {
     text-decoration: underline;
   }
+  
+  .deck-link-section {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e0e0e0;
+  }
+  
+  html.dark-mode .deck-link-section {
+    border-top-color: #444;
+  }
+  
+  .deck-link-section h3 {
+    color: #1e293b;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  html.dark-mode .deck-link-section h3 {
+    color: #e2e8f0;
+  }
+  
+  .deck-link-section .material-icons {
+    font-size: 1.5rem;
+  }
+  
+  .deck-link-copy-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .deck-link-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #7c3aed;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background: white;
+    color: #333;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    word-break: break-all;
+  }
+  
+  html.dark-mode .deck-link-input {
+    background: #2a2a2a;
+    border-color: #9d5cff;
+    color: #e0e0e0;
+  }
+  
+  .deck-link-input:focus {
+    outline: none;
+  }
+  
+  .deck-link-copy-btn {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  
+  .deck-link-copy-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  }
+  
+  html.dark-mode .deck-link-copy-btn:hover {
+    box-shadow: 0 4px 12px rgba(157, 92, 255, 0.4);
+  }
+  
+  .deck-link-copy-btn.copied {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+  
+  .deck-link-copy-btn .material-icons {
+    font-size: 20px;
+  }
+  
+  .deck-link-info {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 1rem;
+  }
+  
+  html.dark-mode .deck-link-info {
+    color: #aaa;
+  }
 </style>
 
 <div class="submit-deck-page">
@@ -388,13 +766,38 @@
       <div class="success-container">
         <span class="material-icons success-icon">check_circle</span>
         <h2>{% if existing_deck %}Deck Updated!{% else %}Deck Submitted!{% endif %}</h2>
-        <p>Thank you, <strong>{{ player_name }}</strong>! Your decklist has been {% if existing_deck %}updated{% else %}received{% endif %}.</p>
+        <p>Thank you, <strong>{% if is_admin_or_scorekeeper and current_user_name %}{{ current_user_name }}{% else %}{{ player_name }}{% endif %}</strong>! {% if is_admin_or_scorekeeper and current_user_name %}The decklist for <strong>{{ player_name }}</strong> has been {% if existing_deck %}updated{% else %}received{% endif %}.{% else %}Your decklist has been {% if existing_deck %}updated{% else %}received{% endif %}.{% endif %}</p>
         {% if can_edit and submission_token %}
           <p style="margin-top: 1.5rem;">
             <a href="{{ url_for('submit_deck_public', token=submission_token) }}">
               Click here to edit your deck again
             </a>
           </p>
+        {% endif %}
+        
+        {% if existing_deck and existing_deck.share_token %}
+        <div class="deck-link-section" style="background: linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%); border: 2px solid #7c3aed; padding: 2rem; border-radius: 12px; margin-top: 2rem;">
+          <h3 style="margin-top: 0; color: #1e40af; display: flex; align-items: center; gap: 0.5rem;">
+            <span class="material-icons">share</span>
+            🎉 Share Your Deck
+          </h3>
+          <p style="color: #1e40af; margin-bottom: 1.5rem; font-size: 1.05rem;">
+            Copy this link to share your deck with others:
+          </p>
+          <div class="deck-link-copy-wrapper">
+            <input type="text" class="deck-link-input" id="deckLinkInput" 
+                   value="{{ request.url_root }}deck/share/{{ existing_deck.share_token }}" readonly
+                   style="border: 2px solid #7c3aed; padding: 1rem; font-size: 1rem; flex: 1;">
+            <button type="button" class="deck-link-copy-btn" id="copyDeckLinkBtn"
+                   style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; height: auto; min-width: 140px;">
+              <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">content_copy</span>
+              Copy Link
+            </button>
+          </div>
+          <p class="deck-link-info" style="color: #475569; margin-top: 1rem; font-style: italic;">
+            📋 Anyone with this link can view your complete deck
+          </p>
+        </div>
         {% endif %}
       </div>
     {% else %}
@@ -404,11 +807,41 @@
         </div>
       {% else %}
         <div class="info-box">
-          <p>Welcome, <strong>{{ player_name }}</strong>! Please submit your decklist for this tournament.</p>
+          <p>Welcome, <strong>{% if is_admin_or_scorekeeper and current_user_name %}{{ current_user_name }}{% else %}{{ player_name }}{% endif %}</strong>! {% if is_admin_or_scorekeeper and current_user_name %}You are submitting a decklist for <strong>{{ player_name }}</strong>.{% else %}Please submit your decklist for this tournament.{% endif %}</p>
         </div>
       {% endif %}
       
       <form method="POST">
+        {% if can_claim_profile %}
+        <div class="claim-profile-notice">
+          <h3>
+            <span class="material-icons">person_add</span>
+            Claim This Profile
+          </h3>
+          <p>This profile hasn't been claimed yet. Claim it to manage your decks and track your tournament history!</p>
+        </div>
+        {% endif %}
+        
+        {% if personal_decks %}
+        <div class="personal-deck-selector">
+          <label for="personalDeckSelector">
+            <span class="material-icons">collections_bookmark</span>
+            Load from Your Personal Collection
+          </label>
+          <select id="personalDeckSelector">
+            <option value="">-- Select a deck to load --</option>
+            {% for deck in personal_decks %}
+            <option value="{{ deck.id }}" data-name="{{ deck.name }}" data-archetype="{{ deck.archetype }}">
+              {{ deck.name }} ({{ deck.archetype }})
+            </option>
+            {% endfor %}
+          </select>
+          <p class="help-text">
+            💡 Selecting a deck will copy its contents to this form. The original deck in your collection won't be affected by changes here.
+          </p>
+        </div>
+        {% endif %}
+        
         <div class="form-group">
           <label for="deckName">
             <span class="material-icons">label</span>
@@ -444,10 +877,24 @@ Sideboard
           <div id="deckErrors"></div>
         </div>
         
-        <button type="submit" class="submit-btn" id="saveBtn">
-          <span class="material-icons">save</span>
-          Submit Decklist
-        </button>
+        <div class="submit-button-row">
+          {% if can_claim_profile %}
+          <div class="claim-checkbox-group">
+            <label class="claim-checkbox-wrapper" for="claimProfileCheckbox">
+              <input type="checkbox" id="claimProfileCheckbox" name="claim_profile" value="true">
+              <div class="checkbox-control">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Claim this profile</span>
+              </div>
+            </label>
+            <span class="claim-profile-hint">Manage your decks & tournament history</span>
+          </div>
+          {% endif %}
+          <button type="submit" class="submit-btn" id="saveBtn">
+            <span class="material-icons">save</span>
+            Submit Decklist
+          </button>
+        </div>
       </form>
     {% endif %}
   </div>
@@ -460,12 +907,57 @@ Sideboard
       const deckNameInput = document.getElementById('deckName');
       const editor = document.getElementById('deckEditor');
       
+      // Handle personal deck selector
+      const personalDeckSelector = document.getElementById('personalDeckSelector');
+      if (personalDeckSelector) {
+        personalDeckSelector.addEventListener('change', async function() {
+          const selectedDeckId = this.value;
+          if (!selectedDeckId) return;
+          
+          try {
+            // Fetch the deck data from API
+            const response = await fetch(`/api/deck/${selectedDeckId}`);
+            if (!response.ok) {
+              throw new Error('Failed to load deck');
+            }
+            
+            const deckData = await response.json();
+            
+            // Populate the deck name field
+            if (deckNameInput) {
+              deckNameInput.value = deckData.name || '';
+            }
+            
+            // Populate the deck editor with the decklist
+            if (editor && deckData.list_text) {
+              editor.innerHTML = '';
+              const lines = deckData.list_text.split('\n');
+              lines.forEach(line => {
+                const div = document.createElement('div');
+                const span = document.createElement('span');
+                span.textContent = line;
+                div.appendChild(span);
+                editor.appendChild(div);
+              });
+              
+              // Trigger validation after populating
+              setTimeout(() => {
+                validateAndHighlight(true);
+              }, 100);
+            }
+          } catch (error) {
+            console.error('Error loading deck:', error);
+            alert('Failed to load deck. Please try again.');
+          }
+        });
+      }
+      
       // Pre-populate deck editor if editing existing deck
       {% if existing_deck and existing_deck.list_text %}
       const existingDeckList = {{ existing_deck.list_text | tojson }};
       if (editor && existingDeckList) {
         editor.innerHTML = '';
-        const lines = existingDeckList.split('\\n');
+        const lines = existingDeckList.split('\n');
         lines.forEach(line => {
           const div = document.createElement('div');
           const span = document.createElement('span');
@@ -532,8 +1024,9 @@ Sideboard
         return [];
       }
       
-      // Sideboard marker line
-      if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase().startsWith('sideboard')) {
+      // Sideboard marker line (exact match or standalone)
+      const lowerLine = trimmed.toLowerCase();
+      if (lowerLine === 'sideboard' || lowerLine === 'sb' || lowerLine === 'sideboard:') {
         return [{ name: '__SIDEBOARD__', count: 0, isSideboard: true }];
       }
       
@@ -842,4 +1335,35 @@ Sideboard
     });
   </script>
   {% endif %}
+  
+  <script>
+    // Handle deck link copy button on success page
+    const copyBtn = document.getElementById('copyDeckLinkBtn');
+    const linkInput = document.getElementById('deckLinkInput');
+    
+    if (copyBtn && linkInput) {
+      copyBtn.addEventListener('click', function() {
+        // Select the input text
+        linkInput.select();
+        
+        // Copy to clipboard
+        try {
+          document.execCommand('copy');
+          
+          // Change button appearance
+          const originalText = copyBtn.innerHTML;
+          copyBtn.classList.add('copied');
+          copyBtn.innerHTML = '<span class="material-icons">check</span> Copied!';
+          
+          // Revert after 2 seconds
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = originalText;
+          }, 2000);
+        } catch (err) {
+          alert('Failed to copy link. Please try again.');
+        }
+      });
+    }
+  </script>
 {% endblock %}

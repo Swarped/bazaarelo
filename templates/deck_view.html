@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .deck-view-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .deck-header {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  }
+
+  .deck-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2.5rem;
+  }
+
+  .deck-meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .deck-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .deck-meta-label {
+    opacity: 0.9;
+    font-size: 0.95rem;
+  }
+
+  .deck-meta-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .deck-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+  }
+
+  .decklist-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .decklist-section h2 {
+    margin: 0 0 1rem 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .decklist-section h2 .material-icons {
+    color: #7c3aed;
+  }
+
+  .decklist {
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #7c3aed;
+    color: #333;
+  }
+
+  .copy-button {
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    margin-top: 1rem;
+  }
+
+  .copy-button:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .copy-button.copied {
+    background: #059669;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .sidebar-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar-card h3 {
+    margin: 0 0 1rem 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sidebar-card h3 .material-icons {
+    color: #7c3aed;
+  }
+
+  .card-count {
+    background: #f0f0ff;
+    border-left: 3px solid #7c3aed;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+  }
+
+  .count-label {
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .count-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #7c3aed;
+  }
+
+  .share-section {
+    background: linear-gradient(135deg, #f0f0ff 0%, #f5e6ff 100%);
+    border: 2px solid #e9d5ff;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .share-section h4 {
+    margin: 0 0 0.75rem 0;
+    color: #7c3aed;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .share-url {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-family: monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    color: #666;
+    margin-bottom: 0.75rem;
+  }
+
+  .share-button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .share-button:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  .share-button.copied {
+    background: #10b981;
+  }
+
+  /* Dark mode */
+  html.dark-mode .deck-view-container {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .decklist-section,
+  html.dark-mode .sidebar-card {
+    background: #2a2a2a;
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .decklist-section h2,
+  html.dark-mode .sidebar-card h3 {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .decklist {
+    background: #1f1f1f;
+    color: #e0e0e0;
+    border-left-color: #a78bfa;
+  }
+
+  html.dark-mode .card-count {
+    background: #3d2563;
+    border-left-color: #a78bfa;
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .count-label {
+    color: #999;
+  }
+
+  html.dark-mode .share-section {
+    background: linear-gradient(135deg, #3d2563 0%, #2a1a4a 100%);
+    border-color: #6d28d9;
+  }
+
+  html.dark-mode .share-section h4 {
+    color: #a78bfa;
+  }
+
+  html.dark-mode .share-url {
+    background: #1f1f1f;
+    border-color: #444;
+    color: #b0b0b0;
+  }
+
+  @media (max-width: 768px) {
+    .deck-content {
+      grid-template-columns: 1fr;
+    }
+
+    .deck-header {
+      padding: 1.5rem;
+    }
+
+    .deck-header h1 {
+      font-size: 1.8rem;
+    }
+
+    .deck-meta {
+      gap: 1rem;
+    }
+
+    .decklist-section,
+    .sidebar-card {
+      padding: 1rem;
+    }
+  }
+</style>
+
+<div class="deck-view-container">
+  <!-- Deck Header -->
+  <div class="deck-header">
+    <h1>{{ deck.name }}</h1>
+    <div class="deck-meta">
+      <div class="deck-meta-item">
+        <span class="material-icons">category</span>
+        <div>
+          <div class="deck-meta-label">Archetype</div>
+          <div class="deck-meta-value">{{ deck.archetype }}</div>
+        </div>
+      </div>
+      <div class="deck-meta-item">
+        <span class="material-icons">person</span>
+        <div>
+          <div class="deck-meta-label">Pilot</div>
+          <div class="deck-meta-value">{{ player.name if player else 'Unknown' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="deck-content">
+    <!-- Decklist -->
+    <div class="decklist-section">
+      <h2>
+        <span class="material-icons">library_books</span>
+        Decklist
+      </h2>
+      <div class="decklist">{{ deck.list_text or 'No decklist provided' }}</div>
+      <button class="copy-button" onclick="copyDecklistToClipboard()">
+        <span class="material-icons">content_copy</span>
+        Copy Decklist
+      </button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Card Count -->
+      {% if deck.list_text %}
+        <div class="sidebar-card">
+          <h3>
+            <span class="material-icons">info</span>
+            Stats
+          </h3>
+          {% set card_count = deck.list_text.split('\n')|length %}
+          <div class="card-count">
+            <div class="count-label">Total Cards</div>
+            <div class="count-value">{{ card_count }}</div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Share Section -->
+      <div class="sidebar-card">
+        <div class="share-section">
+          <h4>
+            <span class="material-icons">share</span>
+            Share Deck
+          </h4>
+          <div class="share-url">{{ request.url }}</div>
+          <button class="share-button" onclick="copyShareLink()">
+            <span class="material-icons">content_copy</span>
+            Copy Share Link
+          </button>
+        </div>
+      </div>
+
+      <!-- Back Link -->
+      <a href="{{ url_for('my_decks') }}" style="text-align: center; color: #7c3aed; text-decoration: none; padding: 1rem; border-radius: 6px; background: #f0f0ff; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" onmouseover="this.style.background='#e9d5ff'" onmouseout="this.style.background='#f0f0ff'">
+        <span class="material-icons">arrow_back</span>
+        Back to My Decks
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function copyDecklistToClipboard() {
+    const decklist = '{{ deck.list_text }}'.replace(/\\/g, '\n');
+    navigator.clipboard.writeText(decklist).then(() => {
+      const btn = event.target.closest('.copy-button');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="material-icons">check</i> Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(err => {
+      alert('Failed to copy decklist');
+      console.error(err);
+    });
+  }
+
+  function copyShareLink() {
+    const url = '{{ request.url }}';
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = event.target.closest('.share-button');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="material-icons">check</i> Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(err => {
+      alert('Failed to copy link');
+      console.error(err);
+    });
+  }
+</script>
+
+{% endblock %}

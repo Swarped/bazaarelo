@@ -1040,6 +1040,9 @@ def admin_panel():
     # Get pending player claims
     player_claims = PlayerClaim.query.filter_by(status='pending').order_by(PlayerClaim.submitted_at.desc()).all()
 
+    # Get all players for linking
+    players = Player.query.all()
+
     # Convert users to JSON-serializable format
     users_json = [{"id": u.id, "name": u.name, "email": u.email} for u in users]
 
@@ -1057,7 +1060,78 @@ def admin_panel():
         else:
             next_reset = date(today.year, today.month + 1, 1)
     
-    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs, next_reset_date=next_reset, player_claims=player_claims)
+    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, players=players, demo_mode=is_demo_mode(), event_logs=event_logs, next_reset_date=next_reset, player_claims=player_claims)
+
+
+@app.route('/api/players/search', methods=['GET'])
+@login_required
+def api_search_players():
+    """API endpoint for searching players"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    query = request.args.get('q', '').strip().lower()
+    if not query:
+        return jsonify([])
+    
+    # Search players by name
+    players = Player.query.filter(Player.name.ilike(f'%{query}%')).limit(20).all()
+    
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'claimed': p.claimed_by is not None
+    } for p in players])
+
+
+@app.route('/admin/link_player/<user_id>', methods=['POST'])
+@login_required
+def admin_link_player(user_id):
+    """Link a player profile to a user"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    player_id = request.form.get('player_id')
+    if not player_id:
+        return jsonify({'error': 'Player ID required'}), 400
+    
+    player = Player.query.get(player_id)
+    if not player:
+        return jsonify({'error': 'Player not found'}), 404
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Check if player is already claimed
+    if player.claimed_by and player.claimed_by != user_id:
+        return jsonify({'error': 'Player is already claimed by another user'}), 400
+    
+    # Link the player to the user
+    player.claimed_by = user_id
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'Player {player.name} linked to {user.name}'})
+
+
+@app.route('/admin/unlink_player/<user_id>', methods=['POST'])
+@login_required
+def admin_unlink_player(user_id):
+    """Unlink a player profile from a user"""
+    if not current_user.is_admin:
+        flash('Unauthorized', 'error')
+        return redirect(url_for('admin_panel'))
+    
+    # Find the player claimed by this user
+    player = Player.query.filter_by(claimed_by=user_id).first()
+    if player:
+        player.claimed_by = None
+        db.session.commit()
+        flash(f'Player {player.name} unlinked from user', 'success')
+    else:
+        flash('No linked player found', 'error')
+    
+    return redirect(url_for('admin_panel'))
 
 
 @app.route("/admin/stores", methods=["GET", "POST"])
@@ -1330,8 +1404,8 @@ def blog():
     posts = BlogPost.query.order_by(BlogPost.created_at.desc()).all()
     
     # Debug: Log image URLs
-    for post in posts:
-        print(f"[DEBUG] Post '{post.title}' has image_url: {post.image_url}", file=sys.stderr)
+    # for post in posts:
+    #     print(f"[DEBUG] Post '{post.title}' has image_url: {post.image_url}", file=sys.stderr)
     
     return render_template("blog.html", posts=posts)
 
@@ -2156,6 +2230,34 @@ def user_tournaments(user_id):
     return render_template("user_tournaments.html", tournaments=tournaments)
 
 
+@app.route('/deck/<int:deck_id>')
+def view_personal_deck(deck_id):
+    """Display a personal deck (public view via shared link)"""
+    deck = Deck.query.get_or_404(deck_id)
+    
+    # Only show personal decks (tournament_id is None)
+    if deck.tournament_id is not None:
+        # Redirect to the archetype detail page for tournament decks
+        return redirect(url_for('deck_detail', deck_name=deck.archetype))
+    
+    player = deck.player
+    
+    # Parse deck list
+    decklist_lines = []
+    if deck.list_text:
+        for line in deck.list_text.split('\n'):
+            line = line.strip()
+            if line and not line.lower() == 'sideboard':
+                decklist_lines.append(line)
+    
+    return render_template(
+        'deck_view.html',
+        deck=deck,
+        player=player,
+        decklist_lines=decklist_lines
+    )
+
+
 @app.route('/api/deck/<int:deck_id>')
 @login_required
 def get_deck_data(deck_id):
@@ -2251,7 +2353,7 @@ def players():
             CasualPointsHistory.store_id == int(store_id)
         ).scalar() or 0
         
-        print(f"DEBUG: Player {player_id} has {total_points} casual points at store {store_id} (from history)", file=sys.stderr)
+        # print(f"DEBUG: Player {player_id} has {total_points} casual points at store {store_id} (from history)", file=sys.stderr)
         return total_points
     
     # Helper: get points breakdown by store for a player
@@ -2401,7 +2503,7 @@ def players():
     for p in casual_players:
         if store_filter:
             points = player_casual_points_at_store(p.id, store_filter)
-            print(f"DEBUG: Filtering by store {store_filter} - Player {p.id} ({p.name}) has {points} points", file=sys.stderr)
+            # print(f"DEBUG: Filtering by store {store_filter} - Player {p.id} ({p.name}) has {points} points", file=sys.stderr)
             # Only include players who have points at this store
             if points > 0:
                 casual_players_with_points.append((p, points))
@@ -2562,8 +2664,12 @@ def decks_list():
         return redirect(url_for('decks_list'))
 
     # existing GET logic
-    decks = Deck.query.filter(Deck.archetype.isnot(None)).all()
-    print(f"DEBUG: Found {len(decks)} total decks in database")
+    # Only show tournament decks, not personal decks (personal decks have tournament_id = None)
+    decks = Deck.query.filter(
+        Deck.archetype.isnot(None),
+        Deck.tournament_id.isnot(None)  # Only tournament decks
+    ).all()
+    # print(f"DEBUG: Found {len(decks)} total decks in database")
     archetypes = {}
     for d in decks:
         archetypes.setdefault(d.archetype, []).append(d)
@@ -2592,12 +2698,12 @@ def decks_list():
                 )
                 db.session.add(placeholder)
                 db.session.commit()
-                print(f"DEBUG: Created placeholder deck for '{model.archetype_name}'")
+                # print(f"DEBUG: Created placeholder deck for '{model.archetype_name}'")
             
             archetypes[model.archetype_name] = [placeholder]
-            print(f"DEBUG: Added empty archetype '{model.archetype_name}' from model")
+            # print(f"DEBUG: Added empty archetype '{model.archetype_name}' from model")
     
-    print(f"DEBUG: Found {len(archetypes)} archetypes (including empty ones)")
+    # print(f"DEBUG: Found {len(archetypes)} archetypes (including empty ones)")
 
     # Calculate archetype metrics for sorting and tier assignment
     archetype_stats = []
@@ -2678,7 +2784,7 @@ def decks_list():
         if len(recent_decks) < 5:
             recent_decks = sorted_decks
         
-        print(f"DEBUG: Archetype '{name}' has {len(recent_decks)} recent decks")
+        # print(f"DEBUG: Archetype '{name}' has {len(recent_decks)} recent decks")
         for deck in recent_decks:
             print(f"  Deck ID {deck.id}: colors='{deck.colors}', has_list_text={bool(deck.list_text and deck.list_text.strip())}")
         
@@ -2779,7 +2885,7 @@ def recalculate_archetypes():
             }
             deleted_log.append(deleted_detail)
             
-            print(f"[RECALCULATE] Deleting empty deck ID {empty_deck.id}: {empty_deck.archetype or empty_deck.name} (player: {player.name if player else 'Unknown'})")
+            # print(f"[RECALCULATE] Deleting empty deck ID {empty_deck.id}: {empty_deck.archetype or empty_deck.name} (player: {player.name if player else 'Unknown'})")
             db.session.delete(empty_deck)
             deleted_count += 1
         
@@ -2832,7 +2938,7 @@ def recalculate_archetypes():
                     }
                     deleted_log.append(deleted_detail)
                     
-                    print(f"[RECALCULATE] Deleting incomplete deck ID {deck.id}: {deck.archetype or deck.name} ({main_deck_count} cards)")
+                    # print(f"[RECALCULATE] Deleting incomplete deck ID {deck.id}: {deck.archetype or deck.name} ({main_deck_count} cards)")
                     db.session.delete(deck)
                     deleted_count += 1
                     all_decks.remove(deck)
@@ -2877,7 +2983,7 @@ def recalculate_archetypes():
                 # Update the deck's archetype - keep custom name unchanged
                 deck.archetype = new_archetype
                 updated_count += 1
-                print(f"[RECALCULATE] Updated deck ID {deck.id}: {old_archetype} -> {new_archetype} (similarity: {similarity:.2%})")
+                # print(f"[RECALCULATE] Updated deck ID {deck.id}: {old_archetype} -> {new_archetype} (similarity: {similarity:.2%})")
             else:
                 unchanged_count += 1
             
@@ -2907,7 +3013,7 @@ def recalculate_archetypes():
         
     except Exception as e:
         db.session.rollback()
-        print(f"[RECALCULATE] Error: {str(e)}")
+        # print(f"[RECALCULATE] Error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
@@ -2915,7 +3021,10 @@ def recalculate_archetypes():
 
 @app.route('/decks/<deck_name>')
 def deck_detail(deck_name):
-    decks = Deck.query.filter_by(archetype=deck_name).all()
+    # Only show tournament decks, exclude personal user-generated decks
+    decks = Deck.query.filter_by(archetype=deck_name).filter(
+        Deck.tournament_id.isnot(None)
+    ).all()
     
     # Get the model decklist for this archetype
     model = ArchetypeModel.query.filter_by(archetype_name=deck_name).first()
@@ -3857,18 +3966,18 @@ def fetch_tcdecks_decklist():
             
             # Get all text and try to find column structure
             all_tds = deck_table.find_all('td')
-            print(f"DEBUG: Found table with {len(all_tds)} total TD cells")
+            # print(f"DEBUG: Found table with {len(all_tds)} total TD cells")
             
             # Check if cells are arranged in groups (columns)
             if len(all_tds) >= 3:
                 # Common pattern: 3 TD cells in one row containing the 3 columns
                 rows = deck_table.find_all('tr')
-                print(f"DEBUG: Table has {len(rows)} rows")
+                # print(f"DEBUG: Table has {len(rows)} rows")
                 
                 rows_processed = 0
                 for row in rows:
                     cells = row.find_all('td')
-                    print(f"DEBUG: Row has {len(cells)} cells")
+                    # print(f"DEBUG: Row has {len(cells)} cells")
                     
                     if len(cells) >= 3:
                         rows_processed += 1
@@ -3888,7 +3997,7 @@ def fetch_tcdecks_decklist():
                                 if combined_match:
                                     # Split into separate lines and process the card part
                                     line = combined_match.group(2).strip()
-                                    print(f"DEBUG: Split combined line, processing: '{line}'")
+                                    # print(f"DEBUG: Split combined line, processing: '{line}'")
                                 
                                 # Skip section headers (e.g., "Creatures [4]", "Land [20]")
                                 if re.match(r'^[A-Za-z\s]+\s*\[\d+\]$', line):
@@ -3915,21 +4024,21 @@ def fetch_tcdecks_decklist():
                                         continue
                                     
                                     card_line = f"{quantity} {card_name}"
-                                    print(f"DEBUG: Matched card: {card_line} (sideboard={is_sideboard})")
+                                    # print(f"DEBUG: Matched card: {card_line} (sideboard={is_sideboard})")
                                     
                                     if is_sideboard:
                                         sideboard_cards.append(card_line)
                                     else:
                                         mainboard_cards.append(card_line)
-                                else:
-                                    print(f"DEBUG: Line did not match card pattern: '{line}'")
+                                # else:
+                                #     print(f"DEBUG: Line did not match card pattern: '{line}'")
                 
-                print(f"DEBUG: Processed {rows_processed} rows with 3+ cells")
+                # print(f"DEBUG: Processed {rows_processed} rows with 3+ cells")
             else:
                 # Try alternative: cells might be in separate rows
                 pass
         
-        print(f"DEBUG: After table parsing - mainboard: {len(mainboard_cards)}, sideboard: {len(sideboard_cards)}")
+        # print(f"DEBUG: After table parsing - mainboard: {len(mainboard_cards)}, sideboard: {len(sideboard_cards)}")
         
         # If table parsing didn't work, try finding divs with specific structure
         if len(mainboard_cards) == 0 and len(sideboard_cards) == 0:
@@ -4097,10 +4206,10 @@ def new_tournament_casual():
                     
                     # Always use detected archetype (either matched archetype or "Rogue")
                     final_deck_name = detected_archetype
-                    if similarity > 0:
-                        print(f"[AUTO-DETECT] Player '{player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
-                    else:
-                        print(f"[AUTO-DETECT] Player '{player_name}' deck classified as 'Rogue'", file=sys.stderr)
+                    # if similarity > 0:
+                    #     print(f"[AUTO-DETECT] Player '{player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
+                    # else:
+                    #     print(f"[AUTO-DETECT] Player '{player_name}' deck classified as 'Rogue'", file=sys.stderr)
                     
                     # Save deck if provided
                     deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
@@ -4109,8 +4218,8 @@ def new_tournament_casual():
                         deck.name = final_deck_name
                         deck.list_text = deck_list
                         
-                        if old_name != final_deck_name:
-                            print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{final_deck_name}'", file=sys.stderr)
+                        # if old_name != final_deck_name:
+                        #     print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{final_deck_name}'", file=sys.stderr)
                     else:
                         deck = Deck(
                             player_id=player.id,
@@ -4278,10 +4387,10 @@ def edit_casual_tournament(tid):
                     
                     # Always use detected archetype (either matched archetype or "Rogue")
                     final_deck_name = detected_archetype
-                    if similarity > 0:
-                        print(f"[AUTO-DETECT] Player '{player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
-                    else:
-                        print(f"[AUTO-DETECT] Player '{player_name}' deck classified as 'Rogue'", file=sys.stderr)
+                    # if similarity > 0:
+                    #     print(f"[AUTO-DETECT] Player '{player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
+                    # else:
+                    #     print(f"[AUTO-DETECT] Player '{player_name}' deck classified as 'Rogue'", file=sys.stderr)
                     
                     deck = Deck(
                         player_id=player.id,
@@ -4980,7 +5089,7 @@ def confirm_players():
             safe_name = name.replace(" ", "_")
             action = request.form.get(f"action_{safe_name}")
             
-            print(f"[CONFIRM_PLAYERS] Processing '{name}' - action: {action}", file=sys.stderr)
+            # print(f"[CONFIRM_PLAYERS] Processing '{name}' - action: {action}", file=sys.stderr)
 
             if action == "create":
                 player = Player.query.filter_by(name=name).first()
@@ -4988,9 +5097,9 @@ def confirm_players():
                     player = Player(name=name, elo=DEFAULT_ELO)
                     db.session.add(player)
                     db.session.commit()
-                    print(f"[CONFIRM_PLAYERS] Created new player '{name}' with ID {player.id}", file=sys.stderr)
-                else:
-                    print(f"[CONFIRM_PLAYERS] Player '{name}' already exists with ID {player.id}", file=sys.stderr)
+                    # print(f"[CONFIRM_PLAYERS] Created new player '{name}' with ID {player.id}", file=sys.stderr)
+                # else:
+                #     print(f"[CONFIRM_PLAYERS] Player '{name}' already exists with ID {player.id}", file=sys.stderr)
                 name_to_id[name] = player.id
 
             elif action == "replace":
@@ -4999,23 +5108,23 @@ def confirm_players():
                     replace_id = int(replace_id_str)
                     # Map this name directly to the replacement ID
                     name_to_id[name] = replace_id
-                    print(f"[CONFIRM_PLAYERS] Mapping '{name}' to replacement ID {replace_id}", file=sys.stderr)
+                    # print(f"[CONFIRM_PLAYERS] Mapping '{name}' to replacement ID {replace_id}", file=sys.stderr)
                     # If there's an existing player with this name, mark it for deletion
                     current = Player.query.filter_by(name=name).first()
                     if current and current.id != replace_id:
                         old_players_to_delete.append(current.id)
-                        print(f"[CONFIRM_PLAYERS] Marking old player '{name}' (ID {current.id}) for deletion", file=sys.stderr)
+                        # print(f"[CONFIRM_PLAYERS] Marking old player '{name}' (ID {current.id}) for deletion", file=sys.stderr)
                 else:
                     player = Player.query.filter_by(name=name).first()
                     if player:
                         name_to_id[name] = player.id
-                        print(f"[CONFIRM_PLAYERS] No replacement specified, using existing ID {player.id}", file=sys.stderr)
+                        # print(f"[CONFIRM_PLAYERS] No replacement specified, using existing ID {player.id}", file=sys.stderr)
 
             else:
                 player = Player.query.filter_by(name=name).first()
                 if player:
                     name_to_id[name] = player.id
-                    print(f"[CONFIRM_PLAYERS] Default action for '{name}', using ID {player.id}", file=sys.stderr)
+                    # print(f"[CONFIRM_PLAYERS] Default action for '{name}', using ID {player.id}", file=sys.stderr)
     
     # Second pass: apply the name-to-id mapping to all matches
     for m in parsed_matches:
@@ -5032,8 +5141,8 @@ def confirm_players():
     }
     
     print(f"\n[CONFIRM_PLAYERS] name_to_id mapping: {name_to_id}", file=sys.stderr)
-    print(f"[CONFIRM_PLAYERS] final_ids ({len(final_ids)} players): {sorted(final_ids)}", file=sys.stderr)
-    print(f"[CONFIRM_PLAYERS] old_players_to_delete: {old_players_to_delete}\n", file=sys.stderr)
+    # print(f"[CONFIRM_PLAYERS] final_ids ({len(final_ids)} players): {sorted(final_ids)}", file=sys.stderr)
+    # print(f"[CONFIRM_PLAYERS] old_players_to_delete: {old_players_to_delete}\n", file=sys.stderr)
 
     # Create the tournament with a confirm_token
     num_players = len(final_ids)
@@ -5088,7 +5197,7 @@ def confirm_players():
         if mm.player2_id:
             match_ids.add(mm.player2_id)
     
-    print(f"[CONFIRM_PLAYERS] match_ids from created matches: {sorted(match_ids)}", file=sys.stderr)
+    # print(f"[CONFIRM_PLAYERS] match_ids from created matches: {sorted(match_ids)}", file=sys.stderr)
     
     for pid in match_ids:
         if not TournamentPlayer.query.filter_by(tournament_id=tournament.id, player_id=pid).first():
@@ -5096,7 +5205,7 @@ def confirm_players():
     db.session.commit()
     
     final_tp_count = TournamentPlayer.query.filter_by(tournament_id=tournament.id).count()
-    print(f"[CONFIRM_PLAYERS] Final TournamentPlayer count: {final_tp_count}", file=sys.stderr)
+    # print(f"[CONFIRM_PLAYERS] Final TournamentPlayer count: {final_tp_count}", file=sys.stderr)
     
     # Delete any old player records that were replaced (they have no references now)
     for old_player_id in old_players_to_delete:
@@ -5149,7 +5258,59 @@ def submit_deck_public(token):
     if player:
         existing_deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
     
+    # Get user's personal decks if authenticated and player matches
+    personal_decks = []
+    is_admin_or_scorekeeper = False
+    current_user_name = None
+    can_claim_profile = False
+    
+    if current_user.is_authenticated:
+        current_user_name = current_user.name
+        # Check if current user owns this player
+        user_player = None
+        if hasattr(current_user, 'claimed_player_id') and current_user.claimed_player_id:
+            user_player = Player.query.get(current_user.claimed_player_id)
+        
+        if not user_player:
+            user_player = Player.query.filter_by(name=current_user.name).first()
+        
+        # Check if user can claim this profile
+        # Can claim if: player exists, player is not claimed, and user doesn't have a claimed player
+        if player and not player.claimed_by and not user_player:
+            # Also check if there's no pending claim for this player by this user
+            existing_claim = PlayerClaim.query.filter_by(
+                player_id=player.id,
+                user_id=current_user.id,
+                status='pending'
+            ).first()
+            can_claim_profile = not existing_claim
+        
+        # Show personal decks if user matches player OR user is admin/scorekeeper
+        is_admin_or_scorekeeper = current_user.is_admin or current_user.is_scorekeeper
+        if user_player and (is_admin_or_scorekeeper or (player and user_player.id == player.id)):
+            personal_decks = Deck.query.filter_by(
+                player_id=user_player.id,
+                tournament_id=None
+            ).filter(
+                Deck.list_text.isnot(None),
+                Deck.list_text != ''
+            ).all()
+    
     if request.method == 'POST':
+        # Handle profile claim request
+        claim_profile = request.form.get("claim_profile")
+        if claim_profile == "true" and can_claim_profile:
+            new_claim = PlayerClaim(
+                player_id=player.id,
+                player_name=player.name,
+                user_id=current_user.id,
+                status='pending'
+            )
+            db.session.add(new_claim)
+            db.session.commit()
+            flash(f"Profile claim request for '{player.name}' has been submitted! An admin will review it shortly.", "success")
+            can_claim_profile = False  # Disable after claiming
+        
         user_deck_name = request.form.get("deck_name", "").strip()  # User's input (can be anything)
         deck_list = request.form.get("deck_list", "").strip()
         
@@ -5162,7 +5323,11 @@ def submit_deck_public(token):
                                  archetypes=archetype_names,
                                  existing_deck=existing_deck,
                                  is_editing=bool(existing_deck),
-                                 submission_token=token)
+                                 submission_token=token,
+                                 personal_decks=personal_decks,
+                                 current_user_name=current_user_name,
+                                 is_admin_or_scorekeeper=is_admin_or_scorekeeper,
+                                 can_claim_profile=can_claim_profile)
         
         # Find or create the player
         player = ensure_player(link.player_name)
@@ -5176,17 +5341,21 @@ def submit_deck_public(token):
                                  archetypes=archetype_names,
                                  existing_deck=existing_deck,
                                  is_editing=bool(existing_deck),
-                                 submission_token=token)
+                                 submission_token=token,
+                                 personal_decks=personal_decks,
+                                 current_user_name=current_user_name,
+                                 is_admin_or_scorekeeper=is_admin_or_scorekeeper,
+                                 can_claim_profile=can_claim_profile)
         
         # Auto-detect archetype from decklist for logging/grouping purposes
         detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
         
         if similarity > 0:
             archetype = detected_archetype
-            print(f"[AUTO-DETECT] Player '{link.player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity (user submitted name: '{user_deck_name}')", file=sys.stderr)
+            # print(f"[AUTO-DETECT] Player '{link.player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity (user submitted name: '{user_deck_name}')", file=sys.stderr)
         else:
             archetype = "Rogue"
-            print(f"[AUTO-DETECT] Player '{link.player_name}' deck classified as 'Rogue' (user submitted name: '{user_deck_name}')", file=sys.stderr)
+            # print(f"[AUTO-DETECT] Player '{link.player_name}' deck classified as 'Rogue' (user submitted name: '{user_deck_name}')", file=sys.stderr)
         
         # Create or update deck
         deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
@@ -5199,8 +5368,8 @@ def submit_deck_public(token):
             deck.list_text = deck_list
             flash("Deck updated successfully!", "success")
             
-            if old_archetype != archetype:
-                print(f"[AUTO-DETECT] Deck re-grouped from '{old_archetype}' to '{archetype}'", file=sys.stderr)
+            # if old_archetype != archetype:
+            #     print(f"[AUTO-DETECT] Deck re-grouped from '{old_archetype}' to '{archetype}'", file=sys.stderr)
         else:
             # Creating new deck
             deck = Deck(
@@ -5219,18 +5388,37 @@ def submit_deck_public(token):
         
         db.session.commit()
         
-        # Show success page with option to edit
+        # Show success page without edit option
         return render_template('submit_deck_public.html', 
                              submitted=True, 
                              player_name=link.player_name, 
                              tournament=tournament, 
                              archetypes=archetype_names,
                              existing_deck=deck,
-                             can_edit=True,
-                             submission_token=token)
+                             can_edit=False,
+                             submission_token=token,
+                             personal_decks=personal_decks,
+                             current_user_name=current_user_name,
+                             is_admin_or_scorekeeper=is_admin_or_scorekeeper,
+                             can_claim_profile=can_claim_profile)
     
-    # GET request - show the form (pre-fill if editing)
+    # GET request - don't allow editing if deck already exists
     is_editing = bool(existing_deck)
+    if existing_deck:
+        # Deck already submitted, show a message instead of the form
+        return render_template('submit_deck_public.html', 
+                             submitted=True, 
+                             player_name=link.player_name, 
+                             tournament=tournament, 
+                             archetypes=archetype_names,
+                             existing_deck=existing_deck,
+                             can_edit=False,
+                             submission_token=token,
+                             personal_decks=personal_decks,
+                             current_user_name=current_user_name,
+                             is_admin_or_scorekeeper=is_admin_or_scorekeeper,
+                             can_claim_profile=can_claim_profile)
+    
     return render_template('submit_deck_public.html', 
                          submitted=False, 
                          player_name=link.player_name, 
@@ -5238,7 +5426,11 @@ def submit_deck_public(token):
                          archetypes=archetype_names,
                          existing_deck=existing_deck,
                          is_editing=is_editing,
-                         submission_token=token)
+                         submission_token=token,
+                         personal_decks=personal_decks,
+                         current_user_name=current_user_name,
+                         is_admin_or_scorekeeper=is_admin_or_scorekeeper,
+                         can_claim_profile=can_claim_profile)
 
 
 
@@ -5274,10 +5466,10 @@ def submit_deck():
     
     # Always use detected archetype (either matched archetype or "Rogue")
     deck_name = detected_archetype
-    if similarity > 0:
-        print(f"[AUTO-DETECT] Matched deck to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
-    else:
-        print(f"[AUTO-DETECT] No archetype match, classified as 'Rogue'", file=sys.stderr)
+    # if similarity > 0:
+    #     print(f"[AUTO-DETECT] Matched deck to '{detected_archetype}' with {similarity:.2%} similarity", file=sys.stderr)
+    # else:
+    #     print(f"[AUTO-DETECT] No archetype match, classified as 'Rogue'", file=sys.stderr)
 
     # === Save or update deck ===
     deck = Deck.query.filter_by(player_id=player_id, tournament_id=tournament_id).first()
@@ -5286,8 +5478,8 @@ def submit_deck():
         deck.name = deck_name
         deck.list_text = deck_list
         
-        if old_name != deck_name:
-            print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{deck_name}'", file=sys.stderr)
+        # if old_name != deck_name:
+        #     print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{deck_name}'", file=sys.stderr)
     else:
         deck = Deck(
             player_id=player_id,

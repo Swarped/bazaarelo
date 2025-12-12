@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.name }} - Deck View{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+  .shared-deck-page {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  
+  .deck-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    align-items: start;
+  }
+  
+  @media (max-width: 768px) {
+    .deck-header {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .deck-image-section {
+    text-align: center;
+  }
+  
+  .deck-image {
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+    min-height: 400px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background: white;
+    display: block;
+    object-fit: contain;
+  }
+  
+  html.dark-mode .deck-image {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+  
+  .deck-info-section {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  html.dark-mode .deck-info-section {
+    background: #1e1e1e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .deck-info-section h1 {
+    margin: 0 0 0.5rem 0;
+    color: #333;
+    font-size: 2rem;
+  }
+  
+  html.dark-mode .deck-info-section h1 {
+    color: #e0e0e0;
+  }
+  
+  .deck-archetype {
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  html.dark-mode .deck-archetype {
+    color: #aaa;
+  }
+  
+  .deck-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #666;
+  }
+  
+  html.dark-mode .meta-item {
+    color: #aaa;
+  }
+  
+  .meta-item .material-icons {
+    font-size: 20px;
+    color: #7c3aed;
+  }
+  
+  html.dark-mode .meta-item .material-icons {
+    color: #9d5cff;
+  }
+  
+  .meta-label {
+    font-weight: 600;
+    color: #333;
+    min-width: 100px;
+  }
+  
+  html.dark-mode .meta-label {
+    color: #e0e0e0;
+  }
+  
+  .copy-link-section {
+    margin-top: 2rem;
+    padding: 2rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%);
+    border: 2px solid #7c3aed;
+  }
+  
+  .copy-link-section p {
+    color: #333;
+  }
+  
+  html.dark-mode .copy-link-section {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-color: #9d5cff;
+  }
+  
+  html.dark-mode .copy-link-section p {
+    color: #e0e0e0;
+  }
+  
+  .copy-link-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .copy-link-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #7c3aed;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: white;
+    color: #333;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    word-break: break-all;
+  }
+  
+  html.dark-mode .copy-link-input {
+    background: #2a2a2a;
+    border-color: #9d5cff;
+    color: #e0e0e0;
+  }
+  
+  .copy-link-input:focus {
+    outline: none;
+  }
+  
+  .copy-btn {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  
+  .copy-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  }
+  
+  html.dark-mode .copy-btn:hover {
+    box-shadow: 0 4px 12px rgba(157, 92, 255, 0.4);
+  }
+  
+  .copy-btn.copied {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+  
+  .copy-btn .material-icons {
+    font-size: 20px;
+  }
+  
+  .decklist-section {
+    margin-top: 3rem;
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  html.dark-mode .decklist-section {
+    background: #1e1e1e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .decklist-section h2 {
+    margin-top: 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  html.dark-mode .decklist-section h2 {
+    color: #e0e0e0;
+  }
+  
+  .decklist-section .material-icons {
+    font-size: 1.5rem;
+    color: #7c3aed;
+  }
+  
+  html.dark-mode .decklist-section .material-icons {
+    color: #9d5cff;
+  }
+  
+  .decklist-text {
+    background: #f5f5f5;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+  }
+  
+  html.dark-mode .decklist-text {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+  
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #7c3aed;
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  
+  html.dark-mode .back-link {
+    color: #9d5cff;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<div class="shared-deck-page">
+  <a href="/" class="back-link">
+    <span class="material-icons">arrow_back</span>
+    Back
+  </a>
+  
+  <div class="deck-header">
+    <div class="deck-image-section">
+      {% if image_url %}
+      <img src="{{ image_url }}" alt="{{ deck.archetype }}" class="deck-image">
+      {% else %}
+      <div class="deck-image" style="display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%); border: 2px solid #7c3aed;">
+        <div style="text-align: center;">
+          <span class="material-icons" style="font-size: 4rem; color: #7c3aed;">image_not_supported</span>
+          <p style="color: #666; margin-top: 1rem;">No archetype image available</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    
+    <div class="deck-info-section">
+      <h1>{{ deck.name }}</h1>
+      <p class="deck-archetype">
+        <strong>Archetype:</strong> {{ deck.archetype }}
+      </p>
+      
+      <div class="deck-meta">
+        {% if player %}
+        <div class="meta-item">
+          <span class="material-icons">person</span>
+          <span class="meta-label">Player:</span>
+          <span>{{ player.name }}</span>
+        </div>
+        {% endif %}
+        
+        {% if tournament %}
+        <div class="meta-item">
+          <span class="material-icons">event</span>
+          <span class="meta-label">Tournament:</span>
+          <span>{{ tournament.name }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="material-icons">calendar_today</span>
+          <span class="meta-label">Date:</span>
+          <span>{{ tournament.date.strftime('%B %d, %Y') }}</span>
+        </div>
+        {% endif %}
+      </div>
+      
+      <div class="copy-link-section">
+        <p style="margin-top: 0; margin-bottom: 0.75rem; color: #333; font-weight: 600; font-size: 1.1rem;">
+          📋 Share This Deck:
+        </p>
+        <div class="copy-link-wrapper">
+          <input type="text" class="copy-link-input" id="deckLinkInput" 
+                 value="{{ request.url_root }}deck/share/{{ deck.share_token }}" readonly
+                 style="padding: 1rem; font-size: 1rem; border: 2px solid #7c3aed;">
+          <button type="button" class="copy-btn" id="copyDeckLinkBtn"
+                 style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; min-width: 140px; height: auto;">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">content_copy</span>
+            Copy Link
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {% if deck.list_text %}
+  <div class="decklist-section">
+    <h2>
+      <span class="material-icons">list_alt</span>
+      Decklist
+    </h2>
+    <div class="decklist-text">{{ deck.list_text }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  const copyBtn = document.getElementById('copyDeckLinkBtn');
+  const linkInput = document.getElementById('deckLinkInput');
+  
+  if (copyBtn && linkInput) {
+    copyBtn.addEventListener('click', function() {
+      linkInput.select();
+      
+      try {
+        document.execCommand('copy');
+        
+        const originalText = copyBtn.innerHTML;
+        copyBtn.classList.add('copied');
+        copyBtn.innerHTML = '<span class="material-icons">check</span> Copied!';
+        
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyBtn.innerHTML = originalText;
+        }, 2000);
+      } catch (err) {
+        alert('Failed to copy link. Please try again.');
+      }
+    });
+  }
+</script>
+
+{% endblock %}
