@@ -414,6 +414,14 @@
     border-radius: 4px;
   }
 
+  /* SVG Icon Color Filters */
+  .store-icon-svg {
+    filter: brightness(0) saturate(100%);
+  }
+  html.dark-mode .store-icon-svg {
+    filter: brightness(0) saturate(100%) invert(1);
+  }
+
   /* User Search Results */
   .user-search-results {
     position: absolute;
@@ -485,6 +493,13 @@
   <div class="admin-sidebar">
     <h2>Admin Panel</h2>
     <a href="#users-stores">Users & Stores</a>
+    <a href="#player-claims">Player Claims
+      {% if player_claims %}
+        <span style="background: #ff6b6b; color: white; padding: 0.15rem 0.4rem; border-radius: 10px; font-size: 0.75rem; margin-left: 0.25rem;">
+          {{ player_claims|length }}
+        </span>
+      {% endif %}
+    </a>
     <a href="#store-tokens">Store Tokens</a>
     <a href="#requests">Requests</a>
     <a href="#event-logs">Event Logs</a>
@@ -569,6 +584,17 @@
       <span class="material-icons" style="font-size: 18px;">edit</span>
     </button>
   </div>
+  <div class="store-icon-wrapper" style="width: 60px; height: 60px; margin-left: 0.5rem; position: relative; border: 2px solid #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: white;">
+    {% if store.icon_url %}
+      <img src="{{ url_for('static', filename=store.icon_url) }}" alt="{{ store.name }} icon" class="store-icon-svg" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    {% else %}
+      <img src="{{ url_for('static', filename='store_images/store_icon.svg') }}" alt="Default icon" class="store-icon-svg" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    {% endif %}
+    <button class="store-image-edit" onclick="openIconUploadModal({{ store.id }}, '{{ store.name }}')"
+            title="Edit Icon" style="position: absolute; bottom: -8px; right: -8px; width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;">
+      <span class="material-icons" style="font-size: 16px;">edit</span>
+    </button>
+  </div>
   <div class="store-info">
     <div class="store-header">
       <span class="store-name">{{ store.name }}</span>
@@ -633,6 +659,89 @@
 {% endfor %}
 
     </div> <!-- End Users & Stores section -->
+
+    <!-- Player Claims Section -->
+    <div id="player-claims" class="admin-section">
+      <h2>
+        <span class="material-icons" style="vertical-align: middle;">person_add</span>
+        Player Claim Requests
+        {% if player_claims %}
+          <span style="background: #ff6b6b; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">
+            {{ player_claims|length }}
+          </span>
+        {% endif %}
+      </h2>
+      
+      {% if player_claims %}
+        <p style="color: var(--text-secondary, #6c757d); margin-bottom: 1.5rem;">
+          Users requesting to claim their player profiles. Review and approve or deny each request.
+        </p>
+        
+        <div style="display: grid; gap: 1rem;">
+          {% for claim in player_claims %}
+          <div style="background: var(--bg-primary, #fff); border: 2px solid #667eea; border-radius: 8px; padding: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start;">
+              <!-- Claim Info -->
+              <div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.5rem;">
+                    {{ claim.user.name[0].upper() if claim.user and claim.user.name else '?' }}
+                  </div>
+                  <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-primary, #2c3e50); margin-bottom: 0.25rem;">
+                      {{ claim.user.name if claim.user else 'Unknown User' }}
+                    </div>
+                    <div style="color: var(--text-secondary, #6c757d); font-size: 0.9rem;">
+                      {{ claim.user.email if claim.user else 'No email' }}
+                    </div>
+                    {% if claim.user and claim.user.is_admin %}
+                      <span class="badge badge-admin" style="margin-top: 0.5rem; display: inline-block;">Admin User</span>
+                    {% endif %}
+                  </div>
+                </div>
+                
+                <div style="background: var(--bg-secondary, #f8f9fa); padding: 1rem; border-radius: 6px; border-left: 4px solid #667eea;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <span class="material-icons" style="color: #667eea; font-size: 1.2rem;">sports_esports</span>
+                    <span style="font-weight: 600; color: var(--text-primary, #2c3e50);">Claiming Player:</span>
+                  </div>
+                  <div style="font-size: 1.2rem; font-weight: bold; color: #667eea; margin-left: 1.8rem;">
+                    {{ claim.player_name }}
+                  </div>
+                </div>
+                
+                <div style="color: var(--text-secondary, #999); font-size: 0.85rem; margin-top: 1rem;">
+                  <span class="material-icons" style="font-size: 0.9rem; vertical-align: middle;">schedule</span>
+                  Submitted {{ claim.submitted_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+              </div>
+              
+              <!-- Action Buttons -->
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <form method="POST" action="{{ url_for('approve_claim', claim_id=claim.id) }}" style="margin: 0;">
+                  <button type="submit" class="btn btn-success" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span class="material-icons" style="font-size: 1rem;">check_circle</span>
+                    Approve
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('deny_claim', claim_id=claim.id) }}" style="margin: 0;">
+                  <button type="submit" class="btn btn-danger" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span class="material-icons" style="font-size: 1rem;">cancel</span>
+                    Deny
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 3rem; color: var(--text-secondary, #999);">
+          <span class="material-icons" style="font-size: 4rem; opacity: 0.3;">inbox</span>
+          <p style="margin-top: 1rem; font-size: 1.1rem;">No pending player claim requests</p>
+        </div>
+      {% endif %}
+    </div>
 
     <div id="store-tokens" class="admin-section">
       <h2>Store Tokens Management</h2>
@@ -1097,6 +1206,7 @@
   <div class="modal-content image-modal-content">
     <span class="close" onclick="closeImageModal()">&times;</span>
     <h3 id="imageModalTitle">Select or Upload Image</h3>
+    <p id="uploadInstructions" style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">Upload an image (will be cropped to 512x256)</p>
     
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchImageTab('upload')">Upload New</button>
@@ -1105,7 +1215,7 @@
 
     <!-- Upload Tab -->
     <div id="uploadTab" class="tab-content active">
-      <input type="file" id="imageInput" accept="image/jpeg,image/jpg,image/png" style="margin-bottom: 1rem;">
+      <input type="file" id="imageInput" accept="image/*" style="margin-bottom: 1rem;">
       <div class="cropper-container-wrapper" id="cropperWrapper" style="display: none;">
         <img id="imageToCrop" />
         <div class="crop-controls">
@@ -1117,7 +1227,7 @@
           <button type="button" class="crop-btn" onclick="cropStoreImage('move', 0, 10)">Move ↓</button>
           <button type="button" class="crop-btn" onclick="cropStoreImage('reset')">↺ Reset</button>
         </div>
-        <div class="crop-info">
+        <div class="crop-info" id="cropInfo">
           Target size: 512x256px (2:1 ratio)
         </div>
       </div>
@@ -1136,12 +1246,41 @@
   </div>
 </div>
 
+<!-- Icon Upload Modal (Simple, no cropping) -->
+<div id="iconModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeIconUploadModal()">&times;</span>
+    <h3 id="iconUploadModalTitle">Upload Icon</h3>
+    <p style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">Upload an SVG file (max 1MB)</p>
+    
+    <div style="margin: 1.5rem 0;">
+      <input type="file" id="iconFileInput" accept=".svg" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+    
+    <div style="background: #e7f3ff; border: 1px solid #0d6efd; border-radius: 4px; padding: 1rem; margin: 1rem 0; font-size: 0.85rem;">
+      <strong>Requirements:</strong>
+      <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+        <li>File format: SVG only</li>
+        <li>Maximum size: 1MB</li>
+        <li>Icon will be automatically recolored based on theme (black for light mode, white for dark mode)</li>
+      </ul>
+    </div>
+
+    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+      <button type="button" class="btn btn-danger" onclick="closeIconUploadModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="uploadStoreIcon()">Upload Icon</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <script>
 let storeCropper = null;
 let currentStoreId = null;
 let selectedExistingImage = null;
 let availableImages = [];
+let availableIcons = [];
+let uploadType = 'image'; // 'image' or 'icon'
 
 // Update store tokens
 async function updateStoreTokens(storeId, tokenType) {
@@ -1235,6 +1374,39 @@ function selectExistingImage(imagePath, element) {
   element.classList.add('selected');
 }
 
+// Load available icons (separate from images, only SVG files)
+async function loadAvailableIcons() {
+  try {
+    const response = await fetch("{{ url_for('get_available_images') }}");
+    const allFiles = await response.json();
+    // Filter only SVG files for icons
+    availableIcons = allFiles.filter(img => img.toLowerCase().endsWith('.svg'));
+    renderIconGallery();
+  } catch (error) {
+    console.error('Error loading icons:', error);
+    availableIcons = [];
+  }
+}
+
+// Render icon gallery
+function renderIconGallery() {
+  const gallery = document.getElementById('imageGallery');
+  gallery.innerHTML = '';
+  
+  if (availableIcons.length === 0) {
+    gallery.innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No icons available (SVG files)</p>';
+    return;
+  }
+
+  availableIcons.forEach(imagePath => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    item.innerHTML = `<img src="/static/${imagePath}" alt="Icon" class="store-icon-svg">`;
+    item.onclick = () => selectExistingImage(imagePath, item);
+    gallery.appendChild(item);
+  });
+}
+
 // Switch tabs
 function switchImageTab(tabName) {
   document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
@@ -1251,11 +1423,15 @@ function switchImageTab(tabName) {
 
 // Open store image modal
 function openStoreImageModal(storeId, storeName) {
+  uploadType = 'image';
   currentStoreId = storeId;
   document.getElementById('imageModalTitle').textContent = `Select or Upload Image for ${storeName}`;
+  document.getElementById('uploadInstructions').textContent = 'Upload an image (will be cropped to 512x256)';
+  document.getElementById('cropInfo').textContent = 'Target size: 512x256px (2:1 ratio)';
   
   // Reset modal state
   document.getElementById('imageInput').value = '';
+  document.getElementById('imageInput').accept = 'image/*';
   document.getElementById('cropperWrapper').style.display = 'none';
   if (storeCropper) {
     storeCropper.destroy();
@@ -1263,6 +1439,9 @@ function openStoreImageModal(storeId, storeName) {
   }
   selectedExistingImage = null;
   document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+  
+  // Load available images
+  loadAvailableImages();
   
   // Set first tab as active
   document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
@@ -1281,6 +1460,95 @@ function closeImageModal() {
   }
   currentStoreId = null;
   selectedExistingImage = null;
+  uploadType = 'image';
+  document.getElementById('imageInput').accept = 'image/*';
+}
+
+// Open store icon modal (reuses image modal with icon settings)
+function openStoreIconModal(storeId, storeName) {
+  uploadType = 'icon';
+  currentStoreId = storeId;
+  document.getElementById('imageModalTitle').textContent = `Select or Upload Icon for ${storeName}`;
+  document.getElementById('uploadInstructions').textContent = 'Upload a square icon (SVG format, max 1MB)';
+  document.getElementById('cropInfo').textContent = 'SVG files will be uploaded directly without cropping';
+  
+  // Reset modal state
+  document.getElementById('imageInput').value = '';
+  document.getElementById('imageInput').accept = '.svg';
+  document.getElementById('cropperWrapper').style.display = 'none';
+  if (storeCropper) {
+    storeCropper.destroy();
+    storeCropper = null;
+  }
+  selectedExistingImage = null;
+  document.querySelectorAll('.gallery-item').forEach(item => item.classList.remove('selected'));
+  
+  // Load available icons instead of images
+  loadAvailableIcons();
+  
+  // Set first tab as active
+  document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.modal-tab')[0].classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+  document.getElementById('uploadTab').classList.add('active');
+  
+  document.getElementById('imageModal').style.display = 'block';
+}
+
+// Open icon upload modal (simple, no cropping)
+function openIconUploadModal(storeId, storeName) {
+  currentStoreId = storeId;
+  document.getElementById('iconUploadModalTitle').textContent = `Upload Icon for ${storeName}`;
+  document.getElementById('iconFileInput').value = '';
+  document.getElementById('iconModal').style.display = 'block';
+}
+
+function closeIconUploadModal() {
+  document.getElementById('iconModal').style.display = 'none';
+  currentStoreId = null;
+}
+
+// Upload icon directly (SVG, no cropping)
+async function uploadStoreIcon() {
+  const fileInput = document.getElementById('iconFileInput');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    alert('Please select an SVG file');
+    return;
+  }
+  
+  // Check file size (1MB max)
+  if (file.size > 1024 * 1024) {
+    alert('File size must be less than 1MB');
+    return;
+  }
+  
+  // Check file type
+  if (!file.name.toLowerCase().endsWith('.svg')) {
+    alert('Only SVG files are allowed');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('icon', file);
+  
+  try {
+    const response = await fetch(`/store/${currentStoreId}/edit_icon`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      window.location.reload();
+    } else {
+      const data = await response.text();
+      alert('Error uploading icon: ' + data);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error uploading icon');
+  }
 }
 
 // Handle file input
@@ -1292,6 +1560,12 @@ document.addEventListener('DOMContentLoaded', () => {
     imageInput.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
+        // If SVG file for icon upload, upload directly without cropping
+        if (uploadType === 'icon' && file.name.toLowerCase().endsWith('.svg')) {
+          saveSVGIconDirectly(file);
+          return;
+        }
+        
         const reader = new FileReader();
         reader.onload = function(event) {
           const image = document.getElementById('imageToCrop');
@@ -1303,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           storeCropper = new Cropper(image, {
-            aspectRatio: 2 / 1,
+            aspectRatio: uploadType === 'icon' ? 1 : 2 / 1,
             viewMode: 2,
             autoCropArea: 1,
             responsive: true,
@@ -1320,6 +1594,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Save SVG icon directly without cropping
+async function saveSVGIconDirectly(file) {
+  // Check file size (1MB max)
+  if (file.size > 1024 * 1024) {
+    alert('File size must be less than 1MB');
+    document.getElementById('imageInput').value = '';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('icon', file);
+  
+  try {
+    const response = await fetch(`/store/${currentStoreId}/edit_icon`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      window.location.reload();
+    } else {
+      const data = await response.text();
+      alert('Error uploading icon: ' + data);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error uploading icon');
+  }
+}
 
 // Crop controls
 function cropStoreImage(action, ...args) {
@@ -1368,7 +1672,8 @@ async function saveExistingStoreImage(imagePath) {
     const formData = new FormData();
     formData.append('existing_image', imagePath);
     
-    const response = await fetch(`/store/${currentStoreId}/edit_image`, {
+    const endpoint = uploadType === 'icon' ? `/store/${currentStoreId}/edit_icon` : `/store/${currentStoreId}/edit_image`;
+    const response = await fetch(endpoint, {
       method: 'POST',
       body: formData
     });
@@ -1387,17 +1692,22 @@ async function saveExistingStoreImage(imagePath) {
 // Save cropped image
 async function saveCroppedStoreImage() {
   try {
+    const size = uploadType === 'icon' ? { width: 256, height: 256 } : { width: 512, height: 256 };
     const canvas = storeCropper.getCroppedCanvas({
-      width: 512,
-      height: 256,
+      ...size,
       imageSmoothingQuality: 'high'
     });
     
+    const fileType = uploadType === 'icon' ? 'image/png' : 'image/jpeg';
+    const fileName = uploadType === 'icon' ? 'cropped.png' : 'cropped.jpg';
+    const quality = uploadType === 'icon' ? 1.0 : 0.9;
+    const endpoint = uploadType === 'icon' ? `/store/${currentStoreId}/edit_icon` : `/store/${currentStoreId}/edit_image`;
+    
     canvas.toBlob(async (blob) => {
       const formData = new FormData();
-      formData.append('image', blob, 'cropped.jpg');
+      formData.append('image', blob, fileName);
       
-      const response = await fetch(`/store/${currentStoreId}/edit_image`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData
       });
@@ -1407,7 +1717,7 @@ async function saveCroppedStoreImage() {
       } else {
         alert('Error saving image');
       }
-    }, 'image/jpeg', 0.9);
+    }, fileType, quality);
   } catch (error) {
     console.error('Error:', error);
     alert('Error saving image');

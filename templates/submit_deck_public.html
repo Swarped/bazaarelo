@@ -1,375 +1,457 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Submit Your Decklist</title>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}{% if is_editing %}Edit Your Decklist{% else %}Submit Your Decklist{% endif %}{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+  .submit-deck-page {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
   
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 2rem;
-    }
-    
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      overflow: hidden;
-    }
-    
-    .header {
-      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-      padding: 2rem;
-      color: white;
-      text-align: center;
-    }
-    
-    .header h1 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-    
-    .header .material-icons {
-      font-size: 2.5rem;
-    }
-    
-    .header p {
-      opacity: 0.95;
-      font-size: 1.1rem;
-    }
-    
-    .content {
-      padding: 2rem;
-    }
-    
-    .info-box {
-      background: #e3f2fd;
-      border-left: 4px solid #2196F3;
-      padding: 1rem;
-      margin-bottom: 2rem;
-      border-radius: 4px;
-    }
-    
-    .info-box p {
-      margin: 0;
-      color: #0d47a1;
-    }
-    
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-    
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      color: #333;
-    }
-    
-    .deck-name-wrapper {
-      position: relative;
-      width: 100%;
-      margin-bottom: 1rem;
-    }
-    
-    input[type="text"] {
-      width: 100%;
-      padding: 0.75rem;
-      border: 2px solid #dee2e6;
-      border-radius: 4px;
-      font-size: 1rem;
-      transition: border-color 0.2s;
-    }
-    
-    input[type="text"]:focus {
-      outline: none;
-      border-color: #7c3aed;
-    }
-    
-    input[type="text"].invalid-archetype {
-      border-color: #dc3545;
-      background-color: #fff5f5;
-    }
-    
-    .deck-name-dropdown {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      background: white;
-      border: 1px solid #ccc;
-      border-top: none;
-      border-radius: 0 0 4px 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      z-index: 9999;
-    }
-    
-    .deck-name-dropdown-item {
-      padding: 0.5rem;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-    }
-    
-    .deck-name-dropdown-item:hover {
-      background-color: #f0f0f0;
-    }
-    
-    .deck-name-dropdown-item:last-child {
-      border-bottom: none;
-    }
-    
-    .deck-editor-wrap {
-      position: relative;
-      border: 2px solid #dee2e6;
-      border-radius: 4px;
-      background: #fff;
-      overflow: hidden;
-    }
-    
-    .deck-editor {
-      min-height: 300px;
-      max-height: 500px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
-      font-size: 14px;
-      line-height: 1.5;
-      padding: 1rem;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-y: auto;
-      outline: none;
-    }
-    
-    .deck-editor:focus {
-      border-color: #7c3aed;
-    }
-    
-    .hl-valid   { color: #2e7d32; }
-    .hl-invalid { background: #f8d7da; color: #c0392b; }
-    .hl-not-legal { background: #fff3cd; color: #856404; }
-    .quantity-error { color: #c0392b; font-weight: bold; }
-    .hl-sideboard { 
-      color: #333; 
-      font-weight: bold; 
-      display: block;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid #888;
-      margin-bottom: 0.5rem;
-    }
-    
-    .deck-loading-overlay {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.95);
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 10;
-    }
-    
-    .deck-loading-overlay.active {
-      display: flex;
-    }
-    
-    .deck-spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #7c3aed;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .deck-loading-text {
-      margin-top: 1rem;
-      color: #666;
-      font-weight: 600;
-    }
-    
-    #deckErrors {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      border-radius: 4px;
-      display: none;
-      color: #856404;
-    }
-    
-    #deckErrors.active {
-      display: block;
-    }
-    
-    .submit-btn {
-      width: 100%;
-      padding: 1rem;
-      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-    
-    .submit-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
-    }
-    
-    .submit-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    
-    .submit-btn .material-icons {
-      font-size: 24px;
-    }
-    
-    .flash-message {
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-  </style>
-    .success-container {
-      text-align: center;
-      padding: 3rem 2rem;
-    }
-    
-    .success-icon {
-      font-size: 5rem !important;
-      color: #10b981;
-      margin-bottom: 1rem;
-    }
-    
-    .success-container h2 {
-      color: #155724;
-      margin-bottom: 1rem;
-    }
-    
-    .success-container p {
-      color: #666;
-      font-size: 1.1rem;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>
-        <span class="material-icons">style</span>
-        {% if is_editing %}Edit Your Decklist{% else %}Submit Your Decklist{% endif %}
-      </h1>
-      <p>{{ tournament.name }} - {{ tournament.date.strftime('%B %d, %Y') }}</p>
-    </div>
-    
-    <div class="content">
-      {% if submitted %}
-        <div class="success-container">
-          <span class="material-icons success-icon">check_circle</span>
-          <h2>{% if existing_deck %}Deck Updated!{% else %}Deck Submitted!{% endif %}</h2>
-          <p>Thank you, <strong>{{ player_name }}</strong>! Your decklist has been {% if existing_deck %}updated{% else %}received{% endif %}.</p>
-          {% if can_edit and submission_token %}
-            <p style="margin-top: 1.5rem; color: #666;">
-              <a href="{{ url_for('submit_deck_public', token=submission_token) }}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">
-                Click here to edit your deck again
-              </a>
-            </p>
-          {% endif %}
+  .page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    border-radius: 12px;
+    color: white;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  }
+  
+  html.dark-mode .page-header {
+    background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  }
+  
+  .page-header h1 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .page-header .material-icons {
+    font-size: 2.5rem;
+  }
+  
+  .page-header p {
+    opacity: 0.95;
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  
+  .content-card {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  html.dark-mode .content-card {
+    background: #1e1e1e;
+  }
+  
+  .info-box {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    border-radius: 4px;
+  }
+  
+  html.dark-mode .info-box {
+    background: #1a2332;
+    border-color: #42a5f5;
+  }
+  
+  .info-box p {
+    margin: 0;
+    color: #0d47a1;
+  }
+  
+  html.dark-mode .info-box p {
+    color: #90caf9;
+  }
+  
+  .info-box.warning {
+    background: #fff3cd;
+    border-left-color: #ffc107;
+  }
+  
+  html.dark-mode .info-box.warning {
+    background: #3a2f1a;
+    border-color: #ffca28;
+  }
+  
+  .info-box.warning p {
+    color: #856404;
+  }
+  
+  html.dark-mode .info-box.warning p {
+    color: #ffd54f;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  
+  html.dark-mode .form-group label {
+    color: #e0e0e0;
+  }
+  
+  .form-group label .material-icons {
+    font-size: 20px;
+  }
+  
+  .deck-name-wrapper {
+    position: relative;
+    width: 100%;
+  }
+  
+  .form-group input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    background: white;
+    color: #333;
+  }
+  
+  html.dark-mode .form-group input[type="text"] {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+  
+  .form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #7c3aed;
+  }
+  
+  html.dark-mode .form-group input[type="text"]:focus {
+    border-color: #9d5cff;
+  }
+  
+  .help-text {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.5rem;
+  }
+  
+  html.dark-mode .help-text {
+    color: #aaa;
+  }
+  
+  .deck-editor-wrap {
+    position: relative;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+    overflow: hidden;
+  }
+  
+  html.dark-mode .deck-editor-wrap {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+  
+  .deck-editor {
+    min-height: 300px;
+    max-height: 500px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 1rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    outline: none;
+    color: #333;
+  }
+  
+  html.dark-mode .deck-editor {
+    color: #e0e0e0;
+  }
+  
+  .deck-editor-wrap:focus-within {
+    border-color: #7c3aed;
+  }
+  
+  html.dark-mode .deck-editor-wrap:focus-within {
+    border-color: #9d5cff;
+  }
+  
+  .hl-valid { color: #2e7d32; }
+  html.dark-mode .hl-valid { color: #66bb6a; }
+  
+  .hl-invalid { background: #f8d7da; color: #c0392b; }
+  html.dark-mode .hl-invalid { background: #4a1a1a; color: #ff6b6b; }
+  
+  .hl-not-legal { background: #fff3cd; color: #856404; }
+  html.dark-mode .hl-not-legal { background: #3a2f1a; color: #ffca28; }
+  
+  .quantity-error { color: #c0392b; font-weight: bold; }
+  html.dark-mode .quantity-error { color: #ff6b6b; }
+  
+  .hl-sideboard { 
+    color: #333; 
+    font-weight: bold; 
+    display: block;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #888;
+    margin-bottom: 0.5rem;
+  }
+  
+  html.dark-mode .hl-sideboard {
+    color: #e0e0e0;
+    border-color: #666;
+  }
+  
+  .deck-loading-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 10;
+  }
+  
+  html.dark-mode .deck-loading-overlay {
+    background: rgba(30, 30, 30, 0.95);
+  }
+  
+  .deck-loading-overlay.active {
+    display: flex;
+  }
+  
+  .deck-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #7c3aed;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  html.dark-mode .deck-spinner {
+    border-color: #444;
+    border-top-color: #9d5cff;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .deck-loading-text {
+    margin-top: 1rem;
+    color: #666;
+    font-weight: 600;
+  }
+  
+  html.dark-mode .deck-loading-text {
+    color: #aaa;
+  }
+  
+  #deckErrors {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+    display: none;
+    color: #856404;
+  }
+  
+  html.dark-mode #deckErrors {
+    background: #3a2f1a;
+    border-color: #ffca28;
+    color: #ffd54f;
+  }
+  
+  #deckErrors.active {
+    display: block;
+  }
+  
+  .submit-btn {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  }
+  
+  html.dark-mode .submit-btn:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(157, 92, 255, 0.4);
+  }
+  
+  .submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .submit-btn .material-icons {
+    font-size: 24px;
+  }
+  
+  .success-container {
+    text-align: center;
+    padding: 3rem 2rem;
+  }
+  
+  .success-icon {
+    font-size: 5rem !important;
+    color: #10b981;
+    margin-bottom: 1rem;
+  }
+  
+  .success-container h2 {
+    color: #155724;
+    margin-bottom: 1rem;
+  }
+  
+  html.dark-mode .success-container h2 {
+    color: #66bb6a;
+  }
+  
+  .success-container p {
+    color: #666;
+    font-size: 1.1rem;
+  }
+  
+  html.dark-mode .success-container p {
+    color: #aaa;
+  }
+  
+  .success-container a {
+    color: #7c3aed;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  
+  html.dark-mode .success-container a {
+    color: #9d5cff;
+  }
+  
+  .success-container a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<div class="submit-deck-page">
+  <div class="page-header">
+    <h1>
+      <span class="material-icons">style</span>
+      {% if is_editing %}Edit Your Decklist{% else %}Submit Your Decklist{% endif %}
+    </h1>
+    <p>{{ tournament.name }} - {{ tournament.date.strftime('%B %d, %Y') }}</p>
+  </div>
+  
+  <div class="content-card">
+    {% if submitted %}
+      <div class="success-container">
+        <span class="material-icons success-icon">check_circle</span>
+        <h2>{% if existing_deck %}Deck Updated!{% else %}Deck Submitted!{% endif %}</h2>
+        <p>Thank you, <strong>{{ player_name }}</strong>! Your decklist has been {% if existing_deck %}updated{% else %}received{% endif %}.</p>
+        {% if can_edit and submission_token %}
+          <p style="margin-top: 1.5rem;">
+            <a href="{{ url_for('submit_deck_public', token=submission_token) }}">
+              Click here to edit your deck again
+            </a>
+          </p>
+        {% endif %}
+      </div>
+    {% else %}
+      {% if is_editing %}
+        <div class="info-box warning">
+          <p>You are editing your existing decklist. Make your changes and click Submit to update.</p>
         </div>
       {% else %}
-        <div class="form-container">
-          {% if is_editing %}
-            <div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
-              <p style="color: #856404;">You are editing your existing decklist. Make your changes and click Submit to update.</p>
-            </div>
-          {% else %}
-            <div class="info-box">
-              <p>Welcome, <strong>{{ player_name }}</strong>! Please submit your decklist for this tournament.</p>
-            </div>
-          {% endif %}
+        <div class="info-box">
+          <p>Welcome, <strong>{{ player_name }}</strong>! Please submit your decklist for this tournament.</p>
+        </div>
+      {% endif %}
+      
+      <form method="POST">
+        <div class="form-group">
+          <label for="deckName">
+            <span class="material-icons">label</span>
+            Deck Archetype
+          </label>
+          <div class="deck-name-wrapper">
+            <input type="text" id="deckName" name="deck_name" placeholder="Enter deck name (e.g., Sligh, UW Control)..." 
+                   autocomplete="off" value="{% if existing_deck %}{{ existing_deck.name }}{% endif %}" required>
+          </div>
+          <p class="help-text">
+            💡 Your deck will be automatically classified based on the decklist you provide.
+          </p>
         </div>
         
-        <form method="POST">
-          <div class="form-group">
-            <label for="deckName">
-              <span class="material-icons" style="vertical-align: middle; font-size: 20px;">label</span>
-              Deck Archetype
-            </label>
-            <div class="deck-name-wrapper">
-              <input type="text" id="deckName" name="deck_name" placeholder="Enter deck name (e.g., Sligh, UW Control)..." 
-                     autocomplete="off" value="{% if existing_deck %}{{ existing_deck.name }}{% endif %}" required>
-            </div>
-            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
-              💡 Your deck will be automatically classified based on the decklist you provide.
-            </p>
-          </div>
-          
-          <div class="form-group">
-            <label for="deckEditor">
-              <span class="material-icons" style="vertical-align: middle; font-size: 20px;">list_alt</span>
-              Decklist
-            </label>
-            <div class="deck-editor-wrap">
-              <div id="deckEditor" contenteditable="true" class="deck-editor" spellcheck="false" autocomplete="off" placeholder="4 Lightning Bolt
+        <div class="form-group">
+          <label for="deckEditor">
+            <span class="material-icons">list_alt</span>
+            Decklist
+          </label>
+          <div class="deck-editor-wrap">
+            <div id="deckEditor" contenteditable="true" class="deck-editor" spellcheck="false" autocomplete="off" placeholder="4 Lightning Bolt
 4 Counterspell
 12 Island
 
 Sideboard
 3 Pyroblast"></div>
-              <div id="deckLoadingOverlay" class="deck-loading-overlay">
-                <div class="deck-spinner"></div>
-                <div class="deck-loading-text">Validating cards...</div>
-              </div>
+            <div id="deckLoadingOverlay" class="deck-loading-overlay">
+              <div class="deck-spinner"></div>
+              <div class="deck-loading-text">Validating cards...</div>
             </div>
-            <input type="hidden" id="deckList" name="deck_list">
-            <div id="deckErrors"></div>
           </div>
-          
-          <button type="submit" class="submit-btn" id="saveBtn">
-            <span class="material-icons">save</span>
-            Submit Decklist
-          </button>
-        </form>
-      {% endif %}
-    </div>
+          <input type="hidden" id="deckList" name="deck_list">
+          <div id="deckErrors"></div>
+        </div>
+        
+        <button type="submit" class="submit-btn" id="saveBtn">
+          <span class="material-icons">save</span>
+          Submit Decklist
+        </button>
+      </form>
+    {% endif %}
   </div>
+</div>
   
   {% if not submitted %}
   <script>
@@ -760,5 +842,4 @@ Sideboard
     });
   </script>
   {% endif %}
-</body>
-</html>
+{% endblock %}

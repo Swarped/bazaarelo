@@ -32,8 +32,14 @@
       .elo-pos { color: #10b981; font-weight: bold; }
       .elo-neg { color: #ef4444; font-weight: bold; }
 
-      html.dark-mode .elo-pos { color: #34d399; }
-      html.dark-mode .elo-neg { color: #f87171; }
+      html.dark-mode .elo-pos { color: #34d399 !important; }
+      html.dark-mode .elo-neg { color: #f87171 !important; }
+      
+      /* Elo colors in table */
+      td .elo-pos { color: #22c55e; }
+      td .elo-neg { color: #ef4444; }
+      html.dark-mode td .elo-pos { color: #34d399 !important; }
+      html.dark-mode td .elo-neg { color: #f87171 !important; }
 
       .btn-confirm {
         margin-bottom: 1.5rem;
@@ -471,27 +477,46 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
       }
 
       .btn-toggle-rounds {
-        padding: .75rem 1.5rem;
+        padding: 0.75rem 1.25rem;
         font-size: 1rem;
-        background: #007bff;
+        background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 8px;
         cursor: pointer;
         margin-bottom: 1rem;
-        transition: background 0.2s ease;
+        margin-top: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3);
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
+        font-weight: 600;
       }
-      .btn-toggle-rounds:hover { background: #0056b3; }
-      .btn-toggle-rounds.expanded { background: #0056b3; }
+      .btn-toggle-rounds:hover {
+        background: linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%);
+        box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+        transform: translateY(-2px);
+      }
+      .btn-toggle-rounds.expanded {
+        background: linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%);
+      }
       .btn-toggle-rounds .material-icons {
         font-size: 20px;
         transition: transform 0.3s ease;
       }
       .btn-toggle-rounds.expanded .material-icons {
         transform: rotate(180deg);
+      }
+      
+      html.dark-mode .btn-toggle-rounds {
+        background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
+        box-shadow: 0 2px 8px rgba(147, 51, 234, 0.4);
+      }
+      
+      html.dark-mode .btn-toggle-rounds:hover {
+        background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+        box-shadow: 0 4px 12px rgba(147, 51, 234, 0.5);
       }
 
       #allRoundsSection {
@@ -847,6 +872,38 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
         align-items: center;
         gap: 0.75rem;
         flex: 1;
+        min-width: 0; /* Allow text to wrap */
+      }
+      
+      #storeSelectText, #storeSelectTextEdit {
+        flex: 1;
+        min-width: 0;
+      }
+      
+      .store-select-name {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+      
+      html.dark-mode .store-select-name {
+        color: #e0e0e0;
+      }
+      
+      .store-select-tokens {
+        font-size: 0.75rem;
+        color: #4CAF50;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      
+      .store-select-tokens.premium {
+        color: #FFD700;
+      }
+      
+      .store-select-tokens .material-icons {
+        font-size: 0.9rem;
       }
 
       .store-select-image {
@@ -885,6 +942,7 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
         right: 0;
         max-height: 400px;
         overflow-y: auto;
+        overflow-x: hidden;
         background: white;
         border: 2px solid #4CAF50;
         border-radius: 8px;
@@ -1028,13 +1086,6 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
         </div>
       </div>
     </form>
-
-    {% if tournament.rounds > 1 %}
-    <button id="toggleAllRoundsBtn" class="btn-toggle-rounds">
-      <span class="material-icons">expand_more</span>
-      <span>Round-by-Round Results</span>
-    </button>
-    {% endif %}
 
     <!-- All Rounds Expandable Section -->
     {% if tournament.imported_from_text or is_editing %}
@@ -1200,10 +1251,17 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
             </tr>
             {% endfor %}
           </table>
+          
+          {% if tournament.rounds > 1 %}
+          <button id="toggleAllRoundsBtn" class="btn-toggle-rounds">
+            <span class="material-icons">expand_more</span>
+            <span>Round-by-Round Results</span>
+          </button>
+          {% endif %}
         </div>
 {% if tournament.pending and current_user.is_authenticated and (current_user.is_admin or current_user.is_scorekeeper) %}
-<form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form">
-  <button type="submit" class="btn-confirm" onclick="return syncDeckModeToForm()">
+<form method="POST" action="{{ url_for('apply_top_cut', tid=tid) }}" class="topcut-form" onsubmit="return syncDeckModeToForm()">
+  <button type="submit" class="btn-confirm">
     <i class="material-icons">save</i>
     Save Tournament
     <span style="margin-left: auto;">&raquo;</span>
@@ -1291,15 +1349,13 @@ html.dark-mode .deck-editor span.hl-sideboard { color: #ffffff !important; }
   {% endif %}
 </div>
 
-  <!-- Hidden inputs to pass deck mode data (only for players in top cut) -->
+  <!-- Hidden inputs to pass player data for all standings (backend will filter by top cut) -->
   <div id="deckDataContainer">
+    <!-- DEBUG: {{ standings|length }} players in standings -->
     {% for s in standings %}
-      {% set in_cut = (tournament.top_cut is not none) and (loop.index <= tournament.top_cut|int) %}
-      {% if in_cut %}
         <input type="hidden" name="deck_mode_{{ loop.index }}" id="formDeckMode_{{ loop.index }}" value="add">
         <input type="hidden" name="player_id_{{ loop.index }}" id="formPlayerId_{{ loop.index }}" value="{{ s.player.id }}">
         <input type="hidden" name="player_name_{{ loop.index }}" id="formPlayerName_{{ loop.index }}" value="{{ s.player.name|e }}">
-      {% endif %}
     {% endfor %}
   </div>
 </form>
@@ -1374,14 +1430,36 @@ function initStoreSelector(buttonId, textId, imageId, dropdownId, hiddenInputId,
     if (selectedStoreId) {
       const selectedOption = dropdown.querySelector(`[data-store-id="${selectedStoreId}"]`);
       if (selectedOption) {
-        buttonText.textContent = selectedOption.dataset.storeName;
+        const storeName = selectedOption.dataset.storeName;
+        
+        // Get token info from the selected option and display it formatted in the button
+        const tokenInfoElement = selectedOption.querySelector('.store-token-info');
+        
+        if (tokenInfoElement) {
+          // Extract the icon and text
+          const icon = tokenInfoElement.querySelector('.material-icons');
+          const isPremium = tokenInfoElement.textContent.includes('Premium');
+          const tokenCount = tokenInfoElement.textContent.match(/\d+/)[0];
+          const tokenType = isPremium ? 'Premium' : 'Competitive';
+          
+          // Build formatted HTML
+          buttonText.innerHTML = `
+            <div class="store-select-name">${storeName}</div>
+            <div class="store-select-tokens ${isPremium ? 'premium' : ''}">
+              <i class="material-icons">${icon.textContent}</i>
+              ${tokenType} tokens: ${tokenCount}
+            </div>
+          `;
+        } else {
+          buttonText.innerHTML = `<div class="store-select-name">${storeName}</div>`;
+        }
         
         // Update image
         const imgElement = selectedOption.querySelector('.store-option-image');
         const placeholderElement = selectedOption.querySelector('.store-option-placeholder');
         
         if (imgElement) {
-          buttonImage.innerHTML = `<img src="${imgElement.src}" class="store-select-image" alt="${selectedOption.dataset.storeName}">`;
+          buttonImage.innerHTML = `<img src="${imgElement.src}" class="store-select-image" alt="${storeName}">`;
         } else if (placeholderElement) {
           buttonImage.innerHTML = '<div class="store-select-placeholder">🏪</div>';
         }
@@ -1414,14 +1492,12 @@ function initStoreSelector(buttonId, textId, imageId, dropdownId, hiddenInputId,
     option.addEventListener('click', function() {
       selectedStoreId = this.dataset.storeId;
       hiddenInput.value = selectedStoreId;
-      buttonText.textContent = this.dataset.storeName;
       dropdown.classList.remove('active');
       button.classList.remove('active');
       wrapper.classList.remove('error');
       
-      // Mark as selected
-      options.forEach(opt => opt.classList.remove('selected'));
-      this.classList.add('selected');
+      // Update button display (includes tokens and image)
+      updateButtonText();
       
       // Submit the store change
       submitStoreChange(selectedStoreId);
@@ -1440,18 +1516,26 @@ function initStoreSelector(buttonId, textId, imageId, dropdownId, hiddenInputId,
 function submitStoreChange(storeId) {
   if (!storeId) return;
   
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = "{{ url_for('set_tournament_store', tid=tid) }}";
-  
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'store_id';
-  input.value = storeId;
-  form.appendChild(input);
-  
-  document.body.appendChild(form);
-  form.submit();
+  // Use AJAX to submit store change without page refresh
+  fetch("{{ url_for('set_tournament_store', tid=tid) }}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'store_id=' + encodeURIComponent(storeId)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('Store updated successfully');
+    } else {
+      alert('Failed to update store: ' + (data.message || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('Error updating store:', error);
+    alert('Failed to update store. Please try again.');
+  });
 }
 
 // Validate store before form submit
@@ -1644,26 +1728,46 @@ if (document.getElementById('storeWrapperEdit')) {
 
   // Sync deck mode data from toggles to form hidden inputs before submission
   function syncDeckModeToForm() {
+    console.log('[SYNC] === Starting form sync ===');
+    
+    // Check deckDataContainer before any changes
+    const container = document.getElementById('deckDataContainer');
+    if (container) {
+      const inputsBefore = container.querySelectorAll('input');
+      console.log(`[SYNC] deckDataContainer has ${inputsBefore.length} inputs BEFORE sync`);
+    } else {
+      console.log('[SYNC] ERROR: deckDataContainer not found!');
+    }
+    
     // Save all current deck data
     const standings = document.querySelectorAll('table tr[data-rank]');
+    console.log(`[SYNC] Found ${standings.length} rows with data-rank`);
+    
     standings.forEach(row => {
       const rank = row.getAttribute('data-rank');
       saveDeckData(rank);
     });
     
-    // Update form hidden inputs for players in top cut
+    // Update form hidden inputs for ALL players (backend will filter by top cut)
     standings.forEach(row => {
       const rank = row.getAttribute('data-rank');
-      const inCut = row.getAttribute('data-in-cut') === 'true';
       const deckModeInput = document.getElementById(`deckMode_${rank}`);
       const formDeckModeInput = document.getElementById(`formDeckMode_${rank}`);
       
-      if (inCut && deckModeInput && formDeckModeInput) {
+      if (deckModeInput && formDeckModeInput) {
         formDeckModeInput.value = deckModeInput.value;
       }
     });
     
-    // Form will submit normally after this
+    // Check deckDataContainer AFTER sync
+    if (container) {
+      const inputsAfter = container.querySelectorAll('input');
+      console.log(`[SYNC] deckDataContainer has ${inputsAfter.length} inputs AFTER sync`);
+      console.log(`[SYNC] Container parent: ${container.parentElement?.tagName}`);
+      console.log(`[SYNC] Form elements count: ${container.closest('form')?.elements.length}`);
+    }
+    
+    console.log('[SYNC] === Form sync complete, allowing submission ===');
     return true;
   }
 
@@ -1770,18 +1874,50 @@ if (document.getElementById('storeWrapperEdit')) {
   // Rebuild the hidden inputs container based on current top cut
   function rebuildDeckDataContainer() {
     const container = document.getElementById('deckDataContainer');
-    if (!container) return;
+    if (!container) {
+      console.log('[DEBUG] deckDataContainer not found');
+      return;
+    }
+    
+    // Check if this is a server-rendered tournament (has Jinja2 inputs already)
+    const existingInputs = container.querySelectorAll('input[name^="player_id_"]');
+    if (existingInputs.length > 0) {
+      console.log(`[DEBUG] Found ${existingInputs.length} server-rendered inputs, preserving them`);
+      // This is an imported tournament - don't rebuild, just update deck modes from store
+      existingInputs.forEach(input => {
+        const match = input.name.match(/player_id_(\d+)/);
+        if (match) {
+          const rank = match[1];
+          const deckModeInput = container.querySelector(`input[name="deck_mode_${rank}"]`);
+          if (deckModeInput && deckDataStore[rank]) {
+            deckModeInput.value = deckDataStore[rank].deckMode || 'add';
+          }
+        }
+      });
+      return;
+    }
+    
+    // This is a casual tournament - rebuild from table
+    const standings = document.querySelectorAll('table tr[data-rank]');
+    console.log(`[DEBUG] Found ${standings.length} rows with data-rank attribute`);
+    
+    // Don't clear if we can't find any rows - preserve server-rendered inputs
+    if (standings.length === 0) {
+      console.log('[DEBUG] No rows found, keeping server-rendered hidden inputs');
+      return;
+    }
     
     container.innerHTML = '';
     
-    const standings = document.querySelectorAll('table tr[data-rank]');
     standings.forEach(row => {
       const rank = row.getAttribute('data-rank');
-      const inCut = row.getAttribute('data-in-cut') === 'true';
       const playerId = document.getElementById(`playerId_${rank}`)?.value;
       const playerName = document.getElementById(`playerName_${rank}`)?.value;
       
-      if (inCut && playerId && playerName) {
+      console.log(`[DEBUG] Rank ${rank}: playerId=${playerId}, playerName=${playerName}`);
+      
+      // Send data for ALL players - backend will filter by top cut
+      if (playerId && playerName) {
         const deckModeValue = deckDataStore[rank]?.deckMode || 'add';
         
         container.innerHTML += `
@@ -1791,6 +1927,8 @@ if (document.getElementById('storeWrapperEdit')) {
         `;
       }
     });
+    
+    console.log(`[DEBUG] Rebuilt deckDataContainer with ${container.querySelectorAll('input').length} inputs`);
   }
 
   // Attach event listeners to top cut radio buttons

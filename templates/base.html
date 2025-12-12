@@ -248,6 +248,16 @@
       html.dark-mode .profile-dropdown a:hover {
         background-color: #3a3a3a;
       }
+      html.dark-mode .profile-dropdown a.disabled-link {
+        color: #6b7280 !important;
+        opacity: 0.5;
+      }
+      html.dark-mode .profile-dropdown a.disabled-link:hover {
+        background-color: #333333;
+      }
+      html.dark-mode .profile-dropdown a.disabled-link i.material-icons {
+        color: #6b7280;
+      }
       html.dark-mode input[type="text"]:focus,
       html.dark-mode input[type="email"]:focus,
       html.dark-mode input[type="number"]:focus,
@@ -1081,10 +1091,21 @@
       .profile-dropdown a:hover {
         background-color: #f9fafb;
       }
+      .profile-dropdown a.disabled-link {
+        color: #9ca3af !important;
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .profile-dropdown a.disabled-link:hover {
+        background-color: #f3f4f6;
+      }
       .profile-dropdown a i.material-icons {
         font-size: 20px;
         color: #6b7280;
         display: inline-block;
+      }
+      .profile-dropdown a.disabled-link i.material-icons {
+        color: #9ca3af;
       }
       .profile-menu.open .profile-dropdown {
         display: block;
@@ -1555,7 +1576,13 @@
             </div>
             <div class="profile-dropdown">
               <a href="{{ url_for('profile_settings') }}"><i class="material-icons">settings</i> Settings</a>
+              {% if user_claimed_player %}
+                <a href="{{ url_for('player_info', pid=user_claimed_player.id) }}"><i class="material-icons">person</i> My Profile</a>
+              {% else %}
+                <a href="#" class="disabled-link" title="Claim a player profile first"><i class="material-icons">person_outline</i> My Profile</a>
+              {% endif %}
               <a href="{{ url_for('tournaments_list', show_mine='1') }}"><i class="material-icons">emoji_events</i> My Tournaments</a>
+              <a href="{{ url_for('my_decks') }}"><i class="material-icons">style</i> My Decks</a>
               <a href="#" id="darkModeToggle" style="display:flex; justify-content:space-between; align-items:center;">
                 <span><i class="material-icons">dark_mode</i> Dark Mode</span>
                 <span id="darkModeStatus">{% if current_user.dark_mode %}ON{% else %}OFF{% endif %}</span>

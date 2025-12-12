@@ -36,7 +36,7 @@ td.store-cell img {
 
 
       h1 {
-        margin: 0;
+        margin: 0 0 1.5rem 0;
         font-size: 1.8rem;
         color: #2c3e50;
       }
@@ -73,6 +73,7 @@ td.store-cell img {
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         position: relative;
         table-layout: fixed;
+        border: none;
       }
 
       /* Table row animation */
@@ -392,6 +393,10 @@ td.store-cell img {
         font-size: 1.2rem;
         color: #2c3e50;
       }
+      
+      .table-panel table {
+        margin-top: 0;
+      }
 
       .action-column {
         background: white !important;
@@ -431,6 +436,7 @@ td.store-cell img {
       html.dark-mode table {
         background: #2a2a2a;
         box-shadow: none;
+        border: none;
       }
 
       html.dark-mode #competitive-table,
@@ -446,6 +452,16 @@ td.store-cell img {
       html.dark-mode td,
       html.dark-mode th {
         border-color: #444;
+      }
+      
+      html.dark-mode .action-column {
+        border: none !important;
+        background: #1a1a1a !important;
+      }
+      
+      html.dark-mode td:nth-last-child(2),
+      html.dark-mode th:nth-last-child(2) {
+        border-right: none !important;
       }
 
       html.dark-mode tr:nth-child(even) {
@@ -515,13 +531,14 @@ td.store-cell img {
 
 
       <h1>Past Tournaments</h1>
+      
 
 
     <div class="toggle-container">
       <input type="radio" id="competitive" name="toggle" checked>
-      <label for="competitive">Competitive</label>
+      <label for="competitive"><i>RANKED</i></label>
       <input type="radio" id="casual" name="toggle">
-      <label for="casual">Casual</label>
+      <label for="casual"><i>LADDER</i></label>
       <div class="toggle-slider"></div>
     </div>
 

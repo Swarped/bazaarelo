@@ -380,7 +380,7 @@
       <th>Losses</th>
       {% endif %}
       <th>Points</th>
-      <th>Deck</th>
+      <th>Archetype</th>
       <th>Colors</th>
       <th>Uniqueness</th>
       <th>Est. Price</th>
@@ -392,7 +392,7 @@
       role="link"
       aria-label="Open deck for {{ s.player.name }}"
       data-player-name='{{ s.player.name|tojson }}'
-      data-deck-name='{{ (s.deck.name if s.deck else "")|tojson }}'
+      data-deck-name='{{ (s.deck.archetype if s.deck else "")|tojson }}'
       data-deck-list='{{ (s.deck.list_text if s.deck else "")|tojson }}'>
       <td>{{ loop.index }}</td>
       <td class="clickable-cell player-cell" data-player-id="{{ s.player.id }}">{{ s.player.name }}</td>
@@ -404,7 +404,7 @@
       <td>{{ s.points }}</td>
       <td>
         {% if s.deck %}
-          {{ s.deck.name }}
+          {{ s.deck.archetype }}
         {% elif deck_links_by_player.get(s.player.name) and not deck_links_by_player.get(s.player.name).deck_submitted %}
           <span class="pending-badge">
             <span class="material-icons" style="font-size: 16px;">schedule</span>
@@ -415,20 +415,26 @@
         {% endif %}
       </td>
       <td class="colors-cell">
-        {% if can_edit and deck_links_by_player.get(s.player.name) and not deck_links_by_player.get(s.player.name).deck_submitted %}
+        {% if deck_links_by_player.get(s.player.name) and not deck_links_by_player.get(s.player.name).deck_submitted %}
+          {% if can_edit %}
           <button class="copy-link-btn" onclick="copySubmissionLink('{{ deck_links_by_player.get(s.player.name).submission_token }}', this); event.stopPropagation();">
             <span class="material-icons">content_copy</span>
             Copy Link
           </button>
+          {% endif %}
         {% endif %}
       </td>
       <td class="uniqueness-cell">
+        {% if s.deck %}
         <div class="uniqueness-bar-container">
           <div class="uniqueness-bar" style="width: 0%"></div>
           <span class="uniqueness-text">N/A</span>
         </div>
+        {% else %}
+        –
+        {% endif %}
       </td>
-      <td class="price-cell">Calculating...</td>
+      <td class="price-cell">{% if s.deck %}Calculating...{% else %}–{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

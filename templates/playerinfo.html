@@ -259,6 +259,168 @@
     border-top-color: #444;
   }
 
+  .achievements-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e0e0e0;
+  }
+
+  html.dark-mode .achievements-section {
+    border-top-color: #444;
+  }
+
+  .achievements-section h3 {
+    font-size: 1rem;
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  html.dark-mode .achievements-section h3 {
+    color: #e0e0e0;
+  }
+
+  .achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+
+  .achievement-badge {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .achievement-badge:hover {
+    transform: scale(1.1);
+  }
+
+  .achievement-base {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* Bronze tier - bronze color */
+  .achievement-base.bronze {
+    filter: brightness(0) saturate(100%) invert(43%) sepia(73%) saturate(482%) hue-rotate(358deg) brightness(91%) contrast(84%);
+  }
+
+  /* Silver tier - silver color (smaller base) */
+  .achievement-base.silver {
+    width: 85%;
+    height: 85%;
+    top: 7.5%;
+    left: 7.5%;
+    filter: brightness(0) saturate(100%) invert(73%) sepia(9%) saturate(374%) hue-rotate(169deg) brightness(95%) contrast(87%);
+  }
+
+  /* Gold tier - gold color (more vibrant) */
+  .achievement-base.gold {
+    filter: brightness(0) saturate(100%) invert(65%) sepia(95%) saturate(600%) hue-rotate(358deg) brightness(95%) contrast(90%);
+  }
+
+  .achievement-base.platinum {
+    /* Blue gradient for admin achievement */
+    filter: brightness(0) saturate(100%) invert(48%) sepia(96%) saturate(1676%) hue-rotate(201deg) brightness(98%) contrast(101%);
+  }
+
+  .achievement-base.scorekeeper {
+    /* Turquoise green color for scorekeeper achievement - smaller with light grey outline */
+    width: 85%;
+    height: 85%;
+    top: 7.5%;
+    left: 7.5%;
+    filter: brightness(0) saturate(100%) invert(80%) sepia(30%) saturate(300%) hue-rotate(120deg) brightness(115%) contrast(95%) drop-shadow(0 0 1px rgba(180, 180, 180, 0.8));
+  }
+
+  .achievement-icon {
+    width: 40%;
+    height: 40%;
+    position: absolute;
+    top: 20%;
+    left: 30%;
+  }
+
+  /* Bronze tier - black icon */
+  .achievement-badge.bronze .achievement-icon {
+    width: 40%;
+    height: 40%;
+    top: 30%;
+    left: 30%;
+    filter: brightness(0) saturate(100%);
+  }
+
+  /* Silver tier - white icon (smaller and slightly lower) */
+  .achievement-badge.silver .achievement-icon {
+    width: 36%;
+    height: 36%;
+    top: 25%;
+    left: 32.5%;
+    filter: brightness(0) saturate(100%) invert(1);
+  }
+
+  /* Gold tier - gold icon (bigger and lower) */
+  .achievement-badge.gold .achievement-icon {
+    width: 50%;
+    height: 50%;
+    top: 25%;
+    left: 25%;
+    filter: brightness(0) saturate(100%) invert(65%) sepia(95%) saturate(600%) hue-rotate(358deg) brightness(95%) contrast(90%);
+  }
+
+  /* Keep icon colors consistent in dark mode */
+  html.dark-mode .achievement-badge.bronze .achievement-icon {
+    filter: brightness(0) saturate(100%);
+  }
+
+  html.dark-mode .achievement-badge.silver .achievement-icon {
+    filter: brightness(0) saturate(100%) invert(1);
+  }
+
+  html.dark-mode .achievement-badge.gold .achievement-icon {
+    filter: brightness(0) saturate(100%) invert(65%) sepia(95%) saturate(600%) hue-rotate(358deg) brightness(95%) contrast(90%);
+  }
+
+  .achievement-tooltip {
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1000;
+  }
+
+  .achievement-badge:hover .achievement-tooltip {
+    opacity: 1;
+  }
+
+  .achievement-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+  }
+
   .history-panel {
     flex: 1;
     min-width: 0;
@@ -794,6 +956,59 @@
         {{ stats.casual_points }} Casual Points
       </div>
 
+      {% if achievements %}
+      <div class="achievements-section">
+        <h3>
+          <span class="material-icons" style="font-size: 1rem;">emoji_events</span>
+          Achievements
+        </h3>
+        <div class="achievements-grid">
+          {% for item in achievements %}
+          <div class="achievement-badge {{ item.achievement.tier }}">
+            <!-- Special achievements: admin and scorekeeper -->
+            {% if item.achievement.achievement_type == 'admin' %}
+              <img src="{{ url_for('static', filename='ray_icon.svg') }}" alt="Admin" class="achievement-base {{ item.achievement.tier }}">
+              <div class="achievement-tooltip">
+                ChallengerMTG Admin
+              </div>
+            {% elif item.achievement.achievement_type == 'scorekeeper' %}
+              <img src="{{ url_for('static', filename='scorekeeper.svg') }}" alt="Scorekeeper" class="achievement-base scorekeeper">
+              <div class="achievement-tooltip">
+                ChallengerMTG Scorekeeper
+              </div>
+            {% else %}
+              {% if item.achievement.tier == 'bronze' %}
+                <img src="{{ url_for('static', filename='award_bronze.svg') }}" alt="Bronze Achievement" class="achievement-base bronze">
+              {% elif item.achievement.tier == 'silver' %}
+                <img src="{{ url_for('static', filename='award_silver.svg') }}" alt="Silver Achievement" class="achievement-base silver">
+              {% elif item.achievement.tier == 'gold' %}
+                <img src="{{ url_for('static', filename='award_gold.svg') }}" alt="Gold Achievement" class="achievement-base gold">
+              {% endif %}
+              {% if item.store and item.store.icon_url %}
+                <img src="{{ url_for('static', filename=item.store.icon_url) }}" alt="{{ item.store.name }}" class="achievement-icon">
+              {% elif item.store %}
+                <img src="{{ url_for('static', filename='store_images/store_icon.svg') }}" alt="{{ item.store.name }}" class="achievement-icon">
+              {% endif %}
+              <div class="achievement-tooltip">
+                <strong>{% if item.store %}{{ item.store.name }}{% else %}Special{% endif %}</strong><br>
+                <span style="text-transform: capitalize;">{{ item.achievement.tier }}</span><br>
+                <em style="font-size: 0.9em; opacity: 0.9;">
+                  {% if item.achievement.tier == 'bronze' %}
+                    Make TOP 4 once
+                  {% elif item.achievement.tier == 'silver' %}
+                    Make TOP 4 twice
+                  {% elif item.achievement.tier == 'gold' %}
+                    Make TOP 4 three times
+                  {% endif %}
+                </em>
+              </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       <div class="stat">
         <strong>Country</strong>
         <span class="stat-value">
@@ -841,6 +1056,31 @@
       </div>
       {% endif %}
 
+      {% if current_user.is_authenticated and not player.claimed_by and not user_has_claimed_profile %}
+      <!-- Claim Player Section -->
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 8px; margin-top: 1rem; color: white; text-align: center;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+          <span class="material-icons" style="font-size: 1.5rem;">help_outline</span>
+          <p style="margin: 0; font-style: italic; font-size: 1.1rem;">Are you this player?</p>
+        </div>
+        <form method="POST" action="{{ url_for('claim_player', pid=player.id) }}" style="margin: 0;">
+          <button type="submit" class="btn" style="background: white; color: #667eea; font-weight: 600; width: 100%; max-width: 200px; padding: 0.75rem 1.5rem; border: none; font-size: 1rem;">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">verified_user</span>
+            Claim Profile
+          </button>
+        </form>
+        <p style="margin-top: 0.75rem; margin-bottom: 0; font-size: 0.85rem; opacity: 0.9;">
+          An admin will review your request
+        </p>
+      </div>
+      {% elif player.claimed_by == current_user.id %}
+      <!-- Already Claimed by Current User -->
+      <div style="background: #4caf50; padding: 1rem; border-radius: 8px; margin-top: 1rem; color: white; text-align: center;">
+        <span class="material-icons" style="vertical-align: middle; margin-right: 0.25rem;">check_circle</span>
+        <strong>This is your claimed profile</strong>
+      </div>
+      {% endif %}
+
       {% if current_user.is_authenticated and current_user.is_admin %}
       <div class="admin-actions">
         <form method="POST" action="{{ url_for('delete_player', pid=player.id) }}"
@@ -850,13 +1090,10 @@
             Delete Player
           </button>
         </form>
-        <form method="POST" action="{{ url_for('merge_player') }}">
-          <input type="hidden" name="source_id" value="{{ player.id }}">
-          <button type="submit" class="btn btn-primary" style="width: 100%;">
-            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">merge</span>
-            Merge Player
-          </button>
-        </form>
+        <button type="button" class="btn btn-primary" style="width: 100%;" onclick="openMergeModal()">
+          <span class="material-icons" style="font-size: 16px; vertical-align: middle;">merge</span>
+          Merge Player
+        </button>
       </div>
       {% endif %}
     </div>
@@ -966,9 +1203,82 @@
   </div>
 </div>
 
+<!-- Merge Player Modal -->
+{% if current_user.is_authenticated and current_user.is_admin %}
+<div id="mergePlayerModal" class="modal" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <span class="close" onclick="closeMergeModal()">&times;</span>
+    <h3>Merge Player: {{ player.name }}</h3>
+    <p style="color: #666; margin-bottom: 20px;">
+      Select the target player to merge <strong>{{ player.name }}</strong> into. 
+      This will transfer all tournaments, matches, decks, and points, then recalculate ELO chronologically.
+    </p>
+    <form method="POST" action="{{ url_for('merge_player') }}" onsubmit="return confirmMerge()">
+      <input type="hidden" name="source_id" value="{{ player.id }}">
+      
+      <div style="margin-bottom: 20px;">
+        <label for="target_id" style="display: block; margin-bottom: 8px; font-weight: 600;">
+          Merge into (target player):
+        </label>
+        <select name="target_id" id="target_id" required style="width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 4px;">
+          <option value="">-- Select Target Player --</option>
+          {% for p in all_players %}
+            {% if p.id != player.id %}
+              <option value="{{ p.id }}">{{ p.name }} (ELO: {{ p.elo }}, Casual: {{ p.casual_points }})</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn" onclick="closeMergeModal()" style="background: #666;">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+          <span class="material-icons" style="font-size: 16px; vertical-align: middle;">merge</span>
+          Merge Players
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 {% include '_deck_view_modal.html' %}
 
   <script>
+    // Merge player modal functions
+    function openMergeModal() {
+      document.getElementById('mergePlayerModal').style.display = 'block';
+    }
+    
+    function closeMergeModal() {
+      document.getElementById('mergePlayerModal').style.display = 'none';
+    }
+    
+    function confirmMerge() {
+      const select = document.getElementById('target_id');
+      const targetName = select.options[select.selectedIndex].text;
+      const sourceName = '{{ player.name }}';
+      
+      return confirm(
+        `Are you sure you want to merge "${sourceName}" into "${targetName}"?\n\n` +
+        `This will:\n` +
+        `• Transfer all tournament history and matches\n` +
+        `• Recalculate ELO chronologically\n` +
+        `• Merge casual points by store\n` +
+        `• Merge achievements (keeping highest tier)\n` +
+        `• Delete "${sourceName}" permanently\n\n` +
+        `This action cannot be undone.`
+      );
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('mergePlayerModal');
+      if (event.target == modal) {
+        closeMergeModal();
+      }
+    }
+    
     // Click handler for rows
     document.querySelectorAll('tr.clickable-row').forEach(row => {
       row.addEventListener('click', function(event) {

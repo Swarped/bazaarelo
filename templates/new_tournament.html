@@ -221,6 +221,17 @@
       html.dark-mode .round-info {
         color: #ccc;
       }
+      
+      .bulk-import-text {
+        font-size: 0.9rem;
+        color: #666;
+        font-style: italic;
+        margin: 0 0 0.5rem 0;
+      }
+      
+      html.dark-mode .bulk-import-text {
+        color: #aaa;
+      }
 
       .btn-submit {
         margin-top: 1.5rem;
@@ -310,6 +321,62 @@
         border-left-color: #4a9eff;
       }
 
+      /* Next Round Button Styles */
+      .btn-next-round {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 2rem;
+        background: white;
+        color: #1a1a1a;
+        border: 3px solid #7c3aed;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+        transition: all 0.3s;
+      }
+
+      .btn-next-round:hover:not(:disabled) {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: white;
+        border-color: #a855f7;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+      }
+
+      .btn-next-round:disabled {
+        background: #e0e0e0;
+        color: #999;
+        border-color: #ccc;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      html.dark-mode .btn-next-round {
+        background: #1a1a1a;
+        color: white;
+        border-color: #7c3aed;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+      }
+
+      html.dark-mode .btn-next-round:hover:not(:disabled) {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: white;
+        border-color: #a855f7;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(124, 58, 237, 0.5);
+      }
+
+      html.dark-mode .btn-next-round:disabled {
+        background: #2a2a2a;
+        color: #555;
+        border-color: #444;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
       .progress-indicator .material-icons {
         color: #2196f3;
         font-size: 24px;
@@ -375,14 +442,37 @@
         <span class="round-info" id="roundInfo">Paste EventLink data</span>
       </div>
       <textarea id="roundTextarea" rows="20" placeholder="Paste your Round 1 data here..."></textarea>
-      <div class="round-navigation">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; gap: 1rem;">
+        <!-- Bulk Import Button (Left, subtle) -->
+        <div style="text-align: left;">
+          <p class="bulk-import-text" style="margin-bottom: 0.5rem;">Want to submit all at once?</p>
+          <button type="button" class="btn-secondary" id="bulkImportBtn" style="
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            background: #6c757d;
+            font-size: 0.9rem;
+            border: none;
+            color: white;
+          ">
+            <span class="material-icons" style="font-size: 18px;">upload_file</span>
+            Bulk Import
+          </button>
+        </div>
+
+        <!-- Next Round Button (Right, highlighted) -->
+        <button type="button" class="btn-next-round" id="nextRoundBtn" disabled>
+          Next Round
+          <span class="material-icons" style="font-size: 28px;">arrow_forward</span>
+        </button>
+      </div>
+      
+      <div class="round-navigation" style="display: none;">
         <button type="button" class="btn-secondary" id="prevRoundBtn" style="display: none;">
           <span class="material-icons">arrow_back</span>
           Previous Round
-        </button>
-        <button type="button" class="btn-secondary" id="nextRoundBtn">
-          <span class="material-icons">arrow_forward</span>
-          Next Round
         </button>
       </div>
     </div>
@@ -416,6 +506,25 @@ let roundsData = [];
 let currentRound = 1;
 let totalRounds = null;
 let numPlayers = null;
+let bulkImportMode = false;
+
+// Enable/disable Next Round button based on textarea content
+const roundTextarea = document.getElementById('roundTextarea');
+const nextRoundBtn = document.getElementById('nextRoundBtn');
+
+function updateNextRoundButton() {
+  if (roundTextarea.value.trim().length > 0) {
+    nextRoundBtn.disabled = false;
+  } else {
+    nextRoundBtn.disabled = true;
+  }
+}
+
+// Listen for input changes
+roundTextarea.addEventListener('input', updateNextRoundButton);
+
+// Initial check
+updateNextRoundButton();
 
 // Toggle between EventLink and Arena modes
 const formatRadios = document.querySelectorAll('input[name="import_format"]');
@@ -438,6 +547,25 @@ formatRadios.forEach(radio => {
   });
 });
 
+// Bulk Import button - switch to single textarea mode
+document.getElementById('bulkImportBtn').addEventListener('click', () => {
+  bulkImportMode = true;
+  
+  // Hide round-by-round UI
+  document.getElementById('progressIndicator').style.display = 'none';
+  document.querySelector('.round-header h3').innerHTML = '<span class="material-icons">upload_file</span>All Rounds';
+  document.querySelector('.round-info').textContent = 'Paste all rounds at once';
+  document.querySelector('.round-navigation').style.display = 'none';
+  document.getElementById('bulkImportBtn').parentElement.style.display = 'none';
+  
+  // Change placeholder
+  document.getElementById('roundTextarea').placeholder = 'Paste all rounds from EventLink here...';
+  document.getElementById('roundTextarea').rows = 25;
+  
+  // Show submit button immediately
+  document.getElementById('submitBtn').style.display = 'inline-flex';
+});
+
 // Calculate number of rounds based on player count
 function calculateRounds(players) {
   if (players <= 8) return 3;
@@ -457,33 +585,38 @@ function parseRoundData(text) {
   
   for (const line of lines) {
     // Skip header lines and empty lines
-    if (line.includes('Table') || line.includes('---') || !line.trim()) {
+    if (line.includes('Table') || line.includes('Mesa') || line.includes('---') || !line.trim()) {
+      continue;
+    }
+    
+    // Skip copyright and other common footer lines
+    if (line.includes('Copyright') || line.includes('EventLink') || line.includes('Wizards of the Coast')) {
       continue;
     }
     
     // EventLink format has multiple patterns:
     // 1. "Table# Player1 Player2 Points" (normal match)
-    // 2. "Player ***Bye*** Points" (bye)
+    // 2. "Player ***Bye***|***Ronda libre*** Points" (bye - English or Spanish)
     
-    // First, check for bye pattern: "Player ***Bye*** Points"
-    const byeMatch = line.match(/^\s*\d*\s+(.+?)\s+\*\*\*Bye\*\*\*/i);
+    // First, check for bye pattern: "Player ***Bye***|***Ronda libre*** Points"
+    const byeMatch = line.match(/^\s*\d*\s+(.+?)\s+\*\*\*(Bye|Ronda libre)\*\*\*/i);
     if (byeMatch) {
       playerSet.add(byeMatch[1].trim());
       continue;
     }
     
     // Then check for normal match pattern
-    // Looking for: optional table number, player1, player2, score (like "12-9" or "6-7")
+    // Looking for: optional table number, player1, player2, score (like "3-0" or "0-3")
     const matchPattern = line.match(/^\s*\d*\s+(.+?)\s+(.+?)\s+(\d+-\d+)\s*$/);
     if (matchPattern) {
       const player1 = matchPattern[1].trim();
       const player2 = matchPattern[2].trim();
       
-      // Exclude "***Bye***" from being counted as a player
-      if (!player1.includes('***Bye***')) {
+      // Exclude "***Bye***" or "***Ronda libre***" from being counted as a player
+      if (!player1.includes('***Bye***') && !player1.includes('***Ronda libre***')) {
         playerSet.add(player1);
       }
-      if (!player2.includes('***Bye***')) {
+      if (!player2.includes('***Bye***') && !player2.includes('***Ronda libre***')) {
         playerSet.add(player2);
       }
     }
@@ -587,8 +720,21 @@ document.getElementById('tournamentForm').addEventListener('submit', (e) => {
   const selectedFormat = document.querySelector('input[name="import_format"]:checked').value;
   
   if (selectedFormat === 'eventlink') {
-    // Save current round data
     const currentText = document.getElementById('roundTextarea').value.trim();
+    
+    // Bulk import mode - just use the textarea content directly
+    if (bulkImportMode) {
+      if (!currentText) {
+        e.preventDefault();
+        alert('Please paste tournament data before submitting.');
+        return;
+      }
+      document.getElementById('fullTournamentData').value = currentText;
+      return;
+    }
+    
+    // Round-by-round mode
+    // Save current round data
     if (currentText) {
       roundsData[currentRound - 1] = currentText;
     }

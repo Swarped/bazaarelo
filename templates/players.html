@@ -111,6 +111,24 @@
         font-size: 1rem;
         transition: all 0.2s;
         margin: 0.25rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .store-filter-icon {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        filter: brightness(0) saturate(100%);
+      }
+      
+      html.dark-mode .store-filter-icon {
+        filter: brightness(0) saturate(100%) invert(1);
+      }
+      
+      .store-filter-btn.active .store-filter-icon {
+        filter: brightness(0) saturate(100%) invert(1);
       }
       
       .store-filter-btn.active {
@@ -1130,9 +1148,9 @@ html.dark-mode .featured-posts-section h2 {
 
       <div class="toggle-container" style="margin-bottom:0;">
         <input type="radio" id="competitive" name="toggle" checked>
-        <label for="competitive">Competitive</label>
+        <label for="competitive"><i>RANKED</i></label>
         <input type="radio" id="casual" name="toggle">
-        <label for="casual">Casual</label>
+        <label for="casual"><i>LADDER</i></label>
         <div class="toggle-slider"></div>
       </div>
 
@@ -1299,9 +1317,7 @@ html.dark-mode .featured-posts-section h2 {
       <a href="{{ url_for('deck_detail', deck_name=deck.name) }}" class="deck-card-link"
          style="display:block; position:relative; margin-bottom:1rem; border-radius:6px; overflow:hidden; text-decoration:none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div style="
-          background-image: url('{{ url_for('static', filename=deck.image_url) if deck.image_url else '' }}');
-          background-size: cover;
-          background-position: center;
+          {% if deck.image_url %}background-image: url('{{ url_for('static', filename=deck.image_url) }}'); background-size: cover; background-position: center;{% else %}background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);{% endif %}
           height: 120px;
           display: flex;
           align-items: flex-end;
@@ -1450,7 +1466,25 @@ function updateStoreFilters(country) {
       const btn = document.createElement('button');
       btn.className = 'store-filter-btn';
       btn.setAttribute('data-store', store.id.toString());
-      btn.textContent = store.name;
+      
+      // Add icon if available
+      if (store.icon_url) {
+        const icon = document.createElement('img');
+        icon.src = `/static/${store.icon_url}`;
+        icon.alt = store.name;
+        icon.className = 'store-filter-icon';
+        btn.appendChild(icon);
+      } else {
+        // Use default icon
+        const icon = document.createElement('img');
+        icon.src = '/static/store_images/store_icon.svg';
+        icon.alt = 'Store';
+        icon.className = 'store-filter-icon';
+        btn.appendChild(icon);
+      }
+      
+      const text = document.createTextNode(store.name);
+      btn.appendChild(text);
       btn.onclick = () => filterByStore(store.id.toString());
       storeButtons.appendChild(btn);
     });

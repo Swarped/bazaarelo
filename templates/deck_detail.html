@@ -583,8 +583,7 @@
     }
   </style>
 <div class="deck-detail-page"></div>
-  {% if image_url %}
-  <div class="deck-header" style="background-image: url({{ url_for("static", filename=image_url) }});">
+  <div class="deck-header" style="{% if image_url %}background-image: url({{ url_for("static", filename=image_url) }});{% else %}background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);{% endif %}">
     <div class="deck-info-panel">
       <h1>{{ deck_name }}</h1>
       <div class="deck-stats">
@@ -613,9 +612,6 @@
       </div>
     </div>
   </div>
-  {% else %}
-  <h1>{{ deck_name }} Decks</h1>
-  {% endif %}
 
   {% if current_user.is_authenticated and current_user.is_admin %}
   <div style="margin-bottom: 1rem;">
@@ -627,7 +623,7 @@
   {% endif %}
 
   <table>
-    <tr><th>Rank</th><th>Player</th><th>Deck Name</th><th>Tournament</th><th>Date</th>{% if deck_name != 'Rogue' %}<th>Uniqueness</th>{% endif %}<th>Colors</th><th>Est. Price</th></tr>
+    <tr><th>Rank</th><th>Player</th><th>Custom Deck Name</th><th>Tournament</th><th>Date</th>{% if deck_name != 'Rogue' %}<th>Uniqueness</th>{% endif %}<th>Colors</th><th>Est. Price</th></tr>
     {% for r in rows %}
 <tr class="clickable-row"
     data-player-name='{{ (r.player.name if r.player else "")|tojson }}'

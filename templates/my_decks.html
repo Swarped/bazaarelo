@@ -1,0 +1,1856 @@
+{% extends "base.html" %}
+
+{% block title %}My Decks{% endblock %}
+
+{% block content %}
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+  .my-decks-page {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+
+  .page-header h1 {
+    margin: 0;
+    font-size: 2rem;
+  }
+
+  .btn {
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  }
+
+  .archetype-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .archetype-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .archetype-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .archetype-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+
+  .archetype-placeholder {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .archetype-content {
+    padding: 1rem;
+  }
+
+  .archetype-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+  }
+
+  .archetype-count {
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #666;
+  }
+
+  .empty-state .material-icons {
+    font-size: 80px;
+    color: #ddd;
+    margin-bottom: 1rem;
+  }
+
+  /* Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+  }
+
+  #addDeckModal.modal[style*="display: block"] {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-content,
+  .modal-content-deck {
+    background-color: #fff;
+    margin: 1.5rem auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 94%;
+    max-width: 1600px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 3rem);
+  }
+
+  /* Override base.html styles for deck builder modal */
+  #addDeckModal .deck-modal-panels {
+    display: flex;
+    gap: 0;
+    padding: 0;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #addDeckModal .card-list-enhanced {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: hidden !important;
+    overflow-x: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-left {
+    flex: 1;
+    padding: 2rem;
+    border-right: 1px solid #e0e0e0;
+    overflow-y: auto;
+  }
+
+  .modal-right {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background: #f9f9f9;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .close {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .close:hover {
+    color: #333;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: #7c3aed;
+  }
+
+  .deck-editor-wrap {
+    position: relative;
+    width: 100%;
+    margin-bottom: 1.5rem;
+  }
+
+  .deck-editor {
+    width: 100%;
+    min-height: 400px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: white;
+  }
+
+  .deck-editor:focus {
+    outline: none;
+    border-color: #7c3aed;
+  }
+
+  .deck-preview {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .deck-preview h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+
+  .card-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .card-list li {
+    padding: 0.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .card-list li:hover {
+    background: #f9f9f9;
+  }
+
+  .mana-icon {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  }
+
+  .submit-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Dark Mode */
+  html.dark-mode .archetype-card {
+    background: #2a2a2a;
+  }
+
+  html.dark-mode .archetype-name {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .archetype-count {
+    color: #999;
+  }
+
+  html.dark-mode .modal-content,
+  html.dark-mode .modal-content-deck {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+
+  html.dark-mode #addDeckModal h3 {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+    color: white;
+    border-bottom-color: #6d28d9;
+  }
+
+  html.dark-mode #deckNameInput {
+    background: rgba(255,255,255,0.95);
+    color: #333;
+    border-color: white;
+  }
+
+  html.dark-mode #cardSearch {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+
+  html.dark-mode .deck-panel {
+    background: #2a2a2a;
+  }
+
+  html.dark-mode .deck-panel h4 {
+    color: #e0e0e0;
+    border-bottom-color: #4CAF50;
+  }
+
+  html.dark-mode .deck-panel-right {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%) !important;
+  }
+
+  html.dark-mode #previewCardName {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .detail-label {
+    color: #999;
+  }
+
+  html.dark-mode .detail-value {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .card-detail-row {
+    border-bottom-color: #333;
+  }
+
+  html.dark-mode .build-list li {
+    border-bottom-color: #333;
+  }
+
+  html.dark-mode .build-list li:not(.type-divider-build):hover {
+    background: #333;
+  }
+
+  html.dark-mode .build-list-card-name {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .close {
+    color: #999;
+  }
+
+  html.dark-mode .close:hover {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .modal-left {
+    border-right-color: #333;
+  }
+
+  html.dark-mode .modal-right {
+    background: #222;
+  }
+
+  html.dark-mode .deck-editor,
+  html.dark-mode .deck-preview {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+
+  html.dark-mode .form-group input,
+  html.dark-mode .form-group select {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+
+  html.dark-mode .card-list li {
+    border-bottom-color: #333;
+  }
+
+  html.dark-mode .card-list li:hover {
+    background: #333;
+  }
+</style>
+
+<div class="my-decks-page">
+  <div class="page-header">
+    <h1><span class="material-icons" style="vertical-align: middle; font-size: 2rem;">style</span> My Personal Deck Collection</h1>
+    <button class="btn btn-primary" onclick="openAddDeckModal()">
+      <span class="material-icons">add</span>
+      Add New Deck
+    </button>
+  </div>
+
+  {% if my_personal_decks %}
+    <div class="archetype-grid">
+      {% for deck in my_personal_decks|sort(attribute='archetype') %}
+        <div class="archetype-card" onclick="viewDeckFromCollection({{ deck.id }})" style="cursor: pointer;">
+          {% if archetype_images.get(deck.archetype) %}
+            <img src="{{ url_for('static', filename=archetype_images[deck.archetype]) }}" alt="{{ deck.archetype }}" class="archetype-image">
+          {% else %}
+            <div class="archetype-placeholder">
+              <span class="material-icons" style="font-size: 60px; color: white;">style</span>
+            </div>
+          {% endif %}
+          <div class="archetype-content">
+            <div class="archetype-name">{{ deck.name }}</div>
+            <div class="archetype-count" style="color: #7c3aed; font-weight: 600;">{{ deck.archetype }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <span class="material-icons">inbox</span>
+      <h2>No Decks Yet</h2>
+      <p>Start building your personal deck collection by adding your first deck!</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Add Deck Modal -->
+<div id="addDeckModal" class="modal">
+  <div class="modal-content-deck">
+    <h3 style="margin: 0; padding: 1rem 2rem; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; font-size: 1.4rem; border-bottom: 3px solid #6d28d9; position: relative; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+        <span id="deckNameDisplay" style="font-size: 1.3rem; font-weight: 600; color: white;">New Deck</span>
+        <button onclick="editDeckName()" id="editDeckNameBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); cursor: pointer; padding: 0.35rem 0.6rem; color: white; display: inline-flex; align-items: center; border-radius: 4px; transition: all 0.2s;" title="Edit deck name" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+          <i class="material-icons" style="font-size: 18px;">edit</i>
+        </button>
+        <input 
+          type="text" 
+          id="deckNameInput" 
+          placeholder="Enter deck name..." 
+          style="display: none; padding: 0.5rem; border: 2px solid white; border-radius: 6px; font-size: 1.1rem; max-width: 300px; background: rgba(255,255,255,0.95); color: #333;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <button onclick="submitDeck()" id="saveDeckBtnTop" style="background: white; color: #7c3aed; border: none; border-radius: 6px; padding: 0.6rem 1.5rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'">
+          <i class="material-icons" style="font-size: 18px;">save</i>
+          Save Deck
+        </button>
+        <span class="close" onclick="closeAddDeckModal()" style="font-size: 2.5rem; cursor: pointer; color: white; opacity: 1; transition: all 0.2s; font-weight: 300; text-shadow: 0 2px 4px rgba(0,0,0,0.3); margin-left: 0.5rem;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">×</span>
+      </div>
+    </h3>
+    
+    <div class="deck-modal-panels" style="padding: 0; gap: 0; min-height: 500px;">
+      <!-- Left Two Columns: Deck Builder -->
+      <div style="display: flex; flex-direction: column; flex: 2; border-right: 1px solid #e0e0e0;">
+        <div style="padding: 1rem; border-bottom: 1px solid #e0e0e0; position: relative;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+            <i class="material-icons" style="vertical-align: middle; font-size: 18px;">search</i> Add Cards
+          </label>
+          <div class="card-search-container" style="position: relative;">
+            <input 
+              type="text" 
+              id="cardSearch" 
+              placeholder="Search for a card..." 
+              autocomplete="off"
+              style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 1rem;">
+            <div id="searchResults" class="search-results" style="max-width: calc(100vw * 0.94 * 0.6667 - 4rem);"></div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; padding: 1rem; flex: 1; overflow: hidden;">
+          <!-- Left Panel: Main Deck -->
+          <div class="deck-panel deck-panel-left" style="border-radius: 8px;">
+            <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">layers</i> Main Deck (<span id="mainDeckCount">0</span>)</h4>
+            <ul id="buildMainDeck" class="card-list-enhanced build-list"></ul>
+          </div>
+          
+          <!-- Middle Panel: Sideboard -->
+          <div class="deck-panel deck-panel-middle" style="border-radius: 8px;">
+            <h4><i class="material-icons" style="vertical-align: middle; font-size: 20px;">inventory_2</i> Sideboard (<span id="sideboardCount">0</span>)</h4>
+            <ul id="buildSideboard" class="card-list-enhanced build-list"></ul>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Panel: Card Info (Full Height) -->
+      <div class="deck-panel deck-panel-right" style="flex: 1; padding: 1rem; background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%); border-radius: 0;">
+        <div id="cardInfoPanel" class="card-info-panel" style="height: 100%;">
+          <div class="card-image-container" style="margin-bottom: 1rem;">
+            <img id="cardPreviewImage" src="" alt="Select a card" style="display: none; width: 100%; max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          </div>
+          <div id="cardDetails" class="card-details">
+            <h4 id="previewCardName" style="margin-top: 0;">Search for a card</h4>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">attach_money</i> Price:</span>
+              <span id="previewCardPrice" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">star</i> CMC:</span>
+              <span id="previewCardCmc" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">library_books</i> Type:</span>
+              <span id="previewCardType" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row">
+              <span class="detail-label"><i class="material-icons">gavel</i> Legality:</span>
+              <span id="previewCardLegality" class="detail-value">–</span>
+            </div>
+            <div class="card-detail-row oracle-text-row">
+              <span class="detail-label"><i class="material-icons">description</i> Oracle Text:</span>
+            </div>
+            <div class="oracle-text-content">
+              <span id="previewCardOracle" class="detail-value">–</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .search-results {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+    position: absolute;
+    width: calc(100% - 4px);
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    left: 0;
+    top: 100%;
+  }
+
+  .search-result-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+  }
+
+  .search-result-item:hover,
+  .search-result-item.selected {
+    background: #f0f0ff;
+  }
+
+  .search-result-item:last-child {
+    border-bottom: none;
+  }
+
+  .search-result-name {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .search-result-type {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+
+  .card-search-container {
+    position: relative;
+    z-index: 40;
+  }
+
+  #addDeckModal .deck-panel-right {
+    position: relative;
+    z-index: 60;
+  }
+
+  .build-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    min-height: 100px;
+  }
+
+  .build-list li {
+    padding: 0.6rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .build-list li:hover {
+    background: #f9f9f9;
+  }
+
+  .build-list li.type-divider-build:hover {
+    background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+  }
+
+  .build-list li.selected-card {
+    background: #e0e0ff;
+    border-left: 3px solid #7c3aed;
+  }
+
+  .build-list-card-name {
+    flex: 1;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .build-list-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .build-list-count {
+    min-width: 30px;
+    text-align: center;
+    font-weight: 600;
+    color: #7c3aed;
+  }
+
+  .build-list-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+  }
+
+  .build-list-btn:hover {
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+    transform: scale(1.1);
+  }
+
+  html.dark-mode .build-list-btn {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #999;
+  }
+
+  html.dark-mode .build-list-btn:hover {
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+  }
+
+  .build-list-btn-side {
+    font-size: 14px;
+    width: auto;
+    padding: 0 0.5rem;
+  }
+
+  .submit-deck-btn {
+    padding: 1rem;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .submit-deck-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  }
+
+  .submit-deck-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .type-divider-build {
+    background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+    padding: 0.4rem 0.6rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+    margin-bottom: 0.3rem;
+    border: none;
+    cursor: default;
+  }
+
+  html.dark-mode .search-results {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  html.dark-mode .search-result-item {
+    border-bottom-color: #333;
+  }
+
+  html.dark-mode .search-result-item:hover {
+    background: #333;
+  }
+
+  html.dark-mode .search-result-name {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .search-result-type {
+    color: #999;
+  }
+
+  html.dark-mode .build-list li {
+    border-bottom-color: #333;
+  }
+
+  html.dark-mode .build-list li:not(.type-divider-build):hover {
+    background: #333;
+  }
+
+  html.dark-mode .build-list-card-name {
+    color: #e0e0e0;
+  }
+
+  html.dark-mode .type-divider-build {
+    background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%) !important;
+    color: white;
+  }
+
+  html.dark-mode #deckNameInput,
+  html.dark-mode #cardSearch {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+
+  /* Context Menu */
+  .context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 0.5rem 0;
+    z-index: 10000;
+    min-width: 150px;
+    display: none;
+  }
+
+  .context-menu-item {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+  }
+
+  .context-menu-item:hover {
+    background: #f0f0f0;
+  }
+
+  .context-menu-item .material-icons {
+    font-size: 18px;
+  }
+
+  html.dark-mode .context-menu {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  html.dark-mode .context-menu-item:hover {
+    background: #333;
+  }
+</style>
+
+<!-- Context Menu -->
+<div id="contextMenu" class="context-menu"></div>
+
+<script>
+  // Deck name input handling
+  document.addEventListener('DOMContentLoaded', () => {
+    const deckNameInput = document.getElementById('deckNameInput');
+    if (deckNameInput) {
+      deckNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          saveDeckName();
+        } else if (e.key === 'Escape') {
+          saveDeckName();
+        }
+      });
+      
+      deckNameInput.addEventListener('blur', () => {
+        saveDeckName();
+      });
+    }
+  });
+
+  // Deck builder state
+  const deckBuilder = {
+    mainDeck: new Map(), // cardName -> { card, count }
+    sideboard: new Map(),
+    searchTimeout: null,
+    selectedCard: null,
+    selectedCards: new Set(), // For multi-selection
+    isSelecting: false,
+    selectedSearchIndex: -1,
+    currentDeckId: null, // Track which deck is being edited
+    squareSelection: {
+      isActive: false,
+      startX: 0,
+      startY: 0,
+      endX: 0,
+      endY: 0
+    }
+  };
+
+  let searchCache = new Map();
+  let currentImageLoadId = 0;
+  let searchResults = [];
+
+  // Card search functionality
+  const cardSearchInput = document.getElementById('cardSearch');
+  cardSearchInput.addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+    
+    if (deckBuilder.searchTimeout) {
+      clearTimeout(deckBuilder.searchTimeout);
+    }
+
+    if (query.length < 2) {
+      document.getElementById('searchResults').style.display = 'none';
+      deckBuilder.selectedSearchIndex = -1;
+      return;
+    }
+
+    deckBuilder.searchTimeout = setTimeout(() => {
+      searchCards(query);
+    }, 300);
+  });
+
+  // Handle paste events to parse full decklists
+  cardSearchInput.addEventListener('paste', async function(e) {
+    e.preventDefault();
+    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+    
+    // Check if this looks like a decklist (multiple lines with numbers)
+    const lines = pastedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    if (lines.length > 1) {
+      // This looks like a full decklist, parse it
+      await parseAndAddDecklist(pastedText);
+      cardSearchInput.value = '';
+    } else {
+      // Single line, just paste normally
+      cardSearchInput.value = pastedText;
+      searchCards(pastedText);
+    }
+  });
+
+  // Keyboard navigation for search
+  cardSearchInput.addEventListener('keydown', function(e) {
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (resultsDiv.style.display === 'none') return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      deckBuilder.selectedSearchIndex = Math.min(deckBuilder.selectedSearchIndex + 1, searchResults.length - 1);
+      updateSearchSelection();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      deckBuilder.selectedSearchIndex = Math.max(deckBuilder.selectedSearchIndex - 1, 0);
+      updateSearchSelection();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const indexToAdd = deckBuilder.selectedSearchIndex >= 0 ? deckBuilder.selectedSearchIndex : 0;
+      if (searchResults[indexToAdd]) {
+        // Extract quantity from input if present
+        const inputValue = cardSearchInput.value.trim();
+        const quantityMatch = inputValue.match(/^(\d+)\s/);
+        const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
+        
+        addCardToDeck(searchResults[indexToAdd], false, quantity);
+        cardSearchInput.value = '';
+        resultsDiv.style.display = 'none';
+        deckBuilder.selectedSearchIndex = -1;
+      }
+    } else if (e.key === 'Escape') {
+      resultsDiv.style.display = 'none';
+      deckBuilder.selectedSearchIndex = -1;
+    }
+  });
+
+  function updateSearchSelection() {
+    const items = document.querySelectorAll('.search-result-item');
+    items.forEach((item, index) => {
+      if (index === deckBuilder.selectedSearchIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+        loadCardPreview(searchResults[index]);
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  function editDeckName() {
+    const display = document.getElementById('deckNameDisplay');
+    const input = document.getElementById('deckNameInput');
+    const btn = document.getElementById('editDeckNameBtn');
+    
+    display.style.display = 'none';
+    btn.style.display = 'none';
+    input.style.display = 'block';
+    input.value = display.textContent;
+    input.focus();
+    input.select();
+  }
+
+  function saveDeckName() {
+    const display = document.getElementById('deckNameDisplay');
+    const input = document.getElementById('deckNameInput');
+    const btn = document.getElementById('editDeckNameBtn');
+    
+    const newName = input.value.trim();
+    if (newName) {
+      display.textContent = newName;
+    }
+    
+    display.style.display = 'inline';
+    btn.style.display = 'inline-block';
+    input.style.display = 'none';
+  }
+
+  function editDeckName() {
+    const display = document.getElementById('deckNameDisplay');
+    const input = document.getElementById('deckNameInput');
+    const btn = document.getElementById('editDeckNameBtn');
+    
+    display.style.display = 'none';
+    btn.style.display = 'none';
+    input.style.display = 'block';
+    input.value = display.textContent;
+    input.focus();
+    input.select();
+  }
+
+  function saveDeckName() {
+    const display = document.getElementById('deckNameDisplay');
+    const input = document.getElementById('deckNameInput');
+    const btn = document.getElementById('editDeckNameBtn');
+    
+    const newName = input.value.trim();
+    if (newName) {
+      display.textContent = newName;
+    }
+    
+    display.style.display = 'inline';
+    btn.style.display = 'inline-block';
+    input.style.display = 'none';
+  }
+
+  function openAddDeckModal() {
+    document.getElementById('addDeckModal').style.display = 'block';
+    document.getElementById('deckNameDisplay').textContent = 'New Deck';
+    document.getElementById('cardSearch').focus();
+    resetDeckBuilder();
+    // Initialize square selection after modal is visible
+    setTimeout(() => initSquareSelection(), 0);
+  }
+
+  function closeAddDeckModal() {
+    document.getElementById('addDeckModal').style.display = 'none';
+    resetDeckBuilder();
+  }
+
+  function resetDeckBuilder() {
+    deckBuilder.mainDeck.clear();
+    deckBuilder.sideboard.clear();
+    deckBuilder.selectedCard = null;
+    deckBuilder.currentDeckId = null;
+    document.getElementById('deckNameDisplay').textContent = 'New Deck';
+    document.getElementById('deckNameDisplay').style.display = 'inline';
+    document.getElementById('editDeckNameBtn').style.display = 'inline-block';
+    document.getElementById('deckNameInput').style.display = 'none';
+    document.getElementById('deckNameInput').value = '';
+    document.getElementById('cardSearch').value = '';
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('searchResults').innerHTML = '';
+    renderDeckLists();
+    resetCardPreview();
+  }
+
+  function resetCardPreview() {
+    document.getElementById('cardPreviewImage').style.display = 'none';
+    document.getElementById('previewCardName').textContent = 'Search for a card';
+    document.getElementById('previewCardPrice').textContent = '–';
+    document.getElementById('previewCardCmc').textContent = '–';
+    document.getElementById('previewCardType').textContent = '–';
+    document.getElementById('previewCardLegality').textContent = '–';
+    document.getElementById('previewCardOracle').textContent = '–';
+  }
+
+  async function searchCards(query) {
+    try {
+      // Strip leading numbers and spaces for search
+      const searchQuery = query.replace(/^\d+\s*/, '').trim();
+      
+      if (searchQuery.length < 2) {
+        document.getElementById('searchResults').style.display = 'none';
+        deckBuilder.selectedSearchIndex = -1;
+        return;
+      }
+      
+      const response = await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(searchQuery)}`);
+      const data = await response.json();
+      
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '';
+      searchResults = [];
+      deckBuilder.selectedSearchIndex = -1;
+      
+      if (data.data && data.data.length > 0) {
+        resultsDiv.style.display = 'block';
+        searchResults = data.data.slice(0, 10);
+        
+        searchResults.forEach((cardName, index) => {
+          const resultItem = document.createElement('div');
+          resultItem.className = 'search-result-item';
+          resultItem.innerHTML = `<div class="search-result-name">${cardName}</div>`;
+          
+          resultItem.onclick = () => {
+            addCardToDeck(cardName);
+          };
+          
+          resultItem.addEventListener('mouseenter', () => {
+            deckBuilder.selectedSearchIndex = index;
+            updateSearchSelection();
+          });
+          
+          resultsDiv.appendChild(resultItem);
+        });
+      } else {
+        resultsDiv.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Card search error:', error);
+    }
+  }
+
+  async function loadCardPreview(cardName) {
+    try {
+      let card = searchCache.get(cardName);
+      
+      if (!card) {
+        const response = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(cardName)}`);
+        card = await response.json();
+        searchCache.set(cardName, card);
+      }
+      
+      showCardPreview(card);
+    } catch (error) {
+      console.error('Card preview error:', error);
+    }
+  }
+
+  async function parseAndAddDecklist(decklistText) {
+    const lines = decklistText.split('\n');
+    const cardsToAdd = [];
+    let isSideboard = false;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      
+      // Check if this line indicates sideboard section
+      if (trimmed.toLowerCase() === 'sideboard' || trimmed.toLowerCase() === 'sb') {
+        isSideboard = true;
+        continue;
+      }
+      
+      // Match patterns like "4 Lightning Bolt" or "4x Lightning Bolt"
+      const match = trimmed.match(/^(\d+)x?\s+(.+)$/);
+      if (match) {
+        const quantity = parseInt(match[1]);
+        const cardName = match[2].trim();
+        if (cardName && quantity > 0) {
+          cardsToAdd.push({ name: cardName, quantity, sideboard: isSideboard });
+        }
+      }
+    }
+    
+    if (cardsToAdd.length === 0) {
+      alert('No valid cards found in the pasted text. Make sure each line has a format like "4 Lightning Bolt"');
+      return;
+    }
+    
+    // Show progress indicator
+    const searchInput = document.getElementById('cardSearch');
+    const originalPlaceholder = searchInput.placeholder;
+    searchInput.placeholder = `Adding ${cardsToAdd.length} cards...`;
+    searchInput.disabled = true;
+    
+    let successCount = 0;
+    let failedCards = [];
+    
+    // Add cards one by one
+    for (const { name, quantity, sideboard } of cardsToAdd) {
+      try {
+        await addCardToDeck(name, sideboard, quantity);
+        successCount++;
+        searchInput.placeholder = `Added ${successCount}/${cardsToAdd.length} cards...`;
+      } catch (error) {
+        console.error(`Failed to add ${name}:`, error);
+        failedCards.push(name);
+      }
+    }
+    
+    // Restore input
+    searchInput.disabled = false;
+    searchInput.placeholder = originalPlaceholder;
+    
+    // Show results
+    if (failedCards.length > 0) {
+      alert(`Added ${successCount} cards successfully.\n\nFailed to find:\n${failedCards.join('\n')}`);
+    } else {
+      // Flash success message briefly
+      searchInput.placeholder = `✓ Added all ${successCount} cards!`;
+      setTimeout(() => {
+        searchInput.placeholder = originalPlaceholder;
+      }, 2000);
+    }
+  }
+
+  function showCardPreview(card) {
+    currentImageLoadId++;
+    const loadId = currentImageLoadId;
+    
+    const imgEl = document.getElementById('cardPreviewImage');
+    
+    // Handle double-faced cards or normal cards
+    let imageUri = null;
+    if (card.image_uris) {
+      imageUri = card.image_uris.normal || card.image_uris.large || card.image_uris.small;
+    } else if (card.card_faces && card.card_faces[0]?.image_uris) {
+      imageUri = card.card_faces[0].image_uris.normal || card.card_faces[0].image_uris.large || card.card_faces[0].image_uris.small;
+    }
+    
+    if (imageUri) {
+      imgEl.onload = function() {
+        if (loadId === currentImageLoadId) {
+          imgEl.style.display = 'block';
+        }
+      };
+      imgEl.onerror = function() {
+        console.error('Failed to load image:', imageUri);
+        imgEl.style.display = 'none';
+      };
+      imgEl.src = imageUri;
+    } else {
+      imgEl.style.display = 'none';
+    }
+    
+    document.getElementById('previewCardName').textContent = card.name;
+    
+    // Price
+    const price = card.prices?.usd || card.prices?.usd_foil;
+    document.getElementById('previewCardPrice').textContent = price ? `$${price}` : 'N/A';
+    
+    // CMC
+    document.getElementById('previewCardCmc').textContent = card.cmc || '0';
+    
+    // Type
+    document.getElementById('previewCardType').textContent = card.type_line || '–';
+    
+    // Legality
+    const legalities = card.legalities || {};
+    const legalFormats = Object.entries(legalities)
+      .filter(([_, status]) => status === 'legal')
+      .map(([format]) => format.charAt(0).toUpperCase() + format.slice(1))
+      .slice(0, 3)
+      .join(', ');
+    document.getElementById('previewCardLegality').textContent = legalFormats || 'None';
+    
+    // Oracle text
+    document.getElementById('previewCardOracle').textContent = card.oracle_text || '–';
+  }
+
+  async function addCardToDeck(cardName, toSideboard = false, quantity = 1) {
+    try {
+      let card = searchCache.get(cardName);
+      
+      if (!card) {
+        const response = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(cardName)}`);
+        card = await response.json();
+        searchCache.set(cardName, card);
+      }
+      
+      const targetDeck = toSideboard ? deckBuilder.sideboard : deckBuilder.mainDeck;
+      
+      if (targetDeck.has(card.name)) {
+        const existing = targetDeck.get(card.name);
+        existing.count += quantity;
+      } else {
+        targetDeck.set(card.name, { card, count: quantity });
+      }
+      
+      renderDeckLists();
+      document.getElementById('cardSearch').value = '';
+      document.getElementById('searchResults').style.display = 'none';
+      
+    } catch (error) {
+      console.error('Add card error:', error);
+      alert('Failed to add card. Please try again.');
+    }
+  }
+
+  function removeCardFromDeck(cardName, fromSideboard = false) {
+    const targetDeck = fromSideboard ? deckBuilder.sideboard : deckBuilder.mainDeck;
+    
+    if (targetDeck.has(cardName)) {
+      const existing = targetDeck.get(cardName);
+      existing.count--;
+      
+      if (existing.count <= 0) {
+        targetDeck.delete(cardName);
+      }
+    }
+    
+    renderDeckLists();
+  }
+
+  function moveToSideboard(cardName) {
+    if (deckBuilder.mainDeck.has(cardName)) {
+      const cardData = deckBuilder.mainDeck.get(cardName);
+      deckBuilder.mainDeck.delete(cardName);
+      deckBuilder.sideboard.set(cardName, cardData);
+      renderDeckLists();
+    }
+  }
+
+  function moveToMainDeck(cardName) {
+    if (deckBuilder.sideboard.has(cardName)) {
+      const cardData = deckBuilder.sideboard.get(cardName);
+      deckBuilder.sideboard.delete(cardName);
+      deckBuilder.mainDeck.set(cardName, cardData);
+      renderDeckLists();
+    }
+  }
+
+  function applyDynamicSizing() {
+    const mainDeckEl = document.getElementById('buildMainDeck');
+    const sideboardEl = document.getElementById('buildSideboard');
+    const mainItems = mainDeckEl.querySelectorAll('li');
+    const sideItems = sideboardEl.querySelectorAll('li');
+    
+    // Use the larger list to determine sizing
+    const totalItems = Math.max(mainItems.length, sideItems.length);
+    
+    let fontSize = 1.0;
+    let padding = 0.4;
+    let cardMargin = 0.12;
+    let dividerMarginTop = 0.35;
+    let dividerMarginBottom = 0.25;
+    let dividerPadding = 0.22;
+    let dividerFontSize = 0.8;
+    
+    if (totalItems > 80) {
+      fontSize = 0.5;
+      padding = 0.15;
+      cardMargin = 0.03;
+      dividerMarginTop = 0.12;
+      dividerMarginBottom = 0.1;
+      dividerPadding = 0.12;
+      dividerFontSize = 0.5;
+    } else if (totalItems > 70) {
+      fontSize = 0.55;
+      padding = 0.18;
+      cardMargin = 0.04;
+      dividerMarginTop = 0.15;
+      dividerMarginBottom = 0.12;
+      dividerPadding = 0.15;
+      dividerFontSize = 0.55;
+    } else if (totalItems > 60) {
+      fontSize = 0.6;
+      padding = 0.2;
+      cardMargin = 0.05;
+      dividerMarginTop = 0.18;
+      dividerMarginBottom = 0.14;
+      dividerPadding = 0.17;
+      dividerFontSize = 0.6;
+    } else if (totalItems > 50) {
+      fontSize = 0.65;
+      padding = 0.22;
+      cardMargin = 0.06;
+      dividerMarginTop = 0.22;
+      dividerMarginBottom = 0.16;
+      dividerPadding = 0.19;
+      dividerFontSize = 0.63;
+    } else if (totalItems > 40) {
+      fontSize = 0.7;
+      padding = 0.24;
+      cardMargin = 0.07;
+      dividerMarginTop = 0.25;
+      dividerMarginBottom = 0.18;
+      dividerPadding = 0.2;
+      dividerFontSize = 0.67;
+    } else if (totalItems > 30) {
+      fontSize = 0.75;
+      padding = 0.26;
+      cardMargin = 0.08;
+      dividerMarginTop = 0.28;
+      dividerMarginBottom = 0.2;
+      dividerPadding = 0.21;
+      dividerFontSize = 0.7;
+    } else if (totalItems > 25) {
+      fontSize = 0.8;
+      padding = 0.28;
+      cardMargin = 0.09;
+      dividerMarginTop = 0.3;
+      dividerMarginBottom = 0.22;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.73;
+    } else if (totalItems > 20) {
+      fontSize = 0.85;
+      padding = 0.32;
+      cardMargin = 0.1;
+      dividerMarginTop = 0.32;
+      dividerMarginBottom = 0.23;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.75;
+    } else if (totalItems > 15) {
+      fontSize = 0.9;
+      padding = 0.35;
+      cardMargin = 0.11;
+      dividerMarginTop = 0.33;
+      dividerMarginBottom = 0.24;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.77;
+    } else if (totalItems > 10) {
+      fontSize = 0.95;
+      padding = 0.37;
+      cardMargin = 0.115;
+      dividerMarginTop = 0.34;
+      dividerMarginBottom = 0.24;
+      dividerPadding = 0.22;
+      dividerFontSize = 0.78;
+    }
+    
+    // Apply to both lists
+    [mainDeckEl, sideboardEl].forEach(listElement => {
+      listElement.querySelectorAll('li').forEach(li => {
+        if (li.classList.contains('type-divider-build')) {
+          li.style.fontSize = dividerFontSize + 'rem';
+          li.style.padding = dividerPadding + 'rem 1rem';
+          li.style.marginTop = dividerMarginTop + 'rem';
+          li.style.marginBottom = dividerMarginBottom + 'rem';
+        } else {
+          li.style.fontSize = fontSize + 'rem';
+          li.style.padding = padding + 'rem 0.5rem';
+          li.style.marginBottom = cardMargin + 'rem';
+        }
+      });
+    });
+  }
+
+  function renderDeckLists() {
+    const mainDeckEl = document.getElementById('buildMainDeck');
+    const sideboardEl = document.getElementById('buildSideboard');
+    
+    // Group main deck by type
+    const grouped = {
+      Creature: [],
+      Planeswalker: [],
+      Artifact: [],
+      Enchantment: [],
+      Instant: [],
+      Sorcery: [],
+      Land: [],
+      Other: []
+    };
+    
+    let mainTotal = 0;
+    for (const [name, data] of deckBuilder.mainDeck.entries()) {
+      mainTotal += data.count;
+      const typeLine = (data.card.type_line || '').toLowerCase();
+      
+      if (typeLine.includes('creature')) grouped.Creature.push({ name, ...data });
+      else if (typeLine.includes('planeswalker')) grouped.Planeswalker.push({ name, ...data });
+      else if (typeLine.includes('artifact')) grouped.Artifact.push({ name, ...data });
+      else if (typeLine.includes('enchantment')) grouped.Enchantment.push({ name, ...data });
+      else if (typeLine.includes('instant')) grouped.Instant.push({ name, ...data });
+      else if (typeLine.includes('sorcery')) grouped.Sorcery.push({ name, ...data });
+      else if (typeLine.includes('land')) grouped.Land.push({ name, ...data });
+      else grouped.Other.push({ name, ...data });
+    }
+    
+    document.getElementById('mainDeckCount').textContent = mainTotal;
+    
+    mainDeckEl.innerHTML = '';
+    const typeOrder = ['Creature', 'Planeswalker', 'Artifact', 'Enchantment', 'Instant', 'Sorcery', 'Land', 'Other'];
+    
+    typeOrder.forEach(type => {
+      if (grouped[type].length > 0) {
+        const totalCount = grouped[type].reduce((sum, c) => sum + c.count, 0);
+        const divider = document.createElement('li');
+        divider.className = 'type-divider-build';
+        divider.textContent = `${type} (${totalCount})`;
+        mainDeckEl.appendChild(divider);
+        
+        grouped[type].forEach(({ name, card, count }) => {
+          mainDeckEl.appendChild(createBuildListItem(name, card, count, false));
+        });
+      }
+    });
+    
+    // Render sideboard
+    let sideTotal = 0;
+    sideboardEl.innerHTML = '';
+    for (const [name, data] of deckBuilder.sideboard.entries()) {
+      sideTotal += data.count;
+      sideboardEl.appendChild(createBuildListItem(name, data.card, data.count, true));
+    }
+    
+    document.getElementById('sideboardCount').textContent = sideTotal;
+    
+    // Apply dynamic sizing based on total card count
+    applyDynamicSizing();
+  }
+
+  function createBuildListItem(name, card, count, isSideboard) {
+    const li = document.createElement('li');
+    li.dataset.cardName = name;
+    li.dataset.isSideboard = isSideboard;
+    
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'build-list-card-name';
+    nameSpan.textContent = name;
+    nameSpan.onclick = (e) => {
+      e.stopPropagation();
+      showCardPreview(card);
+    };
+    
+    const controls = document.createElement('div');
+    controls.className = 'build-list-controls';
+    
+    const minusBtn = document.createElement('button');
+    minusBtn.className = 'build-list-btn';
+    minusBtn.innerHTML = '−';
+    minusBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeCardFromDeck(name, isSideboard);
+    };
+    
+    const countSpan = document.createElement('span');
+    countSpan.className = 'build-list-count';
+    countSpan.textContent = count;
+    
+    const plusBtn = document.createElement('button');
+    plusBtn.className = 'build-list-btn';
+    plusBtn.innerHTML = '+';
+    plusBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (isSideboard) {
+        if (deckBuilder.sideboard.has(name)) {
+          deckBuilder.sideboard.get(name).count++;
+        }
+      } else {
+        if (deckBuilder.mainDeck.has(name)) {
+          deckBuilder.mainDeck.get(name).count++;
+        }
+      }
+      renderDeckLists();
+    };
+    
+    controls.appendChild(minusBtn);
+    controls.appendChild(countSpan);
+    controls.appendChild(plusBtn);
+    
+    li.appendChild(nameSpan);
+    li.appendChild(controls);
+    
+    // Multi-selection support
+    li.addEventListener('mousedown', (e) => {
+      if (e.button === 0) { // Left click
+        if (e.ctrlKey || e.metaKey) {
+          // Toggle selection
+          toggleCardSelection(li);
+        } else {
+          // Clear previous selection and start new
+          clearCardSelection();
+          deckBuilder.isSelecting = true;
+          toggleCardSelection(li);
+        }
+      }
+    });
+    
+    li.addEventListener('mouseenter', (e) => {
+      if (deckBuilder.isSelecting && e.buttons === 1) {
+        toggleCardSelection(li);
+      }
+    });
+    
+    // Context menu
+    li.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (!li.classList.contains('selected-card')) {
+        clearCardSelection();
+        toggleCardSelection(li);
+      }
+      showContextMenu(e.pageX, e.pageY, isSideboard);
+    });
+    
+    return li;
+  }
+
+  function toggleCardSelection(li) {
+    if (li.classList.contains('selected-card')) {
+      li.classList.remove('selected-card');
+      deckBuilder.selectedCards.delete(li.dataset.cardName);
+    } else {
+      li.classList.add('selected-card');
+      deckBuilder.selectedCards.add(li.dataset.cardName);
+    }
+  }
+
+  function clearCardSelection() {
+    document.querySelectorAll('.build-list li.selected-card').forEach(li => {
+      li.classList.remove('selected-card');
+    });
+    deckBuilder.selectedCards.clear();
+  }
+
+  function initSquareSelection() {
+    const buildLists = document.querySelectorAll('.build-list');
+    let selectionBox = null;
+
+    buildLists.forEach(list => {
+      list.addEventListener('mousedown', (e) => {
+        // Only start square selection on empty space (not on a card)
+        if (e.target.closest('li')) {
+          return;
+        }
+
+        // Clear existing selection if not holding Ctrl
+        if (!e.ctrlKey) {
+          clearCardSelection();
+        }
+
+        deckBuilder.squareSelection.isActive = true;
+        deckBuilder.squareSelection.startX = e.clientX;
+        deckBuilder.squareSelection.startY = e.clientY;
+        deckBuilder.squareSelection.endX = e.clientX;
+        deckBuilder.squareSelection.endY = e.clientY;
+
+        // Create selection box
+        selectionBox = document.createElement('div');
+        selectionBox.className = 'selection-box';
+        document.body.appendChild(selectionBox);
+        updateSelectionBox(selectionBox);
+
+        e.preventDefault();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!deckBuilder.squareSelection.isActive) return;
+
+      deckBuilder.squareSelection.endX = e.clientX;
+      deckBuilder.squareSelection.endY = e.clientY;
+      updateSelectionBox(selectionBox);
+      updateSquareSelection();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (deckBuilder.squareSelection.isActive) {
+        deckBuilder.squareSelection.isActive = false;
+        if (selectionBox) {
+          selectionBox.remove();
+          selectionBox = null;
+        }
+      }
+      deckBuilder.isSelecting = false;
+    });
+  }
+
+  function updateSelectionBox(box) {
+    if (!box) return;
+    const { startX, startY, endX, endY } = deckBuilder.squareSelection;
+    const left = Math.min(startX, endX);
+    const top = Math.min(startY, endY);
+    const width = Math.abs(endX - startX);
+    const height = Math.abs(endY - startY);
+
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
+    box.style.width = width + 'px';
+    box.style.height = height + 'px';
+  }
+
+  function updateSquareSelection() {
+    const { startX, startY, endX, endY } = deckBuilder.squareSelection;
+    const selectionRect = {
+      left: Math.min(startX, endX),
+      right: Math.max(startX, endX),
+      top: Math.min(startY, endY),
+      bottom: Math.max(startY, endY)
+    };
+
+    document.querySelectorAll('.build-list li').forEach(li => {
+      const rect = li.getBoundingClientRect();
+      const intersects = (
+        rect.left < selectionRect.right &&
+        rect.right > selectionRect.left &&
+        rect.top < selectionRect.bottom &&
+        rect.bottom > selectionRect.top
+      );
+
+      const cardName = li.dataset.cardName;
+      const key = cardName;
+
+      if (intersects) {
+        if (!deckBuilder.selectedCards.has(key)) {
+          deckBuilder.selectedCards.add(key);
+          li.classList.add('selected-card');
+        }
+      }
+    });
+  }
+
+  // Stop selecting on mouse up
+  document.addEventListener('mouseup', () => {
+    deckBuilder.isSelecting = false;
+  });
+
+  function showContextMenu(x, y, isSideboard) {
+    const menu = document.getElementById('contextMenu');
+    menu.innerHTML = '';
+    
+    const moveOption = document.createElement('div');
+    moveOption.className = 'context-menu-item';
+    moveOption.innerHTML = `<i class="material-icons">${isSideboard ? 'layers' : 'inventory_2'}</i> Move to ${isSideboard ? 'Main Deck' : 'Sideboard'}`;
+    moveOption.onclick = () => {
+      // Move all selected cards
+      deckBuilder.selectedCards.forEach(cardName => {
+        if (isSideboard) {
+          moveToMainDeck(cardName);
+        } else {
+          moveToSideboard(cardName);
+        }
+      });
+      clearCardSelection();
+      hideContextMenu();
+    };
+    
+    menu.appendChild(moveOption);
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.style.display = 'block';
+  }
+
+  function hideContextMenu() {
+    document.getElementById('contextMenu').style.display = 'none';
+  }
+
+  // Hide context menu on click elsewhere
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.context-menu')) {
+      hideContextMenu();
+    }
+  });
+
+  async function submitDeck() {
+    const deckName = document.getElementById('deckNameDisplay').textContent.trim();
+    
+    if (!deckName || deckName === 'New Deck') {
+      alert('Please enter a deck name by clicking the edit button.');
+      editDeckName();
+      return;
+    }
+    
+    if (deckBuilder.mainDeck.size === 0) {
+      alert('Please add at least one card to your deck.');
+      return;
+    }
+    
+    // Build decklist text
+    let deckList = '';
+    
+    // Main deck
+    for (const [name, data] of deckBuilder.mainDeck.entries()) {
+      deckList += `${data.count} ${name}\n`;
+    }
+    
+    // Sideboard
+    if (deckBuilder.sideboard.size > 0) {
+      deckList += '\nSideboard\n';
+      for (const [name, data] of deckBuilder.sideboard.entries()) {
+        deckList += `${data.count} ${name}\n`;
+      }
+    }
+    
+    // Submit via form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("my_decks") }}';
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'hidden';
+    nameInput.name = 'deck_name';
+    nameInput.value = deckName;
+    
+    const listInput = document.createElement('input');
+    listInput.type = 'hidden';
+    listInput.name = 'deck_list';
+    listInput.value = deckList;
+    
+    form.appendChild(nameInput);
+    form.appendChild(listInput);
+    
+    // Add deck_id if editing existing deck
+    if (deckBuilder.currentDeckId) {
+      const idInput = document.createElement('input');
+      idInput.type = 'hidden';
+      idInput.name = 'deck_id';
+      idInput.value = deckBuilder.currentDeckId;
+      form.appendChild(idInput);
+    }
+    
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Deck name input handling
+  window.addEventListener('DOMContentLoaded', () => {
+    const deckNameInput = document.getElementById('deckNameInput');
+    if (deckNameInput) {
+      deckNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveDeckName();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          saveDeckName();
+        }
+      });
+      
+      deckNameInput.addEventListener('blur', () => {
+        setTimeout(() => saveDeckName(), 100);
+      });
+    }
+  });
+
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    const modal = document.getElementById('addDeckModal');
+    if (event.target === modal) {
+      closeAddDeckModal();
+    }
+  }
+
+  // Function to view/edit a deck from the collection
+  async function viewDeckFromCollection(deckId) {
+    try {
+      const response = await fetch(`/api/deck/${deckId}`);
+      if (!response.ok) {
+        alert('Failed to load deck');
+        return;
+      }
+      
+      const deckData = await response.json();
+      
+      // Reset and open modal
+      resetDeckBuilder();
+      openAddDeckModal();
+      
+      // Set deck ID for updating
+      deckBuilder.currentDeckId = deckData.id;
+      
+      // Set deck name
+      document.getElementById('deckNameDisplay').textContent = deckData.name;
+      
+      // Parse and load decklist
+      if (deckData.list_text) {
+        await parseAndAddDecklist(deckData.list_text);
+      }
+    } catch (error) {
+      console.error('Error loading deck:', error);
+      alert('Error loading deck: ' + error.message);
+    }
+  }
+</script>
+
+{% endblock %}

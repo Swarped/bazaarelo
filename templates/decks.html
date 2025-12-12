@@ -589,8 +589,8 @@ th:nth-child(6), td:nth-child(6) {
         data-deck-list='{{ (last_deck.list_text if last_deck.list_text else "")|tojson }}'>
       <td>
 <div class="image-wrapper">
-  {% if last_deck.image_url %}
-    <img src="{{ url_for('static', filename=last_deck.image_url) }}" alt="{{ name }} image" class="archetype-img">
+  {% if archetype_images.get(name) %}
+    <img src="{{ url_for('static', filename=archetype_images[name]) }}" alt="{{ name }} image" class="archetype-img">
   {% else %}
     <div class="placeholder">
       <span class="material-icons">image</span>

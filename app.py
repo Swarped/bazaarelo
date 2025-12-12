@@ -64,6 +64,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# Disable Flask's default request logging
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 # Log which databases we're using on startup
 print(f"[STARTUP] Demo mode: {is_demo_mode()}", file=sys.stderr)
 print(f"[STARTUP] Tournament DB: {DB_PATH}", file=sys.stderr)
@@ -84,7 +89,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True)
     is_admin = db.Column(db.Boolean, default=False)
     is_scorekeeper = db.Column(db.Boolean, default=False)
-    dark_mode = db.Column(db.Boolean, default=False)
+    dark_mode = db.Column(db.Boolean, default=True)
     profile_picture = db.Column(db.String(500))
 
 @login_manager.user_loader
@@ -110,6 +115,7 @@ class Player(db.Model):
     elo = db.Column(db.Integer, default=DEFAULT_ELO)
     country = db.Column(db.String(5), nullable=True)
     casual_points = db.Column(db.Integer, default=0)   # NEW
+    claimed_by = db.Column(db.String(255), nullable=True)  # User ID who claimed this player
 
 class Tournament(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -153,10 +159,10 @@ class Deck(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=True)
-    name = db.Column(db.String(120))
+    name = db.Column(db.String(120))  # Custom deck name submitted by user
+    archetype = db.Column(db.String(120))  # Auto-detected archetype (e.g., "Burn")
     list_text = db.Column(db.Text)
     colors = db.Column(db.String(10))  # NEW: store deck colors like "WUBRG"
-    image_url = db.Column(db.String(255))  # NEW: store archetype image path
 
     player = db.relationship('Player', backref='decks')
     tournament = db.relationship('Tournament', backref='decks')
@@ -196,11 +202,42 @@ class CasualRankingSnapshot(db.Model):
     
     player = db.relationship('Player', backref='casual_ranking_snapshots')
 
+class PlayerAchievement(db.Model):
+    __tablename__ = 'player_achievements'
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)
+    store_id = db.Column(db.Integer, db.ForeignKey('stores.id'), nullable=False)
+    achievement_type = db.Column(db.String(50), nullable=False)  # 'store_domination'
+    tier = db.Column(db.String(20), nullable=False)  # 'bronze', 'silver', 'gold'
+    earned_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    player = db.relationship('Player', backref='achievements')
+    store = db.relationship('Store', backref='achievements')
+    
+    __table_args__ = (
+        db.UniqueConstraint('player_id', 'store_id', 'achievement_type', name='uq_player_store_achievement'),
+    )
+
+class PlayerClaim(db.Model):
+    __bind_key__ = 'users'
+    __tablename__ = 'player_claims'
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.Integer, nullable=False)  # Reference to Player.id
+    player_name = db.Column(db.String(120), nullable=False)  # Store player name for display
+    user_id = db.Column(db.String(255), db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'approved', 'denied'
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_by = db.Column(db.String(255), nullable=True)  # Admin user ID who reviewed
+    
+    user = db.relationship('User', backref='player_claims')
+
 class ArchetypeModel(db.Model):
     __tablename__ = 'archetype_models'
     id = db.Column(db.Integer, primary_key=True)
     archetype_name = db.Column(db.String(120), unique=True, nullable=False)
     model_decklist = db.Column(db.Text, nullable=False)
+    image_url = db.Column(db.String(255))  # Archetype image
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -212,6 +249,7 @@ class Store(db.Model):
     country = db.Column(db.String(5))
     premium = db.Column(db.Boolean, default=False)
     image_url = db.Column(db.String(255))
+    icon_url = db.Column(db.String(255))
     competitive_tokens = db.Column(db.Integer, default=5)
     premium_tokens = db.Column(db.Integer, default=1)
     last_token_reset = db.Column(db.Date, nullable=True)
@@ -524,6 +562,85 @@ def award_casual_points(tournament: Tournament, rank: int, top_cut: int):
     return 0
 
 
+def calculate_store_achievements(store_id):
+    """
+    Calculate and award 'Store Domination' achievements for all players at a given store.
+    Awards are based on number of times player was top 4 in the store's casual ranking.
+    
+    Bronze: 1 top 4 finish
+    Silver: 2 top 4 finishes
+    Gold: 3 top 4 finishes
+    """
+    # Get all casual tournaments for this store
+    tournaments = Tournament.query.filter_by(
+        store_id=store_id,
+        casual=True,
+        pending=False
+    ).all()
+    
+    tournament_ids = [t.id for t in tournaments]
+    
+    if not tournament_ids:
+        return
+    
+    # For each player who has participated in casual tournaments at this store,
+    # count how many times they finished in top 4
+    player_top4_counts = {}
+    
+    for tournament in tournaments:
+        # Get the casual points history for this tournament (which includes ranks)
+        top_players = CasualPointsHistory.query.filter_by(
+            tournament_id=tournament.id,
+            store_id=store_id
+        ).filter(
+            CasualPointsHistory.rank <= 4
+        ).all()
+        
+        for record in top_players:
+            player_id = record.player_id
+            if player_id not in player_top4_counts:
+                player_top4_counts[player_id] = 0
+            player_top4_counts[player_id] += 1
+    
+    # Now award achievements based on counts
+    for player_id, count in player_top4_counts.items():
+        # Determine tier based on new criteria
+        tier = None
+        if count >= 3:
+            tier = 'gold'
+        elif count >= 2:
+            tier = 'silver'
+        elif count >= 1:
+            tier = 'bronze'
+        
+        if tier:
+            # Check if player already has this achievement
+            existing = PlayerAchievement.query.filter_by(
+                player_id=player_id,
+                store_id=store_id,
+                achievement_type='store_domination'
+            ).first()
+            
+            if existing:
+                # Update to higher tier if applicable
+                tier_hierarchy = {'bronze': 1, 'silver': 2, 'gold': 3}
+                if tier_hierarchy.get(tier, 0) > tier_hierarchy.get(existing.tier, 0):
+                    existing.tier = tier
+                    existing.earned_date = datetime.utcnow()
+            else:
+                # Create new achievement
+                achievement = PlayerAchievement(
+                    player_id=player_id,
+                    store_id=store_id,
+                    achievement_type='store_domination',
+                    tier=tier,
+                    earned_date=datetime.utcnow()
+                )
+                db.session.add(achievement)
+    
+    db.session.commit()
+
+
 # --- Auth routes ---
 @app.route("/google_login")
 def google_login():
@@ -576,6 +693,17 @@ def google_login():
         user.is_admin = True
         db.session.commit()
     
+    # Check if user has a claimed player profile and award special achievements
+    claimed_player = Player.query.filter_by(claimed_by=user.id).first()
+    if claimed_player:
+        # Award admin achievement if user is admin
+        if user.is_admin:
+            award_admin_achievement(claimed_player.id)
+        
+        # Award scorekeeper achievement if user is scorekeeper
+        if user.is_scorekeeper:
+            award_scorekeeper_achievement(claimed_player.id)
+    
     flash(f"Logged in as {user.name}", "success")
     return redirect(url_for("players"))
 
@@ -585,6 +713,15 @@ def logout():
     logout_user()
     flash("You have logged out.", "success")
     return redirect(url_for("players"))
+
+# --- Context processor for user's claimed player profile ---
+@app.context_processor
+def inject_user_claimed_player():
+    """Make the user's claimed player available to all templates"""
+    if current_user.is_authenticated:
+        claimed_player = Player.query.filter_by(claimed_by=current_user.id).first()
+        return dict(user_claimed_player=claimed_player)
+    return dict(user_claimed_player=None)
 
 # --- Admin panel ---
 @app.route("/admin", methods=["GET", "POST"])
@@ -689,8 +826,7 @@ def admin_panel():
             archetype_data = [{
                 'name': deck.name,
                 'list_text': deck.list_text,
-                'colors': deck.colors,
-                'image_url': deck.image_url
+                'colors': deck.colors
             } for deck in archetype_templates]
             
             # Preserve archetype models before deletion
@@ -750,8 +886,7 @@ def admin_panel():
             archetype_data = [{
                 'name': deck.name,
                 'list_text': deck.list_text,
-                'colors': deck.colors,
-                'image_url': deck.image_url
+                'colors': deck.colors
             } for deck in archetype_templates]
             
             # Save archetype models
@@ -812,7 +947,6 @@ def admin_panel():
                     name=archetype['name'],
                     list_text=archetype['list_text'],
                     colors=archetype['colors'],
-                    image_url=archetype['image_url'],
                     player_id=0,
                     tournament_id=None
                 )
@@ -902,6 +1036,9 @@ def admin_panel():
     users = User.query.all()
     requests = AccessRequest.query.filter_by(reviewed=False).order_by(AccessRequest.date_submitted.desc()).all()
     stores = Store.query.all()
+    
+    # Get pending player claims
+    player_claims = PlayerClaim.query.filter_by(status='pending').order_by(PlayerClaim.submitted_at.desc()).all()
 
     # Convert users to JSON-serializable format
     users_json = [{"id": u.id, "name": u.name, "email": u.email} for u in users]
@@ -920,7 +1057,7 @@ def admin_panel():
         else:
             next_reset = date(today.year, today.month + 1, 1)
     
-    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs, next_reset_date=next_reset)
+    return render_template("admin.html", users=users, users_json=users_json, requests=requests, stores=stores, demo_mode=is_demo_mode(), event_logs=event_logs, next_reset_date=next_reset, player_claims=player_claims)
 
 
 @app.route("/admin/stores", methods=["GET", "POST"])
@@ -1285,6 +1422,50 @@ def edit_store_image(store_id):
     return redirect(url_for("admin_stores"))
 
 
+@app.route("/store/<int:store_id>/edit_icon", methods=["POST"])
+@login_required
+def edit_store_icon(store_id):
+    if not current_user.is_admin:
+        flash("Admins only", "error")
+        return redirect(url_for("admin_stores"))
+
+    store = Store.query.get_or_404(store_id)
+    
+    # Handle SVG file upload
+    file = request.files.get("icon")
+    if not file or file.filename == "":
+        flash("No file selected", "error")
+        return redirect(url_for("admin_stores"))
+
+    # Validate file type
+    if not file.filename.lower().endswith('.svg'):
+        flash("Only SVG files are allowed", "error")
+        return redirect(url_for("admin_stores"))
+    
+    # Check file size (1MB max)
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    if file_size > 1024 * 1024:  # 1MB in bytes
+        flash("File size must be less than 1MB", "error")
+        return redirect(url_for("admin_stores"))
+
+    # Generate unique filename
+    timestamp = int(time.time())
+    filename = f"store_icon_{store_id}_{timestamp}.svg"
+    upload_dir = os.path.join(app.static_folder, "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    path = os.path.join(upload_dir, filename)
+
+    # Save SVG file directly (no resizing needed)
+    file.save(path)
+
+    store.icon_url = f"uploads/{filename}"
+    db.session.commit()
+    flash("Store icon updated.", "success")
+
+    return redirect(url_for("admin_stores"))
 
 
 
@@ -1515,8 +1696,7 @@ def recover_event(event_id):
                     player_id=deck_data['player_id'],
                     name=deck_data['name'],
                     list_text=deck_data['list_text'],
-                    colors=deck_data['colors'],
-                    image_url=deck_data['image_url']
+                    colors=deck_data['colors']
                 )
                 db.session.add(deck)
             
@@ -1624,17 +1804,24 @@ def edit_archetype(name):
         return redirect(url_for('decks_list'))
 
     if request.method == 'POST':
+        # Get or create ArchetypeModel for this archetype
+        archetype_model = ArchetypeModel.query.filter_by(archetype_name=name).first()
+        
         # Check if selecting an existing image
         existing_image = request.form.get('existing_image')
         if existing_image:
-            # Assign existing image to archetype
-            deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
-            if deck:
-                deck.image_url = existing_image
-                db.session.commit()
-                flash("Image updated", "success")
+            if not archetype_model:
+                # Create archetype model if it doesn't exist
+                archetype_model = ArchetypeModel(
+                    archetype_name=name,
+                    model_decklist="",  # Will be set later when model is trained
+                    image_url=existing_image
+                )
+                db.session.add(archetype_model)
             else:
-                flash("No deck found for archetype", "error")
+                archetype_model.image_url = existing_image
+            db.session.commit()
+            flash("Image updated", "success")
             return redirect(url_for('decks_list'))
         
         # Otherwise, handle file upload (already cropped by frontend)
@@ -1657,19 +1844,22 @@ def edit_archetype(name):
         img = img.resize((512, 256), Image.Resampling.LANCZOS)
         img.save(path, "JPEG", quality=90)
 
-        # assign to last deck of archetype
-        deck = Deck.query.filter_by(name=name).order_by(Deck.id.desc()).first()
-        if deck:
-            deck.image_url = f'uploads/{filename}'
-            db.session.commit()
-            flash("Image updated", "success")
+        # Update or create archetype model with image
+        if not archetype_model:
+            archetype_model = ArchetypeModel(
+                archetype_name=name,
+                model_decklist="",  # Will be set later when model is trained
+                image_url=f'uploads/{filename}'
+            )
+            db.session.add(archetype_model)
         else:
-            flash("No deck found for archetype", "error")
-
+            archetype_model.image_url = f'uploads/{filename}'
+        
+        db.session.commit()
+        flash("Image updated", "success")
         return redirect(url_for('decks_list'))
 
     return render_template("edit_archetype.html", name=name)
-
 
 
 # --- Player search for autocomplete ---
@@ -1855,6 +2045,110 @@ def toggle_dark_mode():
     return jsonify({"success": True, "dark_mode": current_user.dark_mode})
 
 
+@app.route('/my_decks', methods=['GET', 'POST'])
+@login_required
+def my_decks():
+    """Personal deck collection for the logged-in user"""
+    if request.method == 'POST':
+        # Handle new deck submission or update
+        deck_id = request.form.get("deck_id", "").strip()
+        deck_name = request.form.get("deck_name", "").strip()
+        deck_list = request.form.get("deck_list", "").strip()
+        
+        if not deck_name or not deck_list:
+            flash("Please provide both deck name and decklist.", "error")
+            return redirect(url_for('my_decks'))
+        
+        # Auto-detect archetype
+        detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
+        
+        if similarity > 0:
+            archetype = detected_archetype
+        else:
+            archetype = "Rogue"
+        
+        # Get or create player
+        player = None
+        if hasattr(current_user, 'claimed_player_id') and current_user.claimed_player_id:
+            player = Player.query.get(current_user.claimed_player_id)
+        
+        if not player:
+            player = Player.query.filter_by(name=current_user.name).first()
+            if not player:
+                player = Player(name=current_user.name)
+                db.session.add(player)
+                db.session.flush()
+        
+        if deck_id:
+            # Update existing deck
+            deck = Deck.query.get(deck_id)
+            if deck and deck.player_id == player.id:
+                deck.name = deck_name
+                deck.archetype = archetype
+                deck.list_text = deck_list
+                db.session.commit()
+                flash(f"Deck '{deck_name}' updated!", "success")
+            else:
+                flash("Deck not found or unauthorized.", "error")
+        else:
+            # Create new deck
+            new_deck = Deck(
+                name=deck_name,
+                archetype=archetype,
+                list_text=deck_list,
+                player_id=player.id,
+                tournament_id=None  # Personal deck, not linked to tournament
+            )
+            db.session.add(new_deck)
+            db.session.commit()
+            flash(f"Deck '{deck_name}' added to your collection!", "success")
+        
+        return redirect(url_for('my_decks'))
+    
+    # GET: Show user's personal decks
+    player = None
+    if hasattr(current_user, 'claimed_player_id') and current_user.claimed_player_id:
+        player = Player.query.get(current_user.claimed_player_id)
+    
+    if not player:
+        player = Player.query.filter_by(name=current_user.name).first()
+    
+    my_personal_decks = []
+    if player:
+        # Get only decks without tournament_id (personal collection)
+        my_personal_decks = Deck.query.filter_by(
+            player_id=player.id,
+            tournament_id=None
+        ).filter(
+            Deck.list_text.isnot(None),
+            Deck.list_text != ''
+        ).all()
+    
+    # Get archetype images and colors for the decks
+    archetype_images = {}
+    archetype_colors = {}
+    for d in my_personal_decks:
+        if d.archetype and d.archetype not in archetype_images:
+            archetype_images[d.archetype] = get_archetype_image(d.archetype)
+            archetype_colors[d.archetype] = d.colors
+    
+    # Get all available archetypes for dropdown in modal
+    all_archetypes = db.session.query(Deck.archetype).distinct().filter(
+        Deck.archetype.isnot(None), 
+        Deck.archetype != ''
+    ).order_by(Deck.archetype).all()
+    archetype_names = [name[0] for name in all_archetypes]
+    
+    return render_template(
+        "my_decks.html",
+        my_personal_decks=my_personal_decks,
+        archetype_images=archetype_images,
+        archetype_colors=archetype_colors,
+        archetype_names=archetype_names,
+        player=player
+    )
+
+
 @app.route("/user/<user_id>/tournaments")
 @login_required
 def user_tournaments(user_id):
@@ -1862,7 +2156,29 @@ def user_tournaments(user_id):
     return render_template("user_tournaments.html", tournaments=tournaments)
 
 
-
+@app.route('/api/deck/<int:deck_id>')
+@login_required
+def get_deck_data(deck_id):
+    """API endpoint to get deck data for editing"""
+    deck = Deck.query.get_or_404(deck_id)
+    
+    # Verify this deck belongs to the current user
+    player = None
+    if hasattr(current_user, 'claimed_player_id') and current_user.claimed_player_id:
+        player = Player.query.get(current_user.claimed_player_id)
+    
+    if not player:
+        player = Player.query.filter_by(name=current_user.name).first()
+    
+    if not player or deck.player_id != player.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    return jsonify({
+        'id': deck.id,
+        'name': deck.name,
+        'archetype': deck.archetype,
+        'list_text': deck.list_text or ''
+    })
 
 
 @app.route('/players', methods=['GET', 'POST'])
@@ -2161,8 +2477,8 @@ def players():
         meta_share = round((deck_count / total_all_decks * 100), 1) if total_all_decks > 0 else 0
         top_decks.append({
             "name": name,
-            "image_url": last_deck.image_url if last_deck and last_deck.image_url else "",
-            "meta_share": meta_share
+            "meta_share": meta_share,
+            "image_url": get_archetype_image(name)
         })
 
     # === Top 3 stores by number of tournaments ===
@@ -2204,7 +2520,8 @@ def players():
         stores_by_country[country].append({
             'id': store.id,
             'name': store.name,
-            'country': store.country
+            'country': store.country,
+            'icon_url': store.icon_url
         })
 
     # === Render template ===
@@ -2238,18 +2555,18 @@ def decks_list():
 
         deck_name = request.form.get("deck_name", "").strip()
         if deck_name:
-            new_deck = Deck(name=deck_name, list_text="", colors="", image_url=None, player_id=0, tournament_id=None)
+            new_deck = Deck(name=deck_name, archetype=deck_name, list_text="", colors="", player_id=0, tournament_id=None)
             db.session.add(new_deck)
             db.session.commit()
             flash(f"Archetype '{deck_name}' created", "success")
         return redirect(url_for('decks_list'))
 
     # existing GET logic
-    decks = Deck.query.filter(Deck.name.isnot(None)).all()
+    decks = Deck.query.filter(Deck.archetype.isnot(None)).all()
     print(f"DEBUG: Found {len(decks)} total decks in database")
     archetypes = {}
     for d in decks:
-        archetypes.setdefault(d.name, []).append(d)
+        archetypes.setdefault(d.archetype, []).append(d)
     
     # Add archetypes from ArchetypeModel that don't have any decks yet
     # Create placeholder deck entries for them
@@ -2258,7 +2575,7 @@ def decks_list():
         if model.archetype_name not in archetypes:
             # Check if a placeholder deck already exists
             placeholder = Deck.query.filter_by(
-                name=model.archetype_name,
+                archetype=model.archetype_name,
                 player_id=0,
                 tournament_id=None
             ).first()
@@ -2267,9 +2584,9 @@ def decks_list():
                 # Create a placeholder deck with the model decklist
                 placeholder = Deck(
                     name=model.archetype_name,
+                    archetype=model.archetype_name,
                     list_text=model.model_decklist,
                     colors="",
-                    image_url=None,
                     player_id=0,
                     tournament_id=None
                 )
@@ -2417,7 +2734,16 @@ def decks_list():
     if rogue_decks is not None:
         sorted_archetypes["Rogue"] = rogue_decks
 
-    return render_template("decks.html", archetypes=sorted_archetypes, archetype_colors=archetype_colors, archetype_tiers=archetype_tiers)
+    # Get archetype images from ArchetypeModel
+    archetype_images = {}
+    for archetype_name in sorted_archetypes.keys():
+        archetype_images[archetype_name] = get_archetype_image(archetype_name)
+
+    return render_template("decks.html", 
+                          archetypes=sorted_archetypes, 
+                          archetype_colors=archetype_colors, 
+                          archetype_tiers=archetype_tiers,
+                          archetype_images=archetype_images)
 
 
 @app.route('/decks/recalculate', methods=['POST'])
@@ -2449,11 +2775,11 @@ def recalculate_archetypes():
                 'deck_id': empty_deck.id,
                 'player': player.name if player else 'Unknown',
                 'tournament': tournament.name if tournament else 'Unknown',
-                'archetype': empty_deck.name
+                'archetype': empty_deck.archetype or empty_deck.name
             }
             deleted_log.append(deleted_detail)
             
-            print(f"[RECALCULATE] Deleting empty deck ID {empty_deck.id}: {empty_deck.name} (player: {player.name if player else 'Unknown'})")
+            print(f"[RECALCULATE] Deleting empty deck ID {empty_deck.id}: {empty_deck.archetype or empty_deck.name} (player: {player.name if player else 'Unknown'})")
             db.session.delete(empty_deck)
             deleted_count += 1
         
@@ -2501,12 +2827,12 @@ def recalculate_archetypes():
                         'deck_id': deck.id,
                         'player': player.name if player else 'Unknown',
                         'tournament': tournament.name if tournament else 'Unknown',
-                        'archetype': deck.name,
+                        'archetype': deck.archetype or deck.name,
                         'reason': f'Incomplete deck ({main_deck_count} cards)'
                     }
                     deleted_log.append(deleted_detail)
                     
-                    print(f"[RECALCULATE] Deleting incomplete deck ID {deck.id}: {deck.name} ({main_deck_count} cards)")
+                    print(f"[RECALCULATE] Deleting incomplete deck ID {deck.id}: {deck.archetype or deck.name} ({main_deck_count} cards)")
                     db.session.delete(deck)
                     deleted_count += 1
                     all_decks.remove(deck)
@@ -2523,7 +2849,7 @@ def recalculate_archetypes():
         changes_log = []
         
         for deck in all_decks:
-            old_archetype = deck.name
+            old_archetype = deck.archetype
             
             # Detect new archetype based on similarity with 20% threshold
             # Use require_threshold=True to classify as Rogue if below 20%
@@ -2548,9 +2874,8 @@ def recalculate_archetypes():
                 }
                 changes_log.append(change_detail)
                 
-                # ONLY update the deck's archetype name - do NOT modify image_url, colors, or any other fields
-                # Archetype images and other properties should remain unchanged
-                deck.name = new_archetype
+                # Update the deck's archetype - keep custom name unchanged
+                deck.archetype = new_archetype
                 updated_count += 1
                 print(f"[RECALCULATE] Updated deck ID {deck.id}: {old_archetype} -> {new_archetype} (similarity: {similarity:.2%})")
             else:
@@ -2590,7 +2915,7 @@ def recalculate_archetypes():
 
 @app.route('/decks/<deck_name>')
 def deck_detail(deck_name):
-    decks = Deck.query.filter_by(name=deck_name).all()
+    decks = Deck.query.filter_by(archetype=deck_name).all()
     
     # Get the model decklist for this archetype
     model = ArchetypeModel.query.filter_by(archetype_name=deck_name).first()
@@ -2645,7 +2970,6 @@ def deck_detail(deck_name):
         })
 
     last_deck = Deck.query.filter_by(name=deck_name).order_by(Deck.id.desc()).first()
-    image_url = last_deck.image_url if last_deck and last_deck.image_url else None
     
     # Calculate deck statistics
     total_decks = len(decks)
@@ -2663,14 +2987,17 @@ def deck_detail(deck_name):
     total_all_decks = Deck.query.count()
     meta_share = round((total_decks / total_all_decks * 100), 1) if total_all_decks > 0 else 0
 
+    # Get archetype image
+    image_url = get_archetype_image(deck_name)
+
     return render_template("deck_detail.html",
                            deck_name=deck_name,
                            rows=rows,
-                           image_url=image_url,
                            total_decks=total_decks,
                            tier=tier,
                            meta_share=meta_share,
                            colors=colors,
+                           image_url=image_url,
                            model_decklist=model_decklist)
 
 
@@ -2775,6 +3102,13 @@ def get_archetype_model(archetype_name):
         'success': False,
         'message': 'No model decklist found for this archetype'
     })
+
+def get_archetype_image(archetype_name):
+    """Get the image URL for an archetype from ArchetypeModel table"""
+    if not archetype_name:
+        return None
+    model = ArchetypeModel.query.filter_by(archetype_name=archetype_name).first()
+    return model.image_url if model and model.image_url else None
 
 
 @app.route('/archetype/<archetype_name>/model', methods=['POST'])
@@ -3086,10 +3420,21 @@ def new_tournament():
 
 
 def merge_player_ids(source_id, target_id):
+    """Merge source player into target player, handling all references and recalculating stats."""
     if source_id == target_id:
         return
     
-    # Handle TournamentPlayer entries - delete source entries where target already exists
+    source = Player.query.get(source_id)
+    target = Player.query.get(target_id)
+    
+    if not source or not target:
+        return
+    
+    # Store names for logging before deletion
+    source_name = source.name
+    target_name = target.name
+    
+    # === 1. Handle TournamentPlayer entries ===
     source_tps = TournamentPlayer.query.filter_by(player_id=source_id).all()
     for tp in source_tps:
         # Check if target already has an entry for this tournament
@@ -3105,20 +3450,152 @@ def merge_player_ids(source_id, target_id):
             # Target not registered, update source entry to target
             tp.player_id = target_id
     
-    # Update all match references from source to target
+    # === 2. Update all match references from source to target ===
     Match.query.filter_by(player1_id=source_id).update({"player1_id": target_id})
     Match.query.filter_by(player2_id=source_id).update({"player2_id": target_id})
     
-    # Update all deck references from source to target
+    # === 3. Update all deck references from source to target ===
     Deck.query.filter_by(player_id=source_id).update({"player_id": target_id})
+    
+    # === 4. Handle Casual Points History ===
+    # Update all casual points history entries from source to target
+    source_casual_history = CasualPointsHistory.query.filter_by(player_id=source_id).all()
+    for history in source_casual_history:
+        # Check if target already has an entry for this tournament
+        target_history = CasualPointsHistory.query.filter_by(
+            player_id=target_id,
+            tournament_id=history.tournament_id,
+            store_id=history.store_id
+        ).first()
+        
+        if target_history:
+            # Target already has entry for this tournament, delete source entry
+            db.session.delete(history)
+        else:
+            # Update source entry to target
+            history.player_id = target_id
+    
+    # === 5. Handle Achievements ===
+    # Update all achievements from source to target
+    source_achievements = PlayerAchievement.query.filter_by(player_id=source_id).all()
+    for achievement in source_achievements:
+        # Check if target already has this achievement
+        target_achievement = PlayerAchievement.query.filter_by(
+            player_id=target_id,
+            store_id=achievement.store_id,
+            achievement_type=achievement.achievement_type
+        ).first()
+        
+        if target_achievement:
+            # Target already has this achievement - keep the higher tier and earlier date
+            tier_order = {'bronze': 1, 'silver': 2, 'gold': 3}
+            if tier_order.get(achievement.tier, 0) > tier_order.get(target_achievement.tier, 0):
+                target_achievement.tier = achievement.tier
+            if achievement.earned_date < target_achievement.earned_date:
+                target_achievement.earned_date = achievement.earned_date
+            db.session.delete(achievement)
+        else:
+            # Update source achievement to target
+            achievement.player_id = target_id
+    
+    # === 6. Handle Casual Ranking Snapshots ===
+    # Delete source snapshots as they'll be recalculated
+    CasualRankingSnapshot.query.filter_by(player_id=source_id).delete()
+    
+    # === 7. Handle Deck Submission Links ===
+    # Note: These are keyed by player_name not player_id, so no changes needed
     
     db.session.commit()
     
-    # Delete the old player row only if it still exists
+    # === 8. Recalculate Casual Points (sum by store) ===
+    # Get all casual points history for target player grouped by store
+    casual_points_by_store = {}
+    all_casual_history = CasualPointsHistory.query.filter_by(player_id=target_id).all()
+    
+    for history in all_casual_history:
+        store_id = history.store_id or 0  # Use 0 for null stores
+        if store_id not in casual_points_by_store:
+            casual_points_by_store[store_id] = 0
+        casual_points_by_store[store_id] += history.points
+    
+    # Update target player's total casual points (sum across all stores)
+    target.casual_points = sum(casual_points_by_store.values())
+    
+    db.session.commit()
+    
+    # === 9. Recalculate ELO in chronological order ===
+    # Reset target's ELO to default
+    target.elo = DEFAULT_ELO
+    db.session.commit()
+    
+    # Get all competitive tournaments involving the merged player, ordered by submission time
+    tournament_ids = db.session.query(TournamentPlayer.tournament_id).filter(
+        TournamentPlayer.player_id == target_id
+    ).distinct().all()
+    tournament_ids = [tid[0] for tid in tournament_ids]
+    
+    tournaments = Tournament.query.filter(
+        Tournament.id.in_(tournament_ids),
+        Tournament.pending == False,
+        Tournament.casual == False
+    ).order_by(Tournament.submitted_at.asc()).all()
+    
+    # Replay all matches in chronological order to recalculate ELO
+    for tournament in tournaments:
+        matches = Match.query.filter_by(tournament_id=tournament.id).order_by(
+            Match.round_num, Match.id
+        ).all()
+        
+        for match in matches:
+            # Skip if this match doesn't involve the target player
+            if match.player1_id != target_id and match.player2_id != target_id:
+                continue
+            
+            # Skip byes
+            if match.result == 'bye':
+                continue
+            
+            # Skip if match has no opponent
+            if not match.player1_id or not match.player2_id:
+                continue
+            
+            p1 = Player.query.get(match.player1_id)
+            p2 = Player.query.get(match.player2_id)
+            
+            if not p1 or not p2:
+                continue
+            
+            # Store old ELO values
+            old_elo_1 = p1.elo
+            old_elo_2 = p2.elo
+            
+            # Calculate ELO change
+            scores = result_to_scores(match.result) or (1, 1)
+            update_elo(p1, p2, scores[0], scores[1], tournament)
+            
+            # Only commit ELO changes for the target player
+            # For other players, restore their original ELO
+            if match.player1_id == target_id:
+                if match.player2_id != target_id:
+                    p2.elo = old_elo_2  # Restore opponent's ELO
+            else:
+                p1.elo = old_elo_1  # Restore opponent's ELO
+    
+    db.session.commit()
+    
+    # === 10. Delete the source player ===
     src = Player.query.get(source_id)
     if src:
         db.session.delete(src)
         db.session.commit()
+    
+    # Log the merge event
+    log_event(
+        action_type='player_merged',
+        details=f"Merged player '{source_name}' (ID: {source_id}) into '{target_name}' (ID: {target_id})",
+        backup_data=None,
+        recoverable=False
+    )
 
 from collections import Counter
 
@@ -3634,26 +4111,12 @@ def new_tournament_casual():
                         
                         if old_name != final_deck_name:
                             print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{final_deck_name}'", file=sys.stderr)
-                        
-                        # Preserve existing image if archetype has one and current deck doesn't
-                        if not deck.image_url and final_deck_name:
-                            existing_archetype = Deck.query.filter_by(name=final_deck_name).filter(Deck.image_url.isnot(None)).first()
-                            if existing_archetype:
-                                deck.image_url = existing_archetype.image_url
                     else:
-                        # Get archetype image if available
-                        archetype_image = None
-                        if final_deck_name:
-                            existing_archetype = Deck.query.filter_by(name=final_deck_name).filter(Deck.image_url.isnot(None)).first()
-                            if existing_archetype:
-                                archetype_image = existing_archetype.image_url
-                        
                         deck = Deck(
                             player_id=player.id,
                             tournament_id=tournament.id,
                             name=final_deck_name,
-                            list_text=deck_list,
-                            image_url=archetype_image
+                            list_text=deck_list
                         )
                         db.session.add(deck)
 
@@ -3943,8 +4406,7 @@ def set_tournament_store(tid):
 
     # Only admins or scorekeepers can change
     if not (current_user.is_admin or current_user.is_scorekeeper):
-        flash("You do not have permission to set the store.", "error")
-        return redirect(url_for('players'))
+        return jsonify({"success": False, "message": "You do not have permission to set the store."}), 403
 
     # Determine states
     is_new_import = tournament.pending and tournament.confirm_token
@@ -3956,74 +4418,54 @@ def set_tournament_store(tid):
         session_key = f"tok_{tid}"
         session_token = session.get(session_key)
         if not session_token or session_token != tournament.confirm_token:
-            flash("Invalid or expired confirmation link.", "error")
-            return redirect(url_for('players'))
+            return jsonify({"success": False, "message": "Invalid or expired confirmation link."}), 403
     
     # Verify token for edit mode
     if is_editing:
         session_key = f"edit_{tid}"
         session_token = session.get(session_key)
         if not session_token or session_token != tournament.edit_token:
-            flash("Invalid or expired edit link.", "error")
-            return redirect(url_for('players'))
+            return jsonify({"success": False, "message": "Invalid or expired edit link."}), 403
     
     # Authorization for manual tournaments
     if is_manual_tournament:
         can_access = (current_user.is_admin or tournament.user_id == current_user.id)
         if not can_access:
-            flash("You don't have permission to modify this tournament.", "error")
-            return redirect(url_for('players'))
+            return jsonify({"success": False, "message": "You don't have permission to modify this tournament."}), 403
     
     # Block access to finalized imported tournaments
     if tournament.imported_from_text and not is_new_import and not is_editing:
-        flash("Store can only be changed during import confirmation or edit mode.", "error")
-        return redirect(url_for('players'))
+        return jsonify({"success": False, "message": "Store can only be changed during import confirmation or edit mode."}), 403
 
     
     store_id = request.form.get("store_id")
     if not store_id:
-        flash("Please select a store.", "error")
-        if is_new_import:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
-        else:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
+        return jsonify({"success": False, "message": "Please select a store."}), 400
 
     try:
         store_id_int = int(store_id)
     except ValueError:
-        flash("Invalid store.", "error")
-        if is_new_import:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
-        else:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
+        return jsonify({"success": False, "message": "Invalid store."}), 400
 
     store = Store.query.get(store_id_int)
     if not store:
-        flash("Store not found.", "error")
-        if is_new_import:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
-        else:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
+        return jsonify({"success": False, "message": "Store not found."}), 404
 
     # Ensure this user can use that store
     if not can_use_store(current_user, store.id):
-        flash("You are not assigned to this store.", "error")
-        if is_new_import:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
-        else:
-            return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
+        return jsonify({"success": False, "message": "You are not assigned to this store."}), 403
 
     # Apply store and auto-country
     tournament.store_id = store.id
     tournament.country = store.country
     db.session.commit()
 
-    flash(f"Store set to {store.name}. Country auto-set to {store.country}.", "success")
-    if is_new_import:
-        return redirect(url_for('tournament_round', tid=tid, round_num=1, token=tournament.confirm_token))
-    else:
-        return redirect(url_for('tournament_round', tid=tid, round_num=1, edit_token=tournament.edit_token))
-    return redirect(redirect_url)
+    return jsonify({
+        "success": True, 
+        "message": f"Store set to {store.name}. Country auto-set to {store.country}.",
+        "store_name": store.name,
+        "country": store.country
+    })
 
 
 @app.route('/player/<int:pid>')
@@ -4170,6 +4612,21 @@ def player_info(pid):
     most_played_archetypes = [{'archetype': arch, 'count': count} 
                               for arch, count in archetype_counts.most_common(5)]
 
+    # Get player achievements with store information
+    # Include special achievements (store_id=0) and regular store achievements
+    achievements = db.session.query(PlayerAchievement, Store).outerjoin(
+        Store, PlayerAchievement.store_id == Store.id
+    ).filter(
+        PlayerAchievement.player_id == pid
+    ).order_by(
+        PlayerAchievement.earned_date.desc()
+    ).all()
+    
+    achievements_data = [{
+        'achievement': ach,
+        'store': store  # Will be None for special achievements (admin, etc.)
+    } for ach, store in achievements]
+
     # Helper: get most recent tournament country for a player
     def player_country(player_id):
         tp = (
@@ -4183,6 +4640,14 @@ def player_info(pid):
                 return tournament.country
         return None
 
+    # Get all players for merge dropdown (admin only)
+    all_players = Player.query.order_by(Player.name).all() if current_user.is_authenticated and current_user.is_admin else []
+    
+    # Check if current user has already claimed a profile
+    user_has_claimed_profile = False
+    if current_user.is_authenticated:
+        user_has_claimed_profile = Player.query.filter_by(claimed_by=current_user.id).first() is not None
+    
     return render_template(
         "playerinfo.html",
         player=player,
@@ -4193,8 +4658,169 @@ def player_info(pid):
         total_ranked=total_ranked,
         player_country=player_country,   # <-- pass helper
         top_rate_data=top_rate_data,
-        most_played_archetypes=most_played_archetypes
+        most_played_archetypes=most_played_archetypes,
+        achievements=achievements_data,
+        all_players=all_players,
+        user_has_claimed_profile=user_has_claimed_profile
     )
+
+
+@app.route('/player/<int:pid>/claim', methods=['POST'])
+@login_required
+def claim_player(pid):
+    """Submit a claim request for a player profile"""
+    player = Player.query.get_or_404(pid)
+    
+    # Check if player is already claimed
+    if player.claimed_by:
+        flash("This player profile has already been claimed.", "error")
+        return redirect(url_for('player_info', pid=pid))
+    
+    # Check if user already has a claimed profile
+    existing_claimed_player = Player.query.filter_by(claimed_by=current_user.id).first()
+    if existing_claimed_player:
+        flash(f"You have already claimed the profile '{existing_claimed_player.name}'. You cannot claim multiple profiles.", "error")
+        return redirect(url_for('player_info', pid=pid))
+    
+    # Check if user already has a pending claim for any player
+    existing_pending_claim = PlayerClaim.query.filter_by(
+        user_id=current_user.id,
+        status='pending'
+    ).first()
+    
+    if existing_pending_claim:
+        flash(f"You already have a pending claim request for '{existing_pending_claim.player_name}'. Please wait for admin review.", "info")
+        return redirect(url_for('player_info', pid=pid))
+    
+    # Create new claim request
+    claim = PlayerClaim(
+        player_id=pid,
+        player_name=player.name,
+        user_id=current_user.id
+    )
+    db.session.add(claim)
+    db.session.commit()
+    
+    flash(f"Claim request submitted for {player.name}. An admin will review it soon.", "success")
+    return redirect(url_for('player_info', pid=pid))
+
+
+@app.route('/admin/claim/<int:claim_id>/approve', methods=['POST'])
+@login_required
+def approve_claim(claim_id):
+    """Approve a player claim request"""
+    if not current_user.is_admin:
+        flash("Only admins can approve claims.", "error")
+        return redirect(url_for('players'))
+    
+    claim = PlayerClaim.query.get_or_404(claim_id)
+    
+    if claim.status != 'pending':
+        flash("This claim has already been reviewed.", "info")
+        return redirect(url_for('admin_panel'))
+    
+    # Get the player from main database
+    player = Player.query.get(claim.player_id)
+    if not player:
+        flash("Player not found.", "error")
+        claim.status = 'denied'
+        claim.reviewed_at = datetime.utcnow()
+        claim.reviewed_by = current_user.id
+        db.session.commit()
+        return redirect(url_for('admin_panel'))
+    
+    # Check if player is already claimed
+    if player.claimed_by:
+        flash(f"{player.name} has already been claimed by another user.", "error")
+        claim.status = 'denied'
+        claim.reviewed_at = datetime.utcnow()
+        claim.reviewed_by = current_user.id
+        db.session.commit()
+        return redirect(url_for('admin_panel'))
+    
+    # Approve the claim
+    player.claimed_by = claim.user_id
+    claim.status = 'approved'
+    claim.reviewed_at = datetime.utcnow()
+    claim.reviewed_by = current_user.id
+    db.session.commit()
+    
+    # Award admin achievement if user is admin
+    user = User.query.get(claim.user_id)
+    if user and user.is_admin:
+        award_admin_achievement(claim.player_id)
+    
+    # Award scorekeeper achievement if user is scorekeeper
+    if user and user.is_scorekeeper:
+        award_scorekeeper_achievement(claim.player_id)
+    
+    flash(f"Claim approved! {player.name} is now owned by {user.name}.", "success")
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/claim/<int:claim_id>/deny', methods=['POST'])
+@login_required
+def deny_claim(claim_id):
+    """Deny a player claim request"""
+    if not current_user.is_admin:
+        flash("Only admins can deny claims.", "error")
+        return redirect(url_for('players'))
+    
+    claim = PlayerClaim.query.get_or_404(claim_id)
+    
+    if claim.status != 'pending':
+        flash("This claim has already been reviewed.", "info")
+        return redirect(url_for('admin_panel'))
+    
+    claim.status = 'denied'
+    claim.reviewed_at = datetime.utcnow()
+    claim.reviewed_by = current_user.id
+    db.session.commit()
+    
+    flash(f"Claim request for {claim.player_name} has been denied.", "success")
+    return redirect(url_for('admin_panel'))
+
+
+def award_admin_achievement(player_id):
+    """Award special 'Admin' achievement to a player"""
+    # Check if achievement already exists
+    existing = PlayerAchievement.query.filter_by(
+        player_id=player_id,
+        store_id=0,  # Use 0 for special achievements
+        achievement_type='admin'
+    ).first()
+    
+    if not existing:
+        achievement = PlayerAchievement(
+            player_id=player_id,
+            store_id=0,  # Special achievements use store_id=0
+            achievement_type='admin',
+            tier='platinum',  # Special tier for admin
+            earned_date=datetime.utcnow()
+        )
+        db.session.add(achievement)
+        db.session.commit()
+
+
+def award_scorekeeper_achievement(player_id):
+    """Award special 'Scorekeeper' achievement to a player"""
+    # Check if achievement already exists
+    existing = PlayerAchievement.query.filter_by(
+        player_id=player_id,
+        store_id=0,  # Use 0 for special achievements
+        achievement_type='scorekeeper'
+    ).first()
+    
+    if not existing:
+        achievement = PlayerAchievement(
+            player_id=player_id,
+            store_id=0,  # Special achievements use store_id=0
+            achievement_type='scorekeeper',
+            tier='platinum',  # Special tier for scorekeeper
+            earned_date=datetime.utcnow()
+        )
+        db.session.add(achievement)
+        db.session.commit()
 
 
 @app.route('/share_links/<int:tid>')
@@ -4552,44 +5178,37 @@ def submit_deck_public(token):
                                  is_editing=bool(existing_deck),
                                  submission_token=token)
         
-        # Auto-detect archetype from decklist (regardless of what user typed)
+        # Auto-detect archetype from decklist for logging/grouping purposes
         detected_archetype, similarity = detect_archetype_from_decklist(deck_list)
         
-        # Always use detected archetype (either matched archetype or "Rogue")
-        deck_name = detected_archetype
         if similarity > 0:
-            print(f"[AUTO-DETECT] Player '{link.player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity (user typed: '{user_deck_name}')", file=sys.stderr)
+            archetype = detected_archetype
+            print(f"[AUTO-DETECT] Player '{link.player_name}' deck matched to '{detected_archetype}' with {similarity:.2%} similarity (user submitted name: '{user_deck_name}')", file=sys.stderr)
         else:
-            print(f"[AUTO-DETECT] Player '{link.player_name}' deck classified as 'Rogue' (user typed: '{user_deck_name}')", file=sys.stderr)
-        
-        # Check if archetype exists and has an image
-        archetype_image = None
-        if deck_name:
-            existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
-            if existing_archetype:
-                archetype_image = existing_archetype.image_url
+            archetype = "Rogue"
+            print(f"[AUTO-DETECT] Player '{link.player_name}' deck classified as 'Rogue' (user submitted name: '{user_deck_name}')", file=sys.stderr)
         
         # Create or update deck
         deck = Deck.query.filter_by(player_id=player.id, tournament_id=tournament.id).first()
         if deck:
             # Editing existing deck
             old_name = deck.name
-            deck.name = deck_name
+            old_archetype = deck.archetype
+            deck.name = user_deck_name  # Use user's submitted custom name
+            deck.archetype = archetype  # Use auto-detected archetype
             deck.list_text = deck_list
-            if not deck.image_url and archetype_image:
-                deck.image_url = archetype_image
             flash("Deck updated successfully!", "success")
             
-            if old_name != deck_name:
-                print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{deck_name}'", file=sys.stderr)
+            if old_archetype != archetype:
+                print(f"[AUTO-DETECT] Deck re-grouped from '{old_archetype}' to '{archetype}'", file=sys.stderr)
         else:
             # Creating new deck
             deck = Deck(
                 player_id=player.id,
                 tournament_id=tournament.id,
-                name=deck_name,
-                list_text=deck_list,
-                image_url=archetype_image
+                name=user_deck_name,  # Custom user-submitted name
+                archetype=archetype,  # Auto-detected archetype
+                list_text=deck_list
             )
             db.session.add(deck)
             flash("Deck submitted successfully!", "success")
@@ -4669,26 +5288,12 @@ def submit_deck():
         
         if old_name != deck_name:
             print(f"[AUTO-DETECT] Deck re-grouped from '{old_name}' to '{deck_name}'", file=sys.stderr)
-        
-        # Preserve existing image if archetype has one and current deck doesn't
-        if not deck.image_url and deck_name:
-            existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
-            if existing_archetype:
-                deck.image_url = existing_archetype.image_url
     else:
-        # Check if archetype exists and has an image
-        archetype_image = None
-        if deck_name:
-            existing_archetype = Deck.query.filter_by(name=deck_name).filter(Deck.image_url.isnot(None)).first()
-            if existing_archetype:
-                archetype_image = existing_archetype.image_url
-        
         deck = Deck(
             player_id=player_id,
             tournament_id=tournament_id,
             name=deck_name,
-            list_text=deck_list,
-            image_url=archetype_image
+            list_text=deck_list
         )
         db.session.add(deck)
 
@@ -4739,7 +5344,7 @@ def add_deck():
         return redirect(url_for("decks_list"))
 
     # Archetype and deck name are the same
-    new_deck = Deck(name=deck_name, list_text="", colors="", image_url=None, player_id=0)
+    new_deck = Deck(name=deck_name, list_text="", colors="", player_id=0)
     db.session.add(new_deck)
     db.session.commit()
     flash(f"New deck archetype '{deck_name}' created", "success")
@@ -4931,6 +5536,14 @@ def tournament_round(tid, round_num):
         # Calculate per-round elo changes
         per_round_elo_changes = calculate_per_round_elo_changes(tid, tournament)
 
+        print(f"[TOURNAMENT_ROUND] Rendering round.html for tournament {tid}", file=sys.stderr)
+        print(f"[TOURNAMENT_ROUND] Number of players: {len(players)}", file=sys.stderr)
+        print(f"[TOURNAMENT_ROUND] Number of standings: {len(standings)}", file=sys.stderr)
+        print(f"[TOURNAMENT_ROUND] Top cut: {tournament.top_cut}", file=sys.stderr)
+        print(f"[TOURNAMENT_ROUND] Pending: {tournament.pending}", file=sys.stderr)
+        if standings:
+            print(f"[TOURNAMENT_ROUND] First 3 standings: {[(s['player'].name, s['player'].id) for s in standings[:3]]}", file=sys.stderr)
+
         return render_template(
             'round.html',
             players=players,
@@ -5067,6 +5680,21 @@ def discard_tournament(tid):
 @app.route('/tournament/<int:tid>/apply_top_cut', methods=['POST'])
 @login_required
 def apply_top_cut(tid):
+    # Log raw request data for debugging
+    print(f"\n========== RAW REQUEST DEBUG ==========", file=sys.stderr)
+    print(f"[REQUEST] Method: {request.method}", file=sys.stderr)
+    print(f"[REQUEST] Content-Type: {request.content_type}", file=sys.stderr)
+    print(f"[REQUEST] Content-Length: {request.content_length}", file=sys.stderr)
+    print(f"[REQUEST] Form field count: {len(request.form)}", file=sys.stderr)
+    print(f"[REQUEST] Form keys: {list(request.form.keys())}", file=sys.stderr)
+    
+    # Check if there are ANY player_id fields
+    player_fields = [k for k in request.form.keys() if k.startswith('player_id_')]
+    deck_mode_fields = [k for k in request.form.keys() if k.startswith('deck_mode_')]
+    print(f"[REQUEST] Found {len(player_fields)} player_id fields: {player_fields}", file=sys.stderr)
+    print(f"[REQUEST] Found {len(deck_mode_fields)} deck_mode fields: {deck_mode_fields}", file=sys.stderr)
+    print(f"========== END RAW REQUEST DEBUG ==========\n", file=sys.stderr)
+    
     # Always re-query fresh, and bail if missing
     tournament = Tournament.query.get(tid)
     if not tournament:
@@ -5144,16 +5772,138 @@ def apply_top_cut(tid):
         flash("Error finalizing tournament. Please try again.", "error")
         return redirect(url_for('players'))
 
+    # Award casual points for top cut players
+    def award_casual_points_by_rank(num_players: int, rank: int, top_cut: int) -> int:
+        # Only award points if rank is within the selected top cut
+        if rank > top_cut:
+            return 0
+            
+        if num_players < 9:
+            return 0
+        if 9 <= num_players <= 16:
+            if rank == 1: return 2
+            if rank == 2: return 1
+        elif 17 <= num_players <= 32:
+            if rank == 1: return 4
+            if rank == 2: return 3
+            if rank <= 4: return 2
+            if rank <= 8: return 1
+        elif num_players >= 33:
+            if rank == 1: return 8
+            if rank == 2: return 6
+            if rank <= 4: return 4
+            if rank <= 8: return 2
+        return 0
+    
+    # Process top cut players for casual points and deck data
+    print(f"\n========== CASUAL POINTS PROCESSING ==========", file=sys.stderr)
+    print(f"[CASUAL POINTS] Tournament {tid}: top_cut={tournament.top_cut}, num_players={num_players}, casual={tournament.casual}", file=sys.stderr)
+    print(f"[CASUAL POINTS] Form keys: {list(request.form.keys())}", file=sys.stderr)
+    print(f"[CASUAL POINTS] ALL Form data: {dict(request.form)}", file=sys.stderr)
+    print(f"[CASUAL POINTS] Content-Type: {request.content_type}", file=sys.stderr)
+    print(f"[CASUAL POINTS] Content-Length: {request.content_length}", file=sys.stderr)
+    print(f"[CASUAL POINTS] Store ID: {tournament.store_id}", file=sys.stderr)
+    
+    if tournament.top_cut:
+        print(f"[CASUAL POINTS] Processing ranks 1 to {tournament.top_cut}", file=sys.stderr)
+        points_awarded_count = 0
+        for rank in range(1, tournament.top_cut + 1):
+            player_id = request.form.get(f'player_id_{rank}')
+            deck_name = request.form.get(f'deck_name_{rank}')
+            deck_list = request.form.get(f'deck_list_{rank}')
+            
+            print(f"[CASUAL POINTS] Rank {rank}: player_id={player_id}", file=sys.stderr)
+            
+            if player_id:
+                try:
+                    player = Player.query.get(int(player_id))
+                    if player:
+                        # Award casual points based on rank and player count
+                        pts = award_casual_points_by_rank(num_players, rank, tournament.top_cut)
+                        print(f"[CASUAL POINTS] Player {player.name} (rank {rank}): calculated {pts} points", file=sys.stderr)
+                        
+                        if pts > 0:
+                            points_awarded_count += 1
+                            # Update player's total points
+                            old_points = player.casual_points or 0
+                            player.casual_points = old_points + pts
+                            print(f"[CASUAL POINTS] Player {player.name}: {old_points} -> {player.casual_points}", file=sys.stderr)
+                            
+                            # Create history record for per-store tracking
+                            history_record = CasualPointsHistory(
+                                player_id=player.id,
+                                tournament_id=tournament.id,
+                                store_id=tournament.store_id,
+                                points=pts,
+                                rank=rank,
+                                awarded_at=datetime.utcnow()
+                            )
+                            db.session.add(history_record)
+                            print(f"[CASUAL POINTS] Created history record for {player.name}", file=sys.stderr)
+                        else:
+                            print(f"[CASUAL POINTS] No points awarded to {player.name} (pts=0)", file=sys.stderr)
+                    else:
+                        print(f"[CASUAL POINTS] Player not found for id {player_id}", file=sys.stderr)
+                except Exception as e:
+                    print(f"[CASUAL POINTS ERROR] Failed to process player {player_id}: {e}", file=sys.stderr)
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+            else:
+                print(f"[CASUAL POINTS] No player_id for rank {rank}", file=sys.stderr)
+        
+        print(f"[CASUAL POINTS] Committing changes for tournament {tid} (awarded to {points_awarded_count} players)", file=sys.stderr)
+        try:
+            db.session.commit()
+            print(f"[CASUAL POINTS] ✓ Commit successful!", file=sys.stderr)
+            # Verify the points were actually saved
+            for rank in range(1, min(3, tournament.top_cut + 1)):
+                player_id = request.form.get(f'player_id_{rank}')
+                if player_id:
+                    p = Player.query.get(int(player_id))
+                    if p:
+                        print(f"[CASUAL POINTS] Verification: {p.name} now has {p.casual_points} total points", file=sys.stderr)
+        except Exception as e:
+            print(f"[CASUAL POINTS ERROR] Commit failed: {e}", file=sys.stderr)
+            db.session.rollback()
+    else:
+        print(f"[CASUAL POINTS] No top_cut set, skipping casual points", file=sys.stderr)
+    print(f"========== END CASUAL POINTS ==========\n", file=sys.stderr)
+
     # Check if there are any share links to generate from the form data
     share_links_created = []
+    print(f"\n[SHARE LINKS] === Checking form for share link requests ===", file=sys.stderr)
+    print(f"[SHARE LINKS] Tournament {tid}, top_cut={tournament.top_cut}", file=sys.stderr)
+    print(f"[SHARE LINKS] All form keys: {list(request.form.keys())}", file=sys.stderr)
+    
+    deck_mode_keys = [k for k in request.form.keys() if k.startswith('deck_mode_')]
+    print(f"[SHARE LINKS] Found {len(deck_mode_keys)} deck_mode keys: {deck_mode_keys}", file=sys.stderr)
+    
+    for key in deck_mode_keys:
+        deck_mode = request.form.get(key)
+        print(f"[SHARE LINKS] {key} = {deck_mode}", file=sys.stderr)
+    
+    print(f"[SHARE LINKS] === End form check ===\n", file=sys.stderr)
+    
     for key in request.form.keys():
         if key.startswith('deck_mode_'):
-            rank = key.replace('deck_mode_', '')
+            rank_str = key.replace('deck_mode_', '')
+            try:
+                rank = int(rank_str)
+            except ValueError:
+                continue
+            
+            # Only process players in top cut
+            if tournament.top_cut and rank > tournament.top_cut:
+                print(f"[SHARE LINKS] Skipping rank {rank} (outside top cut of {tournament.top_cut})", file=sys.stderr)
+                continue
+            
             deck_mode = request.form.get(key)
+            print(f"[SHARE LINKS] Rank {rank}: deck_mode = {deck_mode}", file=sys.stderr)
             
             if deck_mode == 'share':
                 player_id = request.form.get(f'player_id_{rank}')
                 player_name = request.form.get(f'player_name_{rank}')
+                print(f"[SHARE LINKS] Creating share link for {player_name} (rank {rank})", file=sys.stderr)
                 
                 if player_id and player_name:
                     # Check if link already exists
@@ -5176,14 +5926,20 @@ def apply_top_cut(tid):
                             'player_name': player_name,
                             'token': submission_token
                         })
+                        print(f"[SHARE LINKS] Added share link for {player_name}", file=sys.stderr)
+                    else:
+                        print(f"[SHARE LINKS] Link already exists for {player_name}", file=sys.stderr)
     
+    print(f"[SHARE LINKS] Total share links created: {len(share_links_created)}", file=sys.stderr)
     if share_links_created:
         db.session.commit()
         flash(f"Tournament finalized. {len(share_links_created)} deck submission link(s) generated.", "success")
+        print(f"[SHARE LINKS] Redirecting to show_share_links for tournament {tid}", file=sys.stderr)
         # Redirect to share links page instead of players page
         return redirect(url_for('show_share_links', tid=tid))
     
     flash("Tournament finalized. Elo updated.", "success")
+    print(f"[SHARE LINKS] No share links created, redirecting to players", file=sys.stderr)
     return redirect(url_for('players'))
 
 
@@ -5323,11 +6079,23 @@ def delete_tournament(tid):
         'players': [tp.player_id for tp in tournament_players]
     }
 
+    # --- Reverse casual points if this was a casual tournament ---
+    if tournament.casual:
+        # Get all casual points awarded for this tournament
+        points_history = CasualPointsHistory.query.filter_by(tournament_id=tournament.id).all()
+        for history in points_history:
+            player = Player.query.get(history.player_id)
+            if player:
+                # Subtract the points that were awarded
+                player.casual_points = max(0, (player.casual_points or 0) - history.points)
+        print(f"[DELETE] Reversed casual points for {len(points_history)} players", file=sys.stderr)
+    
     # --- Delete dependent records ---
     Match.query.filter_by(tournament_id=tournament.id).delete()
     Deck.query.filter_by(tournament_id=tournament.id).delete()
     TournamentPlayer.query.filter_by(tournament_id=tournament.id).delete()
     CasualPointsHistory.query.filter_by(tournament_id=tournament.id).delete()
+    DeckSubmissionLink.query.filter_by(tournament_id=tournament.id).delete()
 
     # Delete the tournament itself
     tournament_name = tournament.name
@@ -5389,22 +6157,32 @@ def delete_player(pid):
 @app.route('/merge_player', methods=['POST'])
 @login_required
 def merge_player():
+    if not current_user.is_admin:
+        flash("Only admins can merge players.", "error")
+        return redirect(url_for('players'))
+    
     source_id = int(request.form['source_id'])
     target_id = int(request.form['target_id'])
+    
+    if source_id == target_id:
+        flash("Cannot merge a player with themselves.", "error")
+        return redirect(url_for('players'))
+    
     source = Player.query.get_or_404(source_id)
     target = Player.query.get_or_404(target_id)
-
-    # reassign tournament participations
-    for tp in TournamentPlayer.query.filter_by(player_id=source.id).all():
-        tp.player_id = target.id
-
-    # recalc Elo for target
-    recalc_elo(target.id)
-
-    db.session.delete(source)
-    db.session.commit()
-    flash(f"Merged {source.name} into {target.name}", "success")
-    return redirect(url_for('players'))
+    
+    source_name = source.name
+    target_name = target.name
+    
+    # Store original casual points for logging
+    source_casual_points = source.casual_points
+    target_casual_points = target.casual_points
+    
+    # Call the comprehensive merge function
+    merge_player_ids(source_id, target_id)
+    
+    flash(f"Successfully merged '{source_name}' into '{target_name}'. ELO recalculated and casual points merged by store.", "success")
+    return redirect(url_for('player_info', pid=target_id))
 
 def recalc_elo(player_id, k=32):
     player = Player.query.get(player_id)
@@ -5506,6 +6284,10 @@ def casual_final(tid):
         
         db.session.commit()
         
+        # Calculate and award achievements for players in this store
+        if tournament.store_id:
+            calculate_store_achievements(tournament.store_id)
+        
         # Log event
         log_event(
             action_type='tournament_finalized',
@@ -5584,6 +6366,7 @@ def tournament_standings(tid):
     can_edit = False
     if current_user.is_authenticated:
         can_edit = (current_user.is_admin or 
+                   current_user.is_scorekeeper or
                    tournament.user_id == current_user.id)
     
     # Get the user who submitted the tournament
@@ -5595,11 +6378,19 @@ def tournament_standings(tid):
     deck_links = DeckSubmissionLink.query.filter_by(tournament_id=tid).all()
     deck_links_by_player = {link.player_name: link for link in deck_links}
     
+    # DEBUG: Print deck links info
+    print(f"\n[DECK LINKS DEBUG] Tournament {tid}:", file=sys.stderr)
+    print(f"  Total deck links found: {len(deck_links)}", file=sys.stderr)
+    for link in deck_links:
+        print(f"  - Player: '{link.player_name}' | Submitted: {link.deck_submitted} | Token: {link.submission_token[:10]}...", file=sys.stderr)
+    print(f"  Players in standings: {[s['player'].name for s in standings[:5]]}", file=sys.stderr)
+    print(f"  deck_links_by_player keys: {list(deck_links_by_player.keys())}", file=sys.stderr)
+    
     # Get model decklists for uniqueness calculation
     model_decklists = {}
     for s in standings:
-        if s["deck"] and s["deck"].name:
-            archetype_name = s["deck"].name
+        if s["deck"] and s["deck"].archetype:
+            archetype_name = s["deck"].archetype
             if archetype_name not in model_decklists:
                 model = ArchetypeModel.query.filter_by(archetype_name=archetype_name).first()
                 model_decklists[archetype_name] = model.model_decklist if model else None
